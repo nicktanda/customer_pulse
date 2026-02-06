@@ -1,0 +1,56 @@
+<%= form_with model: integration, class: "space-y-6" do |f| %>
+  <% if integration.errors.any? %>
+    <div class="bg-red-50 border border-red-200 rounded-md p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">There were errors with your submission</h3>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+            <% integration.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :name, class: "block text-sm font-medium text-gray-700" %>
+    <%= f.text_field :name, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+  </div>
+
+  <div>
+    <%= f.label :source_type, "Integration Type", class: "block text-sm font-medium text-gray-700" %>
+    <%= f.select :source_type, Integration.source_types.keys.map { |t| [t.titleize.gsub('_', ' '), t] }, {}, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+  </div>
+
+  <div>
+    <%= f.label :enabled, class: "flex items-center" %>
+    <div class="flex items-center">
+      <%= f.check_box :enabled, class: "rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+      <span class="ml-2 text-sm text-gray-700">Enabled</span>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :sync_frequency_minutes, "Sync Frequency (minutes)", class: "block text-sm font-medium text-gray-700" %>
+    <%= f.number_field :sync_frequency_minutes, min: 5, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+    <p class="mt-1 text-sm text-gray-500">For polling-based integrations (e.g., Google Forms). Leave blank for webhook-only.</p>
+  </div>
+
+  <div>
+    <%= f.label :credentials, "Credentials (JSON)", class: "block text-sm font-medium text-gray-700" %>
+    <%= f.text_area :credentials, rows: 6, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm", placeholder: '{"api_key": "your_key_here"}' %>
+    <p class="mt-1 text-sm text-gray-500">Enter credentials as JSON. This will be encrypted at rest.</p>
+  </div>
+
+  <div class="flex justify-end space-x-3">
+    <%= link_to "Cancel", integrations_path, class: "bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 text-sm font-medium" %>
+    <%= f.submit class: "bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium cursor-pointer" %>
+  </div>
+<% end %>

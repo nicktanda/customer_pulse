@@ -1,0 +1,22 @@
+# Sidekiq-Cron scheduled jobs
+
+# Process unprocessed feedback every 4 hours
+process_feedback_batch:
+  cron: "0 */4 * * *"
+  class: "ProcessFeedbackBatchJob"
+  queue: default
+  description: "Process feedback items with AI"
+
+# Sync Google Forms every 15 minutes
+sync_google_forms:
+  cron: "*/15 * * * *"
+  class: "SyncGoogleFormsJob"
+  queue: default
+  description: "Sync feedback from Google Forms/Sheets"
+
+# Send daily pulse email at 9:00 AM
+send_daily_pulse:
+  cron: "0 9 * * *"
+  class: "SendDailyPulseJob"
+  queue: mailers
+  description: "Send daily Customer Pulse email digest"

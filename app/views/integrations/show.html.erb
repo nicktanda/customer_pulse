@@ -1,0 +1,104 @@
+<% content_for :title, "#{@integration.name} - Customer Pulse" %>
+
+<div class="mb-6">
+  <%= link_to integrations_path, class: "text-indigo-600 hover:text-indigo-800 text-sm flex items-center" do %>
+    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+    </svg>
+    Back to Integrations
+  <% end %>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6">
+    <div class="bg-white rounded-lg shadow">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <div class="p-3 rounded-lg <%= integration_icon_bg(@integration.source_type) %>">
+              <%= integration_icon(@integration.source_type) %>
+            </div>
+            <div class="ml-4">
+              <h1 class="text-xl font-semibold text-gray-900"><%= @integration.name %></h1>
+              <p class="text-sm text-gray-500"><%= @integration.source_type.titleize.gsub('_', ' ') %></p>
+            </div>
+          </div>
+          <span class="px-3 py-1 text-sm font-medium rounded <%= @integration.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' %>">
+            <%= @integration.enabled ? 'Active' : 'Disabled' %>
+          </span>
+        </div>
+      </div>
+
+      <div class="px-6 py-4">
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Last Synced</dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              <%= @integration.last_synced_at ? @integration.last_synced_at.strftime("%B %d, %Y at %H:%M") : "Never" %>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Sync Frequency</dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              <%= @integration.sync_frequency_minutes ? "Every #{@integration.sync_frequency_minutes} minutes" : "Webhook only" %>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Created</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @integration.created_at.strftime("%B %d, %Y") %></dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Webhook Secret</dt>
+            <dd class="mt-1 text-sm text-gray-900 font-mono truncate" title="<%= @integration.webhook_secret %>">
+              <%= @integration.webhook_secret.present? ? @integration.webhook_secret.truncate(20) : "Not set" %>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <% if @integration.source_type == "linear" || @integration.source_type == "slack" %>
+      <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Webhook Configuration</h2>
+        </div>
+        <div class="px-6 py-4">
+          <p class="text-sm text-gray-600 mb-4">
+            Configure your <%= @integration.source_type.titleize %> to send webhooks to the following URL:
+          </p>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <code class="text-sm text-gray-800 break-all">
+              <%= request.base_url %>/webhooks/<%= @integration.source_type %>
+            </code>
+          </div>
+          <% if @integration.webhook_secret.present? %>
+            <p class="mt-4 text-sm text-gray-600">
+              Webhook Secret: <code class="bg-gray-100 px-2 py-1 rounded"><%= @integration.webhook_secret %></code>
+            </p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="space-y-6">
+    <div class="bg-white rounded-lg shadow">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Actions</h2>
+      </div>
+      <div class="px-6 py-4 space-y-3">
+        <%= button_to "Test Connection", test_connection_integration_path(@integration), method: :post, class: "w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium" %>
+
+        <% if @integration.source_type == "google_forms" %>
+          <%= button_to "Sync Now", sync_now_integration_path(@integration), method: :post, class: "w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 text-sm font-medium" %>
+        <% end %>
+
+        <% if current_user.admin? %>
+          <hr class="my-4">
+          <%= link_to "Edit Integration", edit_integration_path(@integration), class: "block w-full text-center bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 text-sm font-medium" %>
+          <%= button_to "Delete Integration", integration_path(@integration), method: :delete, data: { confirm: "Are you sure you want to delete this integration?" }, class: "w-full bg-red-100 text-red-700 px-4 py-2 rounded-md hover:bg-red-200 text-sm font-medium" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

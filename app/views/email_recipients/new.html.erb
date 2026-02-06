@@ -1,0 +1,21 @@
+<% content_for :title, "Add Recipient - Customer Pulse" %>
+
+<div class="mb-6">
+  <%= link_to recipients_path, class: "text-indigo-600 hover:text-indigo-800 text-sm flex items-center" do %>
+    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+    </svg>
+    Back to Recipients
+  <% end %>
+</div>
+
+<div class="max-w-lg">
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h1 class="text-xl font-semibold text-gray-900">Add Email Recipient</h1>
+    </div>
+    <div class="px-6 py-4">
+      <%= render "form", recipient: @recipient %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,40 @@
+CUSTOMER PULSE
+<%= @report.period_start.strftime('%B %d, %Y %H:%M') %> - <%= @report.period_end.strftime('%B %d, %Y %H:%M') %>
+================================================================================
+
+SUMMARY STATISTICS
+------------------
+Total Items: <%= @report.feedback_count %>
+Critical (P1): <%= @by_priority['p1'] || 0 %>
+High (P2): <%= @by_priority['p2'] || 0 %>
+Bugs: <%= @by_category['bug'] || 0 %>
+Feature Requests: <%= @by_category['feature_request'] || 0 %>
+Complaints: <%= @by_category['complaint'] || 0 %>
+
+<% if @high_priority.any? %>
+HIGH PRIORITY ITEMS
+-------------------
+<% @high_priority.limit(10).each do |feedback| %>
+[<%= feedback.priority.upcase %>] [<%= feedback.category_label %>] <%= feedback.title || feedback.content.truncate(60) %>
+Source: <%= feedback.source_label %> | <%= feedback.created_at.strftime('%b %d, %H:%M') %><%= feedback.author_name.present? ? " | #{feedback.author_name}" : "" %>
+<% if feedback.ai_summary.present? %>
+Summary: <%= feedback.ai_summary %>
+<% end %>
+
+<% end %>
+<% end %>
+<% if @report.summary.present? %>
+ANALYSIS
+--------
+<%= @report.summary %>
+
+<% end %>
+BY SOURCE
+---------
+<% @by_source.each do |source, count| %>
+- <%= source.to_s.titleize.gsub('_', ' ') %>: <%= count %> items
+<% end %>
+
+--------------------------------------------------------------------------------
+View full dashboard: <%= root_url %>
+Generated at <%= Time.current.strftime('%B %d, %Y %H:%M %Z') %>

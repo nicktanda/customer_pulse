@@ -1,0 +1,102 @@
+<% content_for :title, "Feedback - Customer Pulse" %>
+
+<div class="mb-6 flex justify-between items-center">
+  <div>
+    <h1 class="text-3xl font-bold text-gray-900">Feedback</h1>
+    <p class="mt-1 text-gray-600">Browse and manage customer feedback</p>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="bg-white rounded-lg shadow mb-6">
+  <div class="p-4">
+    <%= form_with url: feedback_index_path, method: :get, class: "grid grid-cols-1 md:grid-cols-6 gap-4" do |f| %>
+      <div>
+        <%= f.text_field :q, value: params[:q], placeholder: "Search...", class: "w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+      </div>
+      <div>
+        <%= f.select :source, options_for_select([["All Sources", ""]] + Feedback.sources.keys.map { |s| [s.titleize.gsub('_', ' '), s] }, params[:source]), {}, class: "w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+      </div>
+      <div>
+        <%= f.select :category, options_for_select([["All Categories", ""]] + Feedback.categories.keys.map { |c| [c.titleize.gsub('_', ' '), c] }, params[:category]), {}, class: "w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+      </div>
+      <div>
+        <%= f.select :priority, options_for_select([["All Priorities", ""], ["P1 - Critical", "p1"], ["P2 - High", "p2"], ["P3 - Medium", "p3"], ["P4 - Low", "p4"], ["Unset", "unset"]], params[:priority]), {}, class: "w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+      </div>
+      <div>
+        <%= f.select :status, options_for_select([["All Statuses", ""]] + Feedback.statuses.keys.map { |s| [s.titleize.gsub('_', ' '), s] }, params[:status]), {}, class: "w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" %>
+      </div>
+      <div>
+        <%= f.submit "Filter", class: "w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium cursor-pointer" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Feedback Table -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title / Content</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      <% if @feedbacks.any? %>
+        <% @feedbacks.each do |feedback| %>
+          <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='<%= feedback_path(feedback) %>'">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
+                <%= feedback.source_label %>
+              </span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="text-sm font-medium text-gray-900 truncate max-w-xs">
+                <%= feedback.title || feedback.content.truncate(60) %>
+              </div>
+              <% if feedback.author_name.present? %>
+                <div class="text-xs text-gray-500"><%= feedback.author_name %></div>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-medium rounded <%= category_badge_class(feedback.category) %>">
+                <%= feedback.category_label %>
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-medium rounded <%= priority_badge_class(feedback.priority) %>">
+                <%= feedback.priority_label %>
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-medium rounded <%= status_badge_class(feedback.status) %>">
+                <%= feedback.status.titleize.gsub('_', ' ') %>
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <%= feedback.created_at.strftime("%b %d, %Y") %>
+            </td>
+          </tr>
+        <% end %>
+      <% else %>
+        <tr>
+          <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+            No feedback found
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+<% if @pagy.pages > 1 %>
+  <div class="mt-6 flex justify-center">
+    <%== pagy_nav(@pagy) %>
+  </div>
+<% end %>

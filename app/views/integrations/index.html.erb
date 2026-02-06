@@ -1,0 +1,76 @@
+<% content_for :title, "Integrations - Customer Pulse" %>
+
+<div class="mb-6 flex justify-between items-center">
+  <div>
+    <h1 class="text-3xl font-bold text-gray-900">Integrations</h1>
+    <p class="mt-1 text-gray-600">Manage your feedback sources</p>
+  </div>
+  <% if current_user.admin? %>
+    <%= link_to new_integration_path, class: "bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium" do %>
+      <span class="flex items-center">
+        <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+        </svg>
+        Add Integration
+      </span>
+    <% end %>
+  <% end %>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <% @integrations.each do |integration| %>
+    <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center">
+            <div class="p-2 rounded-lg <%= integration_icon_bg(integration.source_type) %>">
+              <%= integration_icon(integration.source_type) %>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-lg font-semibold text-gray-900"><%= integration.name %></h3>
+              <p class="text-sm text-gray-500"><%= integration.source_type.titleize.gsub('_', ' ') %></p>
+            </div>
+          </div>
+          <span class="px-2 py-1 text-xs font-medium rounded <%= integration.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600' %>">
+            <%= integration.enabled ? 'Active' : 'Disabled' %>
+          </span>
+        </div>
+
+        <div class="text-sm text-gray-600 space-y-1">
+          <p>
+            <span class="font-medium">Last Synced:</span>
+            <%= integration.last_synced_at ? time_ago_in_words(integration.last_synced_at) + " ago" : "Never" %>
+          </p>
+          <% if integration.sync_frequency_minutes %>
+            <p>
+              <span class="font-medium">Sync Frequency:</span>
+              Every <%= integration.sync_frequency_minutes %> minutes
+            </p>
+          <% end %>
+        </div>
+
+        <div class="mt-4 flex space-x-2">
+          <%= link_to "View", integration_path(integration), class: "flex-1 text-center bg-gray-100 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-200 text-sm font-medium" %>
+          <% if current_user.admin? %>
+            <%= link_to "Edit", edit_integration_path(integration), class: "flex-1 text-center bg-indigo-100 text-indigo-700 px-3 py-2 rounded-md hover:bg-indigo-200 text-sm font-medium" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @integrations.empty? %>
+    <div class="col-span-full bg-white rounded-lg shadow p-12 text-center">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No integrations</h3>
+      <p class="mt-1 text-sm text-gray-500">Get started by adding your first integration.</p>
+      <% if current_user.admin? %>
+        <div class="mt-6">
+          <%= link_to "Add Integration", new_integration_path, class: "bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium" %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

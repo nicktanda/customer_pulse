@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      border-bottom: 2px solid #4F46E5;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #4F46E5;
+      margin: 0 0 5px 0;
+    }
+    .date {
+      color: #666;
+      font-size: 14px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background-color: #f8f9fa;
+      border-radius: 6px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 28px;
+      font-weight: bold;
+      color: #4F46E5;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+    }
+    .section {
+      margin: 30px 0;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .priority-p1 { color: #dc2626; }
+    .priority-p2 { color: #f59e0b; }
+    .priority-p3 { color: #3b82f6; }
+    .priority-p4 { color: #6b7280; }
+    .feedback-item {
+      border-left: 4px solid #e5e7eb;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      background-color: #f9fafb;
+    }
+    .feedback-item.p1 { border-color: #dc2626; }
+    .feedback-item.p2 { border-color: #f59e0b; }
+    .feedback-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .feedback-meta {
+      font-size: 12px;
+      color: #666;
+    }
+    .feedback-summary {
+      font-size: 14px;
+      color: #444;
+      margin-top: 5px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+    .badge-bug { background-color: #fee2e2; color: #dc2626; }
+    .badge-feature { background-color: #dbeafe; color: #2563eb; }
+    .badge-complaint { background-color: #fef3c7; color: #d97706; }
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #4F46E5;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Customer Pulse</h1>
+      <div class="date">
+        <%= @report.period_start.strftime('%B %d, %Y %H:%M') %> -
+        <%= @report.period_end.strftime('%B %d, %Y %H:%M') %>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number"><%= @report.feedback_count %></div>
+        <div class="stat-label">Total Items</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number priority-p1"><%= @by_priority['p1'] || 0 %></div>
+        <div class="stat-label">Critical (P1)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number priority-p2"><%= @by_priority['p2'] || 0 %></div>
+        <div class="stat-label">High (P2)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number"><%= @by_category['bug'] || 0 %></div>
+        <div class="stat-label">Bugs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number"><%= @by_category['feature_request'] || 0 %></div>
+        <div class="stat-label">Features</div>
+      </div>
+    </div>
+
+    <% if @high_priority.any? %>
+      <div class="section">
+        <div class="section-title">High Priority Items</div>
+        <% @high_priority.limit(10).each do |feedback| %>
+          <div class="feedback-item <%= feedback.priority %>">
+            <div class="feedback-title">
+              <span class="badge <%= feedback.priority == 'p1' ? 'badge-bug' : '' %>">
+                <%= feedback.priority.upcase %>
+              </span>
+              <span class="badge badge-<%= feedback.category == 'bug' ? 'bug' : (feedback.category == 'feature_request' ? 'feature' : 'complaint') %>">
+                <%= feedback.category_label %>
+              </span>
+              <%= feedback.title || feedback.content.truncate(60) %>
+            </div>
+            <div class="feedback-meta">
+              <%= feedback.source_label %> | <%= feedback.created_at.strftime('%b %d, %H:%M') %>
+              <% if feedback.author_name.present? %>
+                | <%= feedback.author_name %>
+              <% end %>
+            </div>
+            <% if feedback.ai_summary.present? %>
+              <div class="feedback-summary"><%= feedback.ai_summary %></div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @report.summary.present? %>
+      <div class="section">
+        <div class="section-title">Summary</div>
+        <p><%= simple_format(@report.summary) %></p>
+      </div>
+    <% end %>
+
+    <div class="section">
+      <div class="section-title">By Source</div>
+      <ul>
+        <% @by_source.each do |source, count| %>
+          <li><strong><%= source.to_s.titleize.gsub('_', ' ') %>:</strong> <%= count %> items</li>
+        <% end %>
+      </ul>
+    </div>
+
+    <div style="text-align: center;">
+      <a href="<%= root_url %>" class="cta-button">View Full Dashboard</a>
+    </div>
+
+    <div class="footer">
+      <p>This is an automated Customer Pulse report.</p>
+      <p>Generated at <%= Time.current.strftime('%B %d, %Y %H:%M %Z') %></p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<% content_for :title, "Settings - Customer Pulse" %>
+
+<div class="mb-6">
+  <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
+  <p class="mt-1 text-gray-600">Configure application behavior</p>
+</div>
+
+<div class="max-w-2xl">
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">General Settings</h2>
+    </div>
+    <div class="px-6 py-4">
+      <%= form_with url: settings_path, method: :patch, class: "space-y-6" do |f| %>
+        <div>
+          <%= f.label :pulse_send_time, "Daily Pulse Send Time", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.time_field :pulse_send_time, value: @settings["pulse_send_time"], class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+          <p class="mt-1 text-sm text-gray-500">Time of day to send the daily pulse email (server timezone)</p>
+        </div>
+
+        <div>
+          <%= f.label :ai_processing_interval_hours, "AI Processing Interval (hours)", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.number_field :ai_processing_interval_hours, value: @settings["ai_processing_interval_hours"], min: 1, max: 24, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+          <p class="mt-1 text-sm text-gray-500">How often to process unprocessed feedback with AI</p>
+        </div>
+
+        <div>
+          <%= f.label :default_priority, "Default Priority", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.select :default_priority, [["Unset", "unset"], ["P1 - Critical", "p1"], ["P2 - High", "p2"], ["P3 - Medium", "p3"], ["P4 - Low", "p4"]], { selected: @settings["default_priority"] }, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+          <p class="mt-1 text-sm text-gray-500">Default priority for new feedback items before AI processing</p>
+        </div>
+
+        <div>
+          <%= f.label :auto_archive_days, "Auto-Archive After (days)", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.number_field :auto_archive_days, value: @settings["auto_archive_days"], min: 0, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" %>
+          <p class="mt-1 text-sm text-gray-500">Automatically archive resolved feedback after this many days (0 to disable)</p>
+        </div>
+
+        <div class="flex justify-end">
+          <%= f.submit "Save Settings", class: "bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium cursor-pointer" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="mt-6 bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Manual Actions</h2>
+    </div>
+    <div class="px-6 py-4 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-medium text-gray-900">Process Unprocessed Feedback</h3>
+          <p class="text-sm text-gray-500">Immediately process all unprocessed feedback with AI</p>
+        </div>
+        <%= button_to "Process Now", "#", method: :post, class: "bg-indigo-100 text-indigo-700 px-4 py-2 rounded-md hover:bg-indigo-200 text-sm font-medium", disabled: true, title: "Coming soon" %>
+      </div>
+
+      <hr>
+
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-medium text-gray-900">Send Test Pulse Email</h3>
+          <p class="text-sm text-gray-500">Send a test pulse email to yourself</p>
+        </div>
+        <%= button_to "Send Test", "#", method: :post, class: "bg-indigo-100 text-indigo-700 px-4 py-2 rounded-md hover:bg-indigo-200 text-sm font-medium", disabled: true, title: "Coming soon" %>
+      </div>
+    </div>
+  </div>
+</div>
