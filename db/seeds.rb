@@ -49,8 +49,177 @@ custom = Integration.find_or_create_by!(name: 'Custom API') do |integration|
   integration.enabled = true
   integration.credentials = { api_key: 'test-api-key-12345' }.to_json
 end
+
+# Create Gong integration (disabled by default)
+Integration.find_or_create_by!(name: 'Gong Calls') do |integration|
+  integration.source_type = :gong
+  integration.enabled = false
+  integration.sync_frequency_minutes = 30
+  integration.credentials = {
+    api_key: 'YOUR_GONG_API_KEY',
+    api_secret: 'YOUR_GONG_API_SECRET',
+    workspace_id: nil,
+    call_types: [],
+    minimum_duration: 60
+  }.to_json
+end
+
+# Create Excel Online integration (disabled by default)
+Integration.find_or_create_by!(name: 'Excel Online Feedback') do |integration|
+  integration.source_type = :excel_online
+  integration.enabled = false
+  integration.sync_frequency_minutes = 15
+  integration.credentials = {
+    tenant_id: 'YOUR_TENANT_ID',
+    client_id: 'YOUR_CLIENT_ID',
+    client_secret: 'YOUR_CLIENT_SECRET',
+    workbook_id: 'YOUR_WORKBOOK_ID',
+    worksheet_name: 'Sheet1',
+    column_mapping: {
+      timestamp: 0,
+      email: 1,
+      title: 2,
+      content: 3,
+      author_name: 4
+    },
+    last_synced_row: 1
+  }.to_json
+end
+
+# Create Jira integration (disabled by default)
+Integration.find_or_create_by!(name: 'Jira Feedback') do |integration|
+  integration.source_type = :jira
+  integration.enabled = false
+  integration.sync_frequency_minutes = 15
+  integration.credentials = {
+    site_url: 'https://your-domain.atlassian.net',
+    email: 'your-email@example.com',
+    api_token: 'YOUR_JIRA_API_TOKEN',
+    project_keys: [],
+    issue_types: ['Bug', 'Story', 'Task'],
+    jql_filter: nil,
+    import_comments: true
+  }.to_json
+end
+
 puts "Created #{Integration.count} integrations"
 puts "Custom API key for testing: test-api-key-12345"
+
+# Create PM Personas
+pm_personas = [
+  {
+    name: "Data-Driven PM",
+    archetype: "data_driven",
+    description: "Prioritizes quantitative patterns, affected user counts, and statistical significance. Focuses on metrics-backed decisions.",
+    system_prompt: <<~PROMPT,
+      You are a data-driven product manager analyzing customer feedback. Your approach emphasizes:
+      - Quantitative patterns and statistical significance
+      - Number of affected users and frequency of issues
+      - Measurable impact metrics
+      - Trend analysis over time
+      - Data-backed prioritization
+
+      When analyzing feedback, focus on:
+      1. How many users are affected?
+      2. What is the frequency/recurrence of this issue?
+      3. Can we quantify the impact?
+      4. What trends do the numbers show?
+      5. Is this statistically significant or an outlier?
+    PROMPT
+    priorities: ["user_count", "frequency", "measurable_impact", "statistical_significance"]
+  },
+  {
+    name: "User Advocate PM",
+    archetype: "user_advocate",
+    description: "Focuses on pain severity, emotional impact, and user frustration. Champions the user experience above all.",
+    system_prompt: <<~PROMPT,
+      You are a user-advocate product manager analyzing customer feedback. Your approach emphasizes:
+      - Pain severity and user frustration levels
+      - Emotional impact on users
+      - User experience quality
+      - Accessibility and inclusivity
+      - Voice of the customer
+
+      When analyzing feedback, focus on:
+      1. How much pain is this causing users?
+      2. What is the emotional impact?
+      3. How does this affect the user experience?
+      4. Are vulnerable user groups affected?
+      5. What are users really asking for beneath the surface?
+    PROMPT
+    priorities: ["pain_severity", "emotional_impact", "user_experience", "accessibility"]
+  },
+  {
+    name: "Strategic PM",
+    archetype: "strategist",
+    description: "Connects feedback to business strategy, competitive positioning, and market opportunities.",
+    system_prompt: <<~PROMPT,
+      You are a strategic product manager analyzing customer feedback. Your approach emphasizes:
+      - Alignment with business strategy
+      - Competitive positioning
+      - Market opportunities and threats
+      - Revenue and growth impact
+      - Long-term product vision
+
+      When analyzing feedback, focus on:
+      1. How does this align with our strategic goals?
+      2. What competitive advantage could this provide?
+      3. Is there a market opportunity here?
+      4. What is the revenue/business impact?
+      5. How does this fit the product roadmap vision?
+    PROMPT
+    priorities: ["strategic_alignment", "competitive_advantage", "market_opportunity", "revenue_impact"]
+  },
+  {
+    name: "Innovator PM",
+    archetype: "innovator",
+    description: "Looks for opportunities to reimagine solutions and identify unmet needs that could transform the product.",
+    system_prompt: <<~PROMPT,
+      You are an innovative product manager analyzing customer feedback. Your approach emphasizes:
+      - Opportunities to reimagine solutions
+      - Unmet and unarticulated needs
+      - Disruptive potential
+      - Creative problem-solving
+      - Future-forward thinking
+
+      When analyzing feedback, focus on:
+      1. What unmet need does this reveal?
+      2. Could we solve this in a completely different way?
+      3. Is there a bigger opportunity hidden here?
+      4. What would a 10x solution look like?
+      5. How might this transform user behavior?
+    PROMPT
+    priorities: ["unmet_needs", "innovation_potential", "disruptive_opportunity", "creative_solutions"]
+  },
+  {
+    name: "Pragmatist PM",
+    archetype: "pragmatist",
+    description: "Focuses on quick wins, implementation feasibility, ROI, and practical solutions that can ship fast.",
+    system_prompt: <<~PROMPT,
+      You are a pragmatic product manager analyzing customer feedback. Your approach emphasizes:
+      - Quick wins and fast impact
+      - Implementation feasibility
+      - Return on investment
+      - Resource efficiency
+      - Practical, shippable solutions
+
+      When analyzing feedback, focus on:
+      1. What's the fastest path to solving this?
+      2. Is this feasible with current resources?
+      3. What's the ROI of addressing this?
+      4. Can we ship an MVP solution quickly?
+      5. What's the simplest solution that works?
+    PROMPT
+    priorities: ["quick_wins", "feasibility", "roi", "resource_efficiency"]
+  }
+]
+
+pm_personas.each do |attrs|
+  PmPersona.find_or_create_by!(archetype: attrs[:archetype]) do |persona|
+    persona.assign_attributes(attrs)
+  end
+end
+puts "Created #{PmPersona.count} PM personas"
 
 # Create sample feedback (only in development)
 if Rails.env.development?

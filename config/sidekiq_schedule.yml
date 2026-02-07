@@ -20,3 +20,45 @@ send_daily_pulse:
   class: "SendDailyPulseJob"
   queue: mailers
   description: "Send daily Customer Pulse email digest"
+
+# Generate insights from processed feedback daily at 6:00 AM
+generate_insights:
+  cron: "0 6 * * *"
+  class: "GenerateInsightsJob"
+  queue: default
+  description: "Analyze feedback and generate AI insights"
+
+# Weekly theme analysis on Sundays at 4:00 AM
+weekly_theme_analysis:
+  cron: "0 4 * * 0"
+  class: "WeeklyThemeAnalysisJob"
+  queue: default
+  description: "Re-analyze themes across all recent insights"
+
+# Build attack groups on Mondays at 7:00 AM
+build_attack_groups:
+  cron: "0 7 * * 1"
+  class: "BuildAttackGroupsJob"
+  queue: default
+  description: "Group related issues for coordinated action"
+
+# Sync Jira every 15 minutes
+sync_jira:
+  cron: "*/15 * * * *"
+  class: "SyncJiraJob"
+  queue: default
+  description: "Sync feedback from Jira issues"
+
+# Sync Excel Online every 15 minutes
+sync_excel_online:
+  cron: "*/15 * * * *"
+  class: "SyncExcelOnlineJob"
+  queue: default
+  description: "Sync feedback from Excel Online spreadsheets"
+
+# Sync Gong every 30 minutes
+sync_gong:
+  cron: "*/30 * * * *"
+  class: "SyncGongJob"
+  queue: default
+  description: "Sync feedback from Gong call transcripts"

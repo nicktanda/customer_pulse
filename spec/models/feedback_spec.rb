@@ -7,7 +7,7 @@ RSpec.describe Feedback, type: :model do
   end
 
   describe 'enums' do
-    it { should define_enum_for(:source).with_values(linear: 0, google_forms: 1, slack: 2, custom: 3) }
+    it { should define_enum_for(:source).with_values(linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6) }
     it { should define_enum_for(:category).with_values(uncategorized: 0, bug: 1, feature_request: 2, complaint: 3) }
     it { should define_enum_for(:priority).with_values(unset: 0, p1: 1, p2: 2, p3: 3, p4: 4) }
     it { should define_enum_for(:status).with_values(new_feedback: 0, triaged: 1, in_progress: 2, resolved: 3, archived: 4) }

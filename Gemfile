@@ -47,6 +47,9 @@ gem "faraday", "~> 2.0"
 gem "google-apis-sheets_v4", "~> 0.30"
 gem "googleauth", "~> 1.8"
 
+# OAuth2 for Excel Online integration
+gem "oauth2", "~> 2.0"
+
 # Encryption for credentials
 gem "lockbox", "~> 1.3"
 

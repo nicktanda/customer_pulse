@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   namespace :webhooks do
     post "linear", to: "linear#create"
     post "slack", to: "slack#create"
+    post "jira", to: "jira#create"
   end
 
   # API endpoints

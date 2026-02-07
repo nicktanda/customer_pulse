@@ -3,7 +3,7 @@ class Integration < ApplicationRecord
   has_encrypted :credentials
 
   # Enums
-  enum :source_type, { linear: 0, google_forms: 1, slack: 2, custom: 3 }
+  enum :source_type, { linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6 }
 
   # Validations
   validates :name, presence: true
