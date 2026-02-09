@@ -41,7 +41,7 @@ gem "redis", "~> 5.0"
 
 # AI/Claude API
 gem "anthropic", "~> 0.3"
-gem "faraday", "~> 2.0"
+gem "faraday", "~> 2.14"
 
 # Google APIs for Google Forms/Sheets integration
 gem "google-apis-sheets_v4", "~> 0.30"
