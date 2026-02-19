@@ -35,7 +35,7 @@ gem "thruster", require: false
 gem "devise", "~> 4.9"
 
 # Background processing
-gem "sidekiq", "~> 7.0"
+gem "sidekiq", "~> 8.1"
 gem "sidekiq-cron", "~> 2.0"
 gem "redis", "~> 5.0"
 
