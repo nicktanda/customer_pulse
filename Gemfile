@@ -54,7 +54,7 @@ gem "oauth2", "~> 2.0"
 gem "lockbox", "~> 1.3"
 
 # JSON Web Token for API authentication
-gem "jwt", "~> 2.8"
+gem "jwt", "~> 3.1"
 
 # Pagination
 gem "pagy", "~> 9.0"
