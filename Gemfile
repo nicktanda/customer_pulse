@@ -51,7 +51,7 @@ gem "googleauth", "~> 1.8"
 gem "oauth2", "~> 2.0"
 
 # Encryption for credentials
-gem "lockbox", "~> 1.3"
+gem "lockbox", "~> 2.1"
 
 # JSON Web Token for API authentication
 gem "jwt", "~> 2.8"
