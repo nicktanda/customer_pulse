@@ -6,7 +6,7 @@ module Ai
     DEFAULT_MAX_TOKENS = 4096
 
     def initialize(pm_persona: nil)
-      @client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
+      @client = Anthropic::Client.new(access_token: ENV["ANTHROPIC_API_KEY"])
       @pm_persona = pm_persona
     end
 
@@ -15,12 +15,12 @@ module Ai
     def call_claude(prompt, system_prompt: nil, max_tokens: DEFAULT_MAX_TOKENS)
       effective_system = build_system_prompt(system_prompt)
 
-      response = @client.messages.create(
+      response = @client.messages(parameters: {
         model: DEFAULT_MODEL,
         max_tokens: max_tokens,
         system: effective_system,
         messages: [{ role: "user", content: prompt }]
-      )
+      })
 
       parse_json_response(response)
     rescue Anthropic::Error => e
@@ -40,7 +40,9 @@ module Ai
     end
 
     def parse_json_response(response)
-      content = response.content.first.text
+      content = response.dig("content", 0, "text") || response.dig(:content, 0, :text)
+      return { error: "No content in response" } unless content
+
       json_match = content.match(/\{.*\}/m) || content.match(/\[.*\]/m)
 
       unless json_match

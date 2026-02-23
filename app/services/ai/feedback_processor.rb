@@ -23,7 +23,7 @@ module Ai
     PROMPT
 
     def initialize
-      @client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
+      @client = Anthropic::Client.new(access_token: ENV["ANTHROPIC_API_KEY"])
     end
 
     def process(feedback)
@@ -32,12 +32,12 @@ module Ai
       prompt = build_prompt(feedback)
 
       begin
-        response = @client.messages.create(
+        response = @client.messages(parameters: {
           model: "claude-sonnet-4-20250514",
           max_tokens: 500,
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: prompt }]
-        )
+        })
 
         result = parse_response(response)
         update_feedback(feedback, result)
@@ -84,7 +84,9 @@ module Ai
     end
 
     def parse_response(response)
-      content = response.content.first.text
+      content = response.dig("content", 0, "text") || response.dig(:content, 0, :text)
+      raise JSON::ParserError, "No content in response" unless content
+
       # Extract JSON from response (handle potential markdown code blocks)
       json_match = content.match(/\{.*\}/m)
       raise JSON::ParserError, "No JSON found in response" unless json_match
