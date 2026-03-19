@@ -29,6 +29,12 @@ Rails.application.routes.draw do
   authenticate :user do
     root "dashboard#index"
 
+    resource :onboarding, only: [:show], controller: 'onboarding' do
+      post :update_step
+      post :test_connection
+      post :complete
+    end
+
     resources :feedback, only: [:index, :show, :update] do
       member do
         patch :override

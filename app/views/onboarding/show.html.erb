@@ -1,0 +1,44 @@
+<% content_for :title, "Setup - Customer Pulse" %>
+
+<div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-3xl mx-auto">
+    <!-- Progress Bar -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-600">Setup Progress</span>
+        <span class="text-sm font-medium text-indigo-600"><%= @step_index + 1 %> of <%= @steps.length %></span>
+      </div>
+      <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 ease-out"
+             style="width: <%= ((@step_index + 1).to_f / @steps.length * 100).round %>%"></div>
+      </div>
+
+      <!-- Step Indicators -->
+      <div class="flex justify-between mt-4">
+        <% @steps.each_with_index do |step, index| %>
+          <div class="flex flex-col items-center">
+            <div class="<%= index < @step_index ? 'bg-indigo-600' : (index == @step_index ? 'bg-indigo-600 ring-4 ring-indigo-100' : 'bg-gray-300') %> w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300">
+              <% if index < @step_index %>
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+              <% else %>
+                <span class="text-xs font-semibold <%= index == @step_index ? 'text-white' : 'text-gray-500' %>"><%= index + 1 %></span>
+              <% end %>
+            </div>
+            <span class="text-xs mt-1 hidden sm:block <%= index == @step_index ? 'text-indigo-600 font-medium' : 'text-gray-400' %>">
+              <%= step.titleize.gsub('_', ' ').gsub('Api', 'API') %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Step Content -->
+    <div id="onboarding-step" class="bg-white rounded-2xl shadow-xl p-8 transition-all duration-300"
+         data-controller="onboarding"
+         data-onboarding-current-step-value="<%= @current_step %>">
+      <%= render partial: "onboarding/steps/#{@current_step}" %>
+    </div>
+  </div>
+</div>

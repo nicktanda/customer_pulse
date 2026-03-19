@@ -1,0 +1,99 @@
+<div data-controller="integration-setup">
+  <div class="flex items-center mb-6">
+    <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center mr-4">
+      <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7.127 22.562l-7.127 1.438 1.438-7.128 5.689 5.69zm1.414-1.414l11.228-11.225-5.69-5.692-11.227 11.227 5.689 5.69zm9.768-21.148l-2.816 2.817 5.691 5.691 2.816-2.819-5.691-5.689z"/>
+      </svg>
+    </div>
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">Google Forms Integration</h2>
+      <p class="text-gray-500">Import feedback from Google Forms responses</p>
+    </div>
+    <span class="ml-auto px-3 py-1 bg-gray-100 text-gray-600 text-sm font-medium rounded-full">Optional</span>
+  </div>
+
+  <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+    <div class="flex">
+      <svg class="w-5 h-5 text-green-600 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <div>
+        <h4 class="font-medium text-green-800 mb-1">How to set up Google Forms</h4>
+        <ol class="text-sm text-green-700 space-y-1 list-decimal list-inside">
+          <li>Create a service account in <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" class="underline hover:text-green-900">Google Cloud Console</a></li>
+          <li>Enable the Google Sheets API for your project</li>
+          <li>Create a JSON key for the service account</li>
+          <li>Share your Google Sheet with the service account email</li>
+          <li>Get the Spreadsheet ID from the sheet URL</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <%= form_with url: update_step_onboarding_path, method: :post, data: { turbo_frame: "_top" }, local: true do |f| %>
+    <%= hidden_field_tag :step, "google_forms" %>
+
+    <div class="space-y-4 mb-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Spreadsheet ID</label>
+        <input type="text"
+               name="integration[spreadsheet_id]"
+               value="<%= @integration&.parsed_credentials&.dig('spreadsheet_id') %>"
+               placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+               data-integration-setup-target="field"
+               data-field="spreadsheet_id">
+        <p class="text-xs text-gray-500 mt-1">Found in the Google Sheet URL: docs.google.com/spreadsheets/d/<strong>[SPREADSHEET_ID]</strong>/edit</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Sheet Name</label>
+        <input type="text"
+               name="integration[sheet_name]"
+               value="<%= @integration&.parsed_credentials&.dig('sheet_name') || 'Form Responses 1' %>"
+               placeholder="Form Responses 1"
+               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+               data-integration-setup-target="field"
+               data-field="sheet_name">
+        <p class="text-xs text-gray-500 mt-1">Default is "Form Responses 1" for Google Forms</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Service Account JSON (optional if set via ENV)</label>
+        <textarea name="integration[google_credentials]"
+                  rows="4"
+                  placeholder='{"type": "service_account", "project_id": "...", ...}'
+                  class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                  data-integration-setup-target="field"
+                  data-field="google_credentials"><%= @integration&.parsed_credentials&.dig('google_credentials')&.to_json %></textarea>
+        <p class="text-xs text-gray-500 mt-1">Paste the entire JSON key file contents, or set GOOGLE_CREDENTIALS_JSON environment variable</p>
+      </div>
+    </div>
+
+    <!-- Connection Test -->
+    <div class="mb-8">
+      <button type="button"
+              class="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center"
+              data-action="click->integration-setup#testConnection"
+              data-integration-setup-type-param="google_forms">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+        Test Connection
+      </button>
+      <div id="connection-result" class="mt-4"></div>
+    </div>
+
+    <div class="flex justify-between">
+      <button type="submit" name="skip" value="1" class="text-gray-500 hover:text-gray-700 font-medium px-4 py-2 transition-colors">
+        Skip for now
+      </button>
+      <button type="submit" class="btn-primary px-6 py-2.5">
+        Continue
+        <svg class="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+        </svg>
+      </button>
+    </div>
+  <% end %>
+</div>

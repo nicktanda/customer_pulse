@@ -1,0 +1,78 @@
+<div class="text-center">
+  <div class="mx-auto w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
+    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+    </svg>
+  </div>
+
+  <h1 class="text-3xl font-bold text-gray-900 mb-4">You're All Set!</h1>
+  <p class="text-lg text-gray-600 mb-8 max-w-xl mx-auto">
+    Customer Pulse is ready to start collecting and analyzing your customer feedback.
+  </p>
+
+  <div class="bg-gray-50 rounded-xl p-6 mb-8 text-left max-w-md mx-auto">
+    <h3 class="font-semibold text-gray-900 mb-4">Setup Summary</h3>
+
+    <div class="space-y-3">
+      <div class="flex items-center">
+        <% if ENV['ANTHROPIC_API_KEY'].present? %>
+          <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span class="text-gray-700">Anthropic API configured</span>
+        <% else %>
+          <svg class="w-5 h-5 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <span class="text-gray-700">Anthropic API not configured</span>
+        <% end %>
+      </div>
+
+      <% integrations = Integration.all %>
+      <% %w[linear slack jira google_forms logrocket fullstory intercom zendesk].each do |type| %>
+        <% integration = integrations.find { |i| i.source_type == type } %>
+        <div class="flex items-center">
+          <% if integration&.enabled? %>
+            <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-gray-700"><%= type.titleize.gsub('_', ' ') %> connected</span>
+          <% else %>
+            <svg class="w-5 h-5 text-gray-300 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-gray-400"><%= type.titleize.gsub('_', ' ') %> skipped</span>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% recipients_count = EmailRecipient.count %>
+      <div class="flex items-center">
+        <% if recipients_count > 0 %>
+          <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span class="text-gray-700"><%= recipients_count %> email recipient<%= recipients_count == 1 ? '' : 's' %></span>
+        <% else %>
+          <svg class="w-5 h-5 text-gray-300 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span class="text-gray-400">No email recipients</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-4">
+    <%= button_to "Go to Dashboard", complete_onboarding_path, method: :post, class: "btn-primary px-8 py-3 text-lg" do %>
+      Go to Dashboard
+      <svg class="w-5 h-5 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+      </svg>
+    <% end %>
+
+    <p class="text-sm text-gray-500">
+      You can always change these settings later from the Integrations and Recipients pages.
+    </p>
+  </div>
+</div>

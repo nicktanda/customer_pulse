@@ -5,8 +5,18 @@ class ApplicationController < ActionController::Base
   allow_browser versions: :modern
 
   before_action :configure_permitted_parameters, if: :devise_controller?
+  before_action :require_onboarding!
 
   protected
+
+  def require_onboarding!
+    return unless user_signed_in?
+    return if devise_controller?
+    return if current_user.onboarding_completed?
+    return if self.class.name == "OnboardingController"
+
+    redirect_to onboarding_path
+  end
 
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up, keys: [:name])

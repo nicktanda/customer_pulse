@@ -1,0 +1,11 @@
+<%= turbo_stream.replace "onboarding-step" do %>
+  <div id="onboarding-step" class="bg-white rounded-2xl shadow-xl p-8 transition-all duration-300"
+       data-controller="onboarding"
+       data-onboarding-current-step-value="<%= @current_step %>">
+    <%= render partial: "onboarding/steps/#{@current_step}" %>
+  </div>
+<% end %>
+
+<%= turbo_stream.update "progress-bar" do %>
+  <!-- This will be handled by a full page reload for now -->
+<% end %>
