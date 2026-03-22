@@ -46,6 +46,9 @@ Rails.application.routes.draw do
     end
 
     resources :integrations do
+      collection do
+        post :sync_all
+      end
       member do
         post :test_connection
         post :sync_now

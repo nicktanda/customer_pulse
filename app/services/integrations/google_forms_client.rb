@@ -59,6 +59,11 @@ module Integrations
 
     def google_authorization
       google_creds = credentials["google_credentials"] || ENV["GOOGLE_CREDENTIALS_JSON"]
+
+      if google_creds.blank?
+        raise "Google credentials not configured. Please provide the service account JSON or set GOOGLE_CREDENTIALS_JSON environment variable."
+      end
+
       creds_hash = google_creds.is_a?(String) ? JSON.parse(google_creds) : google_creds
 
       Google::Auth::ServiceAccountCredentials.make_creds(

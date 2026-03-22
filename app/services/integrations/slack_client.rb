@@ -74,8 +74,11 @@ module Integrations
     end
 
     def should_capture_message?(message)
+      keywords = credentials["keywords"]
+      # Capture all messages if no keywords configured
+      return true if keywords.blank?
+
       text = message["text"]&.downcase || ""
-      keywords = credentials["keywords"] || %w[feedback bug issue problem feature request]
       keywords.any? { |keyword| text.include?(keyword.downcase) }
     end
   end

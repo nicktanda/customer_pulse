@@ -4,7 +4,7 @@ class OnboardingController < ApplicationController
   before_action :authenticate_user!
   skip_before_action :require_onboarding!, only: [:show, :update_step, :test_connection, :complete]
 
-  STEPS = %w[welcome anthropic_api linear slack jira google_forms logrocket fullstory intercom zendesk recipients complete].freeze
+  STEPS = %w[welcome anthropic_api linear slack jira google_forms logrocket fullstory intercom zendesk sentry recipients complete].freeze
   REQUIRED_STEPS = %w[anthropic_api].freeze
 
   def show
@@ -41,6 +41,8 @@ class OnboardingController < ApplicationController
       save_intercom_step
     when 'zendesk'
       save_zendesk_step
+    when 'sentry'
+      save_sentry_step
     when 'recipients'
       save_recipients_step
     else
@@ -97,6 +99,8 @@ class OnboardingController < ApplicationController
       test_intercom_connection(credentials)
     when 'zendesk'
       test_zendesk_connection(credentials)
+    when 'sentry'
+      test_sentry_connection(credentials)
     else
       { success: false, message: "Unknown integration type" }
     end
@@ -138,6 +142,8 @@ class OnboardingController < ApplicationController
       @integration = Integration.find_by(source_type: 'intercom')
     when 'zendesk'
       @integration = Integration.find_by(source_type: 'zendesk')
+    when 'sentry'
+      @integration = Integration.find_by(source_type: 'sentry')
     when 'recipients'
       @recipients = EmailRecipient.all
     end
@@ -304,6 +310,24 @@ class OnboardingController < ApplicationController
     integration.save!
   end
 
+  def save_sentry_step
+    return true if params[:skip].present?
+
+    credentials = {
+      auth_token: params.dig(:integration, :auth_token),
+      organization_slug: params.dig(:integration, :organization_slug),
+      project_slugs: params.dig(:integration, :project_slugs)
+    }.compact
+
+    return true if credentials[:auth_token].blank?
+
+    integration = Integration.find_or_initialize_by(source_type: 'sentry')
+    integration.name = "Sentry"
+    integration.enabled = true
+    integration.update_credentials(credentials)
+    integration.save!
+  end
+
   def save_recipients_step
     return true if params[:skip].present?
 
@@ -389,5 +413,14 @@ class OnboardingController < ApplicationController
     temp_integration = Integration.new(source_type: 'zendesk')
     temp_integration.update_credentials(credentials)
     Integrations::ZendeskClient.new(temp_integration).test_connection
+  end
+
+  def test_sentry_connection(credentials)
+    return { success: false, message: "Auth Token is required" } if credentials['auth_token'].blank?
+    return { success: false, message: "Organization Slug is required" } if credentials['organization_slug'].blank?
+
+    temp_integration = Integration.new(source_type: 'sentry')
+    temp_integration.update_credentials(credentials)
+    Integrations::SentryClient.new(temp_integration).test_connection
   end
 end

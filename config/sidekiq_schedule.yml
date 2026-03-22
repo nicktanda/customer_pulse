@@ -62,3 +62,52 @@ sync_gong:
   class: "SyncGongJob"
   queue: default
   description: "Sync feedback from Gong call transcripts"
+
+# Sync Slack every minute
+sync_slack:
+  cron: "* * * * *"
+  class: "SyncSlackJob"
+  queue: default
+  description: "Sync feedback from Slack channels"
+
+# Sync Sentry every 15 minutes
+sync_sentry:
+  cron: "*/15 * * * *"
+  class: "SyncSentryJob"
+  queue: default
+  description: "Sync issues and feedback from Sentry"
+
+# Sync Zendesk every 15 minutes
+sync_zendesk:
+  cron: "*/15 * * * *"
+  class: "SyncZendeskJob"
+  queue: default
+  description: "Sync tickets from Zendesk"
+
+# Sync Intercom every 15 minutes
+sync_intercom:
+  cron: "*/15 * * * *"
+  class: "SyncIntercomJob"
+  queue: default
+  description: "Sync conversations from Intercom"
+
+# Sync LogRocket every 15 minutes
+sync_logrocket:
+  cron: "*/15 * * * *"
+  class: "SyncLogrocketJob"
+  queue: default
+  description: "Sync sessions from LogRocket"
+
+# Sync FullStory every 15 minutes
+sync_fullstory:
+  cron: "*/15 * * * *"
+  class: "SyncFullstoryJob"
+  queue: default
+  description: "Sync sessions from FullStory"
+
+# Sync Linear every 15 minutes
+sync_linear:
+  cron: "*/15 * * * *"
+  class: "SyncLinearJob"
+  queue: default
+  description: "Sync issues from Linear"

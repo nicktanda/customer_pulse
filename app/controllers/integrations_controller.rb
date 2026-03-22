@@ -1,6 +1,6 @@
 class IntegrationsController < ApplicationController
   before_action :authenticate_user!
-  before_action :require_admin!, except: [:index, :show]
+  before_action :require_admin!, except: [:index, :show, :sync_all]
   before_action :set_integration, only: [:show, :edit, :update, :destroy, :test_connection, :sync_now]
 
   def index
@@ -57,15 +57,26 @@ class IntegrationsController < ApplicationController
   end
 
   def sync_now
-    case @integration.source_type
-    when "google_forms"
-      SyncGoogleFormsJob.perform_async(@integration.id)
-      flash[:notice] = "Google Forms sync started."
+    job_class = sync_job_for(@integration.source_type)
+
+    if job_class
+      job_class.perform_async(@integration.id)
+      flash[:notice] = "#{@integration.name} sync started."
     else
       flash[:alert] = "Manual sync not supported for this integration type."
     end
 
     redirect_to @integration
+  end
+
+  def sync_all
+    Integration.enabled.each do |integration|
+      job_class = sync_job_for(integration.source_type)
+      job_class&.new&.perform(integration.id)
+    end
+
+    flash[:notice] = "Sync completed for all enabled integrations."
+    redirect_back fallback_location: integrations_path
   end
 
   private
@@ -86,8 +97,26 @@ class IntegrationsController < ApplicationController
       Integrations::GoogleFormsClient.new(integration)
     when "slack"
       Integrations::SlackClient.new(integration)
+    when "sentry"
+      Integrations::SentryClient.new(integration)
     else
       raise "Unknown integration type: #{integration.source_type}"
     end
+  end
+
+  def sync_job_for(source_type)
+    {
+      "linear" => SyncLinearJob,
+      "google_forms" => SyncGoogleFormsJob,
+      "slack" => SyncSlackJob,
+      "jira" => SyncJiraJob,
+      "sentry" => SyncSentryJob,
+      "zendesk" => SyncZendeskJob,
+      "intercom" => SyncIntercomJob,
+      "logrocket" => SyncLogrocketJob,
+      "fullstory" => SyncFullstoryJob,
+      "gong" => SyncGongJob,
+      "excel_online" => SyncExcelOnlineJob
+    }[source_type]
   end
 end
