@@ -1,29 +1,19 @@
+# frozen_string_literal: true
+
 class User < ApplicationRecord
-  # Include default devise modules. Others available are:
-  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
-  devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable
+  has_one :user_preference, dependent: :destroy
 
-  enum :role, { viewer: 0, admin: 1 }
+  # Devise modules or authentication setup would go here
+  # For now, basic user model structure
 
-  validates :name, presence: true
-
-  def admin?
-    role == "admin"
+  def preference
+    user_preference || build_user_preference
   end
 
-  def onboarding_completed?
-    onboarding_completed_at.present?
+  def theme
+    preference.theme || 'default'
   end
 
-  def complete_onboarding!
-    update!(
-      onboarding_completed_at: Time.current,
-      onboarding_current_step: 'complete'
-    )
+  def theme_css_class
+    preference.css_theme_class
   end
-
-  def update_onboarding_step!(step)
-    update!(onboarding_current_step: step)
-  end
-end

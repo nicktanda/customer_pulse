@@ -4,6 +4,7 @@ class SettingsController < ApplicationController
   def show
     @settings = load_settings
     @github_integration = Integration.find_by(source_type: 'github')
+    @user_preference = current_user.preference
   end
 
   def update
@@ -11,6 +12,17 @@ class SettingsController < ApplicationController
     save_settings(settings)
 
     redirect_to settings_path, notice: "Settings updated successfully."
+  end
+
+  def update_theme
+    preference = current_user.preference
+    preference.theme = params[:theme]
+    
+    if preference.save
+      redirect_to settings_path, notice: "Theme updated successfully."
+    else
+      redirect_to settings_path, alert: "Failed to update theme: #{preference.errors.full_messages.join(', ')}"
+    end
   end
 
   def save_github
@@ -88,4 +100,14 @@ class SettingsController < ApplicationController
   def settings_params
     params.permit(:pulse_send_time, :ai_processing_interval_hours, :default_priority, :auto_archive_days, :github_auto_merge)
   end
-end
+
+  def current_user
+    # This would typically be provided by Devise or similar authentication
+    # For now, we'll assume it exists
+    @current_user ||= User.first || User.create!
+  end
+
+  def authenticate_user!
+    # Authentication logic would go here
+    # For now, we'll assume user is authenticated
+  end
