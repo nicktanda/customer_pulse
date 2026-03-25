@@ -1,8 +1,23 @@
 <% content_for :title, "Pulse Reports - Customer Pulse" %>
 
-<div class="mb-6">
-  <h1 class="text-3xl font-bold text-gray-900">Pulse Reports</h1>
-  <p class="mt-1 text-gray-600">View history of sent pulse email digests</p>
+<div class="mb-6 flex justify-between items-center">
+  <div>
+    <h1 class="text-3xl font-bold text-gray-900">Pulse Reports</h1>
+    <p class="mt-1 text-gray-600">View history of sent pulse email digests</p>
+  </div>
+  <div>
+    <button type="button"
+            class="btn-primary inline-flex items-center gap-2"
+            data-controller="sync-button"
+            data-sync-button-url-value="<%= generate_pulse_reports_path %>"
+            data-sync-button-loading-text-value="Generating..."
+            data-action="click->sync-button#sync">
+      <svg class="w-4 h-4" data-sync-button-target="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      <span data-sync-button-target="text">Generate Report</span>
+    </button>
+  </div>
 </div>
 
 <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -12,6 +27,7 @@
         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback Count</th>
         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated At</th>
         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent At</th>
         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -33,6 +49,9 @@
               <%= report.recipient_count %>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <%= report.created_at.strftime("%b %d, %Y %H:%M") %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
               <%= report.sent_at ? report.sent_at.strftime("%b %d, %Y %H:%M") : "-" %>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
@@ -50,8 +69,8 @@
         <% end %>
       <% else %>
         <tr>
-          <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-            No pulse reports yet. Reports are generated daily at 9:00 AM.
+          <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+            No pulse reports yet. Reports are generated daily at 9:00 AM, or click "Generate Report" to create one now.
           </td>
         </tr>
       <% end %>

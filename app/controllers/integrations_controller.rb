@@ -99,6 +99,8 @@ class IntegrationsController < ApplicationController
       Integrations::SlackClient.new(integration)
     when "sentry"
       Integrations::SentryClient.new(integration)
+    when "github"
+      Integrations::GithubClient.new(integration)
     else
       raise "Unknown integration type: #{integration.source_type}"
     end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_19_082052) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_25_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -75,6 +75,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_19_082052) do
     t.index ["idea_id", "insight_id"], name: "index_idea_insights_on_idea_id_and_insight_id", unique: true
     t.index ["idea_id"], name: "index_idea_insights_on_idea_id"
     t.index ["insight_id"], name: "index_idea_insights_on_insight_id"
+  end
+
+  create_table "idea_pull_requests", force: :cascade do |t|
+    t.bigint "idea_id", null: false
+    t.bigint "integration_id", null: false
+    t.integer "pr_number"
+    t.string "pr_url"
+    t.string "branch_name"
+    t.integer "status", default: 0, null: false
+    t.jsonb "files_changed", default: []
+    t.text "error_message"
+    t.datetime "merged_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["idea_id"], name: "index_idea_pull_requests_on_idea_id"
+    t.index ["integration_id"], name: "index_idea_pull_requests_on_integration_id"
+    t.index ["pr_number"], name: "index_idea_pull_requests_on_pr_number"
+    t.index ["status"], name: "index_idea_pull_requests_on_status"
   end
 
   create_table "idea_relationships", force: :cascade do |t|
@@ -199,6 +217,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_19_082052) do
     t.index ["sent_at"], name: "index_pulse_reports_on_sent_at"
   end
 
+  create_table "repo_analyses", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.string "commit_sha"
+    t.jsonb "tech_stack", default: {}
+    t.jsonb "structure", default: {}
+    t.jsonb "conventions", default: {}
+    t.datetime "analyzed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["analyzed_at"], name: "index_repo_analyses_on_analyzed_at"
+    t.index ["commit_sha"], name: "index_repo_analyses_on_commit_sha"
+    t.index ["integration_id"], name: "index_repo_analyses_on_integration_id"
+  end
+
   create_table "stakeholder_segments", force: :cascade do |t|
     t.string "name", null: false
     t.integer "segment_type", default: 0, null: false
@@ -250,6 +282,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_19_082052) do
   add_foreign_key "feedback_insights", "insights"
   add_foreign_key "idea_insights", "ideas"
   add_foreign_key "idea_insights", "insights"
+  add_foreign_key "idea_pull_requests", "ideas"
+  add_foreign_key "idea_pull_requests", "integrations"
   add_foreign_key "idea_relationships", "ideas"
   add_foreign_key "idea_relationships", "ideas", column: "related_idea_id"
   add_foreign_key "ideas", "pm_personas"
@@ -258,4 +292,5 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_19_082052) do
   add_foreign_key "insight_themes", "insights"
   add_foreign_key "insight_themes", "themes"
   add_foreign_key "insights", "pm_personas"
+  add_foreign_key "repo_analyses", "integrations"
 end

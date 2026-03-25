@@ -57,13 +57,22 @@ Rails.application.routes.draw do
 
     resources :recipients, controller: "email_recipients"
 
-    resource :settings, only: [:show, :update]
+    resource :settings, only: [:show, :update] do
+      post :save_github
+      post :test_github
+      delete :disconnect_github
+    end
 
     resources :pulse_reports, only: [:index, :show] do
+      collection do
+        post :generate
+        post :generate_pr
+      end
       member do
         post :resend
       end
     end
+
   end
 
   # Unauthenticated root redirects to sign in

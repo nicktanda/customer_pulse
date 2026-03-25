@@ -39,9 +39,7 @@
                 <%= link_to "Integrations", integrations_path, class: "nav-link hover:bg-white/10 #{request.path.start_with?('/integrations') ? 'bg-indigo-700/50' : ''}" %>
                 <%= link_to "Recipients", recipients_path, class: "nav-link hover:bg-white/10 #{request.path.start_with?('/recipients') ? 'bg-indigo-700/50' : ''}" %>
                 <%= link_to "Reports", pulse_reports_path, class: "nav-link hover:bg-white/10 #{request.path.start_with?('/pulse_reports') ? 'bg-indigo-700/50' : ''}" %>
-                <% if current_user.admin? %>
-                  <%= link_to "Settings", settings_path, class: "nav-link hover:bg-white/10 #{request.path.start_with?('/settings') ? 'bg-indigo-700/50' : ''}" %>
-                <% end %>
+                <%= link_to "Settings", settings_path, class: "nav-link hover:bg-white/10 #{request.path.start_with?('/settings') ? 'bg-indigo-700/50' : ''}" %>
               </div>
             </div>
 
@@ -73,9 +71,7 @@
             <%= link_to "Integrations", integrations_path, class: "block px-3 py-2 rounded-lg text-white hover:bg-white/10 text-sm font-medium #{request.path.start_with?('/integrations') ? 'bg-indigo-700/50' : ''}" %>
             <%= link_to "Recipients", recipients_path, class: "block px-3 py-2 rounded-lg text-white hover:bg-white/10 text-sm font-medium #{request.path.start_with?('/recipients') ? 'bg-indigo-700/50' : ''}" %>
             <%= link_to "Reports", pulse_reports_path, class: "block px-3 py-2 rounded-lg text-white hover:bg-white/10 text-sm font-medium #{request.path.start_with?('/pulse_reports') ? 'bg-indigo-700/50' : ''}" %>
-            <% if current_user.admin? %>
-              <%= link_to "Settings", settings_path, class: "block px-3 py-2 rounded-lg text-white hover:bg-white/10 text-sm font-medium #{request.path.start_with?('/settings') ? 'bg-indigo-700/50' : ''}" %>
-            <% end %>
+            <%= link_to "Settings", settings_path, class: "block px-3 py-2 rounded-lg text-white hover:bg-white/10 text-sm font-medium #{request.path.start_with?('/settings') ? 'bg-indigo-700/50' : ''}" %>
           </div>
         </div>
       </nav>

@@ -29,7 +29,7 @@
       </div>
 
       <% integrations = Integration.all %>
-      <% %w[linear slack jira google_forms logrocket fullstory intercom zendesk sentry].each do |type| %>
+      <% %w[linear slack jira google_forms logrocket fullstory intercom zendesk sentry github].each do |type| %>
         <% integration = integrations.find { |i| i.source_type == type } %>
         <div class="flex items-center">
           <% if integration&.enabled? %>

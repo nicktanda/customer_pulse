@@ -13,6 +13,8 @@ class Idea < ApplicationRecord
   has_many :inverse_idea_relationships, class_name: "IdeaRelationship",
            foreign_key: :related_idea_id, dependent: :destroy
 
+  has_many :idea_pull_requests, dependent: :destroy
+
   # Enums
   enum :idea_type, {
     quick_win: 0,

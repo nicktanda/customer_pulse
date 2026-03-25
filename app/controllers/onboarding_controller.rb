@@ -4,7 +4,7 @@ class OnboardingController < ApplicationController
   before_action :authenticate_user!
   skip_before_action :require_onboarding!, only: [:show, :update_step, :test_connection, :complete]
 
-  STEPS = %w[welcome anthropic_api linear slack jira google_forms logrocket fullstory intercom zendesk sentry recipients complete].freeze
+  STEPS = %w[welcome anthropic_api linear slack jira google_forms logrocket fullstory intercom zendesk sentry github recipients complete].freeze
   REQUIRED_STEPS = %w[anthropic_api].freeze
 
   def show
@@ -43,6 +43,8 @@ class OnboardingController < ApplicationController
       save_zendesk_step
     when 'sentry'
       save_sentry_step
+    when 'github'
+      save_github_step
     when 'recipients'
       save_recipients_step
     else
@@ -101,6 +103,8 @@ class OnboardingController < ApplicationController
       test_zendesk_connection(credentials)
     when 'sentry'
       test_sentry_connection(credentials)
+    when 'github'
+      test_github_connection(credentials)
     else
       { success: false, message: "Unknown integration type" }
     end
@@ -144,6 +148,8 @@ class OnboardingController < ApplicationController
       @integration = Integration.find_by(source_type: 'zendesk')
     when 'sentry'
       @integration = Integration.find_by(source_type: 'sentry')
+    when 'github'
+      @integration = Integration.find_by(source_type: 'github')
     when 'recipients'
       @recipients = EmailRecipient.all
     end
@@ -328,6 +334,25 @@ class OnboardingController < ApplicationController
     integration.save!
   end
 
+  def save_github_step
+    return true if params[:skip].present?
+
+    credentials = {
+      access_token: params.dig(:integration, :access_token),
+      owner: params.dig(:integration, :owner),
+      repo: params.dig(:integration, :repo),
+      default_branch: params.dig(:integration, :default_branch).presence || 'main'
+    }.compact
+
+    return true if credentials[:access_token].blank?
+
+    integration = Integration.find_or_initialize_by(source_type: 'github')
+    integration.name = "GitHub"
+    integration.enabled = true
+    integration.update_credentials(credentials)
+    integration.save!
+  end
+
   def save_recipients_step
     return true if params[:skip].present?
 
@@ -422,5 +447,17 @@ class OnboardingController < ApplicationController
     temp_integration = Integration.new(source_type: 'sentry')
     temp_integration.update_credentials(credentials)
     Integrations::SentryClient.new(temp_integration).test_connection
+  end
+
+  def test_github_connection(credentials)
+    return { success: false, message: "Access Token is required" } if credentials['access_token'].blank?
+    return { success: false, message: "Owner is required" } if credentials['owner'].blank?
+    return { success: false, message: "Repository is required" } if credentials['repo'].blank?
+
+    credentials['default_branch'] ||= 'main'
+
+    temp_integration = Integration.new(source_type: 'github')
+    temp_integration.update_credentials(credentials)
+    Integrations::GithubClient.new(temp_integration).test_connection
   end
 end
