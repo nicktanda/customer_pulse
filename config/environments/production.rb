@@ -35,7 +35,7 @@ Rails.application.configure do
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
-  config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
+  config.logger   = ActiveSupport::TaggedLogging.new(ActiveSupport::Logger.new(STDOUT))
 
   # Change to "debug" to log everything (including potentially personally-identifiable information!)
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
@@ -46,8 +46,12 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Use Redis for caching in production
-  config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"] }
+  # Use Redis for caching in production (fallback to memory if REDIS_URL not set)
+  if ENV["REDIS_URL"].present?
+    config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"] }
+  else
+    config.cache_store = :memory_store
+  end
 
   # Use Sidekiq for background jobs
   config.active_job.queue_adapter = :sidekiq
