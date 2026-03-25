@@ -13,6 +13,14 @@ class SettingsController < ApplicationController
     redirect_to settings_path, notice: "Settings updated successfully."
   end
 
+  def update_theme
+    if current_user&.update(theme_mode: params[:theme_mode])
+      redirect_to settings_path, notice: "Theme updated successfully."
+    else
+      redirect_to settings_path, alert: "Failed to update theme."
+    end
+  end
+
   def save_github
     credentials = {
       access_token: params.dig(:github, :access_token),
