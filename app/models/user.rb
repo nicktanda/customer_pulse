@@ -1,29 +1,44 @@
+# frozen_string_literal: true
+
 class User < ApplicationRecord
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable
 
-  enum :role, { viewer: 0, admin: 1 }
+  # Enums
+  enum :role, { user: 0, admin: 1 }
 
+  # Validations
   validates :name, presence: true
 
-  def admin?
-    role == "admin"
+  # Accessibility preferences
+  THEME_OPTIONS = {
+    'default' => 'Default Blue',
+    'high_contrast' => 'High Contrast Black'
+  }.freeze
+
+  def accessibility_preferences
+    super || {}
   end
 
-  def onboarding_completed?
-    onboarding_completed_at.present?
+  def theme_preference
+    accessibility_preferences['theme'] || 'default'
   end
 
-  def complete_onboarding!
-    update!(
-      onboarding_completed_at: Time.current,
-      onboarding_current_step: 'complete'
+  def theme_preference=(value)
+    return unless THEME_OPTIONS.key?(value)
+    
+    self.accessibility_preferences = accessibility_preferences.merge(
+      'theme' => value
     )
   end
 
-  def update_onboarding_step!(step)
-    update!(onboarding_current_step: step)
+  def high_contrast_mode?
+    theme_preference == 'high_contrast'
+  end
+
+  def theme_css_class
+    high_contrast_mode? ? 'theme-high-contrast' : 'theme-default'
   end
 end
