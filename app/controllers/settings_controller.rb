@@ -4,6 +4,7 @@ class SettingsController < ApplicationController
   def show
     @settings = load_settings
     @github_integration = Integration.find_by(source_type: 'github')
+    @user_preferences = current_user.user_preference || current_user.build_user_preference
   end
 
   def update
@@ -11,6 +12,18 @@ class SettingsController < ApplicationController
     save_settings(settings)
 
     redirect_to settings_path, notice: "Settings updated successfully."
+  end
+
+  def update_preferences
+    @user_preferences = current_user.user_preference || current_user.build_user_preference
+    
+    if @user_preferences.update(preference_params)
+      redirect_to settings_path, notice: "Theme preferences updated successfully."
+    else
+      @settings = load_settings
+      @github_integration = Integration.find_by(source_type: 'github')
+      render :show, alert: "Failed to update preferences: #{@user_preferences.errors.full_messages.join(', ')}"
+    end
   end
 
   def save_github
@@ -87,5 +100,9 @@ class SettingsController < ApplicationController
 
   def settings_params
     params.permit(:pulse_send_time, :ai_processing_interval_hours, :default_priority, :auto_archive_days, :github_auto_merge)
+  end
+
+  def preference_params
+    params.require(:user_preference).permit(:ui_theme)
   end
 end
