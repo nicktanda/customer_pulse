@@ -10,7 +10,7 @@ module Ai
       You will receive:
       1. An idea/feature description with implementation hints
       2. Repository analysis (tech stack, structure, conventions)
-      3. Sample code files for context
+      3. Existing code files for context (including files you may need to modify)
 
       Generate production-ready code that:
       - Follows the existing codebase patterns and conventions
@@ -25,7 +25,7 @@ module Ai
           {
             "path": "relative/path/to/file.ext",
             "action": "create|modify|delete",
-            "content": "full file content for create, or null for delete",
+            "content": "full file content for create/modify, or null for delete",
             "description": "brief description of this change"
           }
         ],
@@ -35,12 +35,28 @@ module Ai
         "implementation_notes": "Any notes about the implementation approach"
       }
 
-      Guidelines:
+      CRITICAL GUIDELINES FOR MODIFICATIONS:
+      - NEVER remove or replace existing functionality when modifying files
+      - When modifying a file, you MUST preserve ALL existing code, methods, and logic
+      - ADD your new code to the existing file - do not rewrite from scratch
+      - Only modify the specific parts needed for the new feature
+      - If you need to add a method to a class, ADD it alongside existing methods
+      - If you need to add an enum value, ADD it to the existing enum
+      - NEVER change existing enum values, method signatures, or existing functionality
+      - Include the COMPLETE file content with your additions merged in
+
+      Other guidelines:
       - Generate complete, runnable code - no placeholders or TODOs
       - Match the existing code style exactly
-      - Keep changes focused and minimal
-      - For modifications, include the FULL updated file content
+      - Keep changes focused and minimal - only change what's necessary
+      - Prefer creating new files over modifying existing complex files
       - Use descriptive commit messages following conventional commits
+
+      IMPORTANT - Response size constraints:
+      - Limit your response to 2-4 file changes maximum
+      - Focus on the most essential changes only
+      - Do not include large boilerplate or repeated code
+      - If a feature requires many files, implement only the core functionality
     PROMPT
 
     def initialize(integration:, pm_persona: nil)
@@ -49,11 +65,12 @@ module Ai
       @github_client = Integrations::GithubClient.new(integration)
     end
 
-    def generate(idea:, repo_analysis:)
+    def generate(idea:, repo_analysis:, fix_instructions: nil, previous_changes: nil)
       context_files = fetch_context_files(idea, repo_analysis)
 
-      prompt = build_prompt(idea, repo_analysis, context_files)
-      result = call_claude(prompt, system_prompt: SYSTEM_PROMPT, max_tokens: 8192)
+      prompt = build_prompt(idea, repo_analysis, context_files, fix_instructions, previous_changes)
+      # Use higher token limit to avoid truncation
+      result = call_claude(prompt, system_prompt: SYSTEM_PROMPT, max_tokens: 16384)
 
       if result[:error]
         return { success: false, error: result[:error] }
@@ -73,8 +90,28 @@ module Ai
 
     private
 
-    def build_prompt(idea, repo_analysis, context_files)
+    def build_prompt(idea, repo_analysis, context_files, fix_instructions = nil, previous_changes = nil)
       parts = []
+
+      # If this is a regeneration with fix instructions, add them prominently
+      if fix_instructions.present?
+        parts << "## IMPORTANT: REGENERATION REQUIRED"
+        parts << "Your previous code generation had issues that must be fixed:"
+        parts << ""
+        parts << fix_instructions
+        parts << ""
+        parts << "Please regenerate the code changes, fixing all the issues mentioned above."
+        parts << "Remember: You MUST preserve all existing code when modifying files."
+        parts << ""
+
+        if previous_changes.present?
+          parts << "## Previous Changes (that had issues)"
+          previous_changes.each do |change|
+            parts << "- #{change[:action]}: #{change[:path]} - #{change[:description]}"
+          end
+          parts << ""
+        end
+      end
 
       parts << "## Feature/Idea to Implement"
       parts << "Title: #{idea.title}"
@@ -110,9 +147,13 @@ module Ai
       end
 
       if context_files.present?
-        parts << "\n## Context Files (for reference)"
+        parts << "\n## Existing Files (PRESERVE ALL CODE WHEN MODIFYING)"
+        parts << "IMPORTANT: If you modify any of these files, you MUST include ALL existing code."
+        parts << "Do NOT remove any existing methods, classes, or functionality."
+        parts << ""
         context_files.each do |file|
           parts << "\n### #{file[:path]}"
+          parts << "This file already exists. If you modify it, preserve everything shown here."
           parts << "```#{file[:language]}"
           parts << file[:content]
           parts << "```"
@@ -163,11 +204,23 @@ module Ai
           score += 5 if path.downcase.include?(keyword.downcase)
         end
 
-        score += 3 if path.include?("controller") || path.include?("service")
-        score += 2 if path.include?("model") || path.include?("component")
+        # Prioritize key application files that are likely to be modified
+        score += 8 if path.include?("controller") && path.include?("app/")
+        score += 6 if path.include?("model") && path.include?("app/")
+        score += 5 if path.include?("service") && path.include?("app/")
+        score += 4 if path.include?("view") && path.include?("app/")
+        score += 3 if path.include?("component")
 
-        score -= 5 if path.include?("test") || path.include?("spec")
-        score -= 10 if path.include?("vendor") || path.include?("node_modules")
+        # Include settings/config files as they're commonly modified
+        score += 5 if path.include?("settings") || path.include?("config")
+        score += 3 if path.include?("application_") || path.include?("base_")
+
+        # Reduce priority for test files (we still want some for reference)
+        score -= 3 if path.include?("test") || path.include?("spec")
+
+        # Exclude vendor/generated files
+        score -= 20 if path.include?("vendor") || path.include?("node_modules")
+        score -= 15 if path.include?(".min.") || path.include?("bundle")
 
         [path, score]
       end

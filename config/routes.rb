@@ -60,7 +60,6 @@ Rails.application.routes.draw do
     resource :settings, only: [:show, :update] do
       post :save_github
       post :test_github
-      delete :disconnect_github
     end
 
     resources :pulse_reports, only: [:index, :show] do

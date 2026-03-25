@@ -7,7 +7,6 @@ export default class extends Controller {
   }
 
   connect() {
-    console.log("Polling controller connected, interval:", this.intervalValue)
     this.startPolling()
   }
 
@@ -17,7 +16,7 @@ export default class extends Controller {
 
   startPolling() {
     this.poll = setInterval(() => {
-      this.syncAndRefresh()
+      this.refreshWithScrollPreserve()
     }, this.intervalValue)
   }
 
@@ -27,23 +26,30 @@ export default class extends Controller {
     }
   }
 
-  syncAndRefresh() {
-    console.log("Polling: syncing and refreshing")
+  refreshWithScrollPreserve() {
+    // Save scroll position
+    const scrollY = window.scrollY
 
-    // Trigger sync first, then refresh
-    if (this.syncUrlValue) {
-      fetch(this.syncUrlValue, {
-        method: "POST",
-        headers: {
-          "X-CSRF-Token": document.querySelector("[name='csrf-token']").content
+    // Fetch the page and update just the body content
+    fetch(window.location.href, {
+      headers: { "Accept": "text/html" }
+    })
+      .then(response => response.text())
+      .then(html => {
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(html, "text/html")
+
+        // Update the main content area
+        const newContent = doc.querySelector("main") || doc.querySelector("body")
+        const currentContent = document.querySelector("main") || document.querySelector("body")
+
+        if (newContent && currentContent) {
+          currentContent.innerHTML = newContent.innerHTML
+
+          // Restore scroll position
+          window.scrollTo(0, scrollY)
         }
-      }).then(() => {
-        setTimeout(() => {
-          Turbo.visit(window.location.href, { action: "replace" })
-        }, 2000)
       })
-    } else {
-      Turbo.visit(window.location.href, { action: "replace" })
-    }
+      .catch(err => console.error("Polling refresh failed:", err))
   }
 }

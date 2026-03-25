@@ -31,12 +31,15 @@
       <%= form_with url: save_github_settings_path, method: :post, class: "space-y-4", data: { github_settings_target: "form" } do |f| %>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Personal Access Token</label>
-          <input type="password"
-                 name="github[access_token]"
-                 value="<%= @github_integration&.parsed_credentials&.dig('access_token') %>"
-                 placeholder="github_pat_xxxxxxxxxxxx"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                 data-github-settings-target="accessToken">
+          <div class="relative">
+            <input type="text"
+                   name="github[access_token]"
+                   value="<%= @github_integration&.parsed_credentials&.dig('access_token') %>"
+                   placeholder="github_pat_xxxxxxxxxxxx"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono"
+                   data-github-settings-target="accessToken"
+                   autocomplete="off">
+          </div>
           <p class="mt-1 text-xs text-gray-500">
             <a href="https://github.com/settings/tokens?type=beta" target="_blank" class="text-indigo-600 hover:text-indigo-800">Create a fine-grained token</a>
             with "Contents" and "Pull requests" read/write permissions
@@ -75,6 +78,7 @@
         </div>
 
         <div class="flex items-center">
+          <input type="hidden" name="github[enabled]" value="0">
           <input type="checkbox"
                  name="github[enabled]"
                  value="1"
@@ -97,9 +101,6 @@
           </button>
 
           <div class="flex items-center space-x-3">
-            <% if @github_integration %>
-              <%= button_to "Disconnect", disconnect_github_settings_path, method: :delete, class: "px-4 py-2 text-red-600 hover:text-red-800 text-sm font-medium", data: { confirm: "Are you sure you want to disconnect GitHub?" } %>
-            <% end %>
             <%= f.submit "Save GitHub Settings", class: "px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md cursor-pointer transition-colors" %>
           </div>
         </div>

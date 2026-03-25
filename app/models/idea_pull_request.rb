@@ -12,7 +12,8 @@ class IdeaPullRequest < ApplicationRecord
     failed: 4
   }
 
-  validates :branch_name, presence: true, on: :update
+  # Branch name is set after creation but before PR is opened
+  validates :branch_name, presence: true, if: -> { open? || merged? || closed? }
 
   scope :recent, -> { order(created_at: :desc) }
   scope :successful, -> { where(status: [:open, :merged]) }

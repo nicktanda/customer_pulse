@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_25_000002) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_25_113627) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -89,6 +89,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_25_000002) do
     t.datetime "merged_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "progress_message"
+    t.integer "progress_step"
     t.index ["idea_id"], name: "index_idea_pull_requests_on_idea_id"
     t.index ["integration_id"], name: "index_idea_pull_requests_on_integration_id"
     t.index ["pr_number"], name: "index_idea_pull_requests_on_pr_number"

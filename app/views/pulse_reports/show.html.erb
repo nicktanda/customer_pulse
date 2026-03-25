@@ -1,5 +1,9 @@
 <% content_for :title, "Pulse Report - Customer Pulse" %>
 
+<% if @has_pending_prs %>
+  <div data-controller="polling" data-polling-interval-value="3000" class="hidden"></div>
+<% end %>
+
 <div class="mb-6">
   <%= link_to pulse_reports_path, class: "text-indigo-600 hover:text-indigo-800 text-sm flex items-center" do %>
     <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,7 +93,7 @@
     </div>
 
     <% if @quick_wins.any? || @high_impact.any? %>
-      <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg shadow border border-green-200">
+      <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg shadow border border-green-200" data-controller="pr-auto-open">
         <div class="px-6 py-4 border-b border-green-200 flex items-center justify-between">
           <h2 class="text-lg font-semibold text-green-800 flex items-center">
             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

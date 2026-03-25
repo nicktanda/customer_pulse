@@ -14,11 +14,13 @@ class SettingsController < ApplicationController
   end
 
   def save_github
+    github_params = params.require(:github).permit(:access_token, :owner, :repo, :default_branch, :enabled)
+
     credentials = {
-      access_token: params.dig(:github, :access_token),
-      owner: params.dig(:github, :owner),
-      repo: params.dig(:github, :repo),
-      default_branch: params.dig(:github, :default_branch).presence || 'main'
+      access_token: github_params[:access_token],
+      owner: github_params[:owner],
+      repo: github_params[:repo],
+      default_branch: github_params[:default_branch].presence || 'main'
     }.compact
 
     if credentials[:access_token].blank?
@@ -28,7 +30,7 @@ class SettingsController < ApplicationController
 
     integration = Integration.find_or_initialize_by(source_type: 'github')
     integration.name = "GitHub"
-    integration.enabled = params.dig(:github, :enabled) == "1"
+    integration.enabled = github_params[:enabled] == "1"
     integration.update_credentials(credentials)
 
     if integration.save
@@ -56,15 +58,6 @@ class SettingsController < ApplicationController
     result = Integrations::GithubClient.new(temp_integration).test_connection
 
     render json: result
-  end
-
-  def disconnect_github
-    integration = Integration.find_by(source_type: 'github')
-    if integration&.destroy
-      redirect_to settings_path, notice: "GitHub integration disconnected."
-    else
-      redirect_to settings_path, alert: "Failed to disconnect GitHub integration."
-    end
   end
 
   private

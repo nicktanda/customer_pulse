@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'erb'
+
 module Integrations
   class GithubClient < BaseClient
     API_BASE = "https://api.github.com"
@@ -39,7 +41,9 @@ module Integrations
 
     def fetch_file_content(path, ref: nil)
       ref ||= default_branch
-      response = api_get("/repos/#{owner}/#{repo}/contents/#{path}?ref=#{ref}")
+      # URL encode the path to handle special characters
+      encoded_path = path.split('/').map { |segment| ERB::Util.url_encode(segment) }.join('/')
+      response = api_get("/repos/#{owner}/#{repo}/contents/#{encoded_path}?ref=#{ref}")
 
       return { success: false, error: response[:error] } unless response[:success]
 
@@ -75,7 +79,9 @@ module Integrations
       }
       payload[:sha] = sha if sha
 
-      response = api_put("/repos/#{owner}/#{repo}/contents/#{path}", payload)
+      # URL encode the path to handle special characters
+      encoded_path = path.split('/').map { |segment| ERB::Util.url_encode(segment) }.join('/')
+      response = api_put("/repos/#{owner}/#{repo}/contents/#{encoded_path}", payload)
 
       if response[:success]
         { success: true, commit_sha: response[:data].dig("commit", "sha") }

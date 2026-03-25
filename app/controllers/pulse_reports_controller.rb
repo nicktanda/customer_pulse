@@ -13,6 +13,10 @@ class PulseReportsController < ApplicationController
     @quick_wins = Idea.quick_wins.includes(:idea_pull_requests).by_impact.limit(5)
     @high_impact = Idea.high_impact_low_effort.includes(:idea_pull_requests).limit(5)
     @github_integration = Integration.github.enabled.first
+
+    # Check if any PRs are pending to enable polling
+    all_ideas = @quick_wins + @high_impact
+    @has_pending_prs = all_ideas.any? { |idea| idea.idea_pull_requests.pending.exists? }
   end
 
   def generate_pr
@@ -20,7 +24,7 @@ class PulseReportsController < ApplicationController
     integration = Integration.github.enabled.first
 
     unless integration
-      flash[:alert] = "GitHub integration is not configured. Please set it up in onboarding first."
+      flash[:alert] = "GitHub integration is not configured. Please set it up in Settings first."
       redirect_back fallback_location: pulse_reports_path
       return
     end
@@ -32,9 +36,17 @@ class PulseReportsController < ApplicationController
       return
     end
 
-    GenerateGithubPrJob.perform_async(idea.id, integration.id)
+    # Create the pending record immediately so UI shows it right away
+    pull_request = idea.idea_pull_requests.create!(
+      integration: integration,
+      status: :pending,
+      progress_step: 0,
+      progress_message: "Queued for processing..."
+    )
 
-    flash[:notice] = "PR generation started for \"#{idea.title}\". This may take a few minutes."
+    GenerateGithubPrJob.perform_async(idea.id, integration.id, pull_request.id)
+
+    flash[:notice] = "PR generation started for \"#{idea.title}\"."
     redirect_back fallback_location: pulse_reports_path
   end
 

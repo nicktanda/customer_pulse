@@ -5,16 +5,17 @@ class GenerateGithubPrJob
 
   sidekiq_options queue: :default, retry: 2
 
-  def perform(idea_id, integration_id = nil)
+  def perform(idea_id, integration_id = nil, pull_request_id = nil)
     idea = Idea.find(idea_id)
     integration = find_integration(integration_id)
 
     unless integration
       Rails.logger.error("GenerateGithubPrJob: No GitHub integration found")
+      fail_pull_request(pull_request_id, "No GitHub integration found")
       return
     end
 
-    creator = Github::PrCreator.new(idea: idea, integration: integration)
+    creator = Github::PrCreator.new(idea: idea, integration: integration, pull_request_id: pull_request_id)
     result = creator.create
 
     if result[:success]
@@ -28,8 +29,10 @@ class GenerateGithubPrJob
     end
   rescue ActiveRecord::RecordNotFound => e
     Rails.logger.error("GenerateGithubPrJob: #{e.message}")
+    fail_pull_request(pull_request_id, e.message)
   rescue => e
     Rails.logger.error("GenerateGithubPrJob: Unexpected error for idea ##{idea_id}: #{e.message}")
+    fail_pull_request(pull_request_id, e.message)
     raise
   end
 
@@ -41,5 +44,11 @@ class GenerateGithubPrJob
     else
       Integration.github.enabled.first
     end
+  end
+
+  def fail_pull_request(pull_request_id, error_message)
+    return unless pull_request_id
+    pr = IdeaPullRequest.find_by(id: pull_request_id)
+    pr&.update(status: :failed, error_message: error_message)
   end
 end
