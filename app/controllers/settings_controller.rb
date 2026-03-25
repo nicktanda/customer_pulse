@@ -4,6 +4,7 @@ class SettingsController < ApplicationController
   def show
     @settings = load_settings
     @github_integration = Integration.find_by(source_type: 'github')
+    @display_preference = DisplayPreference.first_or_create(theme_mode: :blue)
   end
 
   def update
@@ -11,6 +12,26 @@ class SettingsController < ApplicationController
     save_settings(settings)
 
     redirect_to settings_path, notice: "Settings updated successfully."
+  end
+
+  def update_theme
+    theme = params[:theme_mode]
+    if DisplayPreference.theme_modes.key?(theme)
+      DisplayPreference.set_theme!(theme)
+      render json: { success: true, theme: theme, css_class: "theme-#{theme}" }
+    else
+      render json: { success: false, error: "Invalid theme" }, status: :unprocessable_entity
+    end
+  end
+
+  def toggle_theme
+    new_theme = DisplayPreference.toggle_theme!
+    render json: { 
+      success: true, 
+      theme: new_theme, 
+      css_class: "theme-#{new_theme}",
+      theme_label: DisplayPreference.first.theme_label
+    }
   end
 
   def save_github
