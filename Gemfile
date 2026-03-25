@@ -40,7 +40,7 @@ gem "sidekiq-cron", "~> 2.0"
 gem "redis", "~> 5.0"
 
 # AI/Claude API
-gem "anthropic", "~> 0.3"
+gem "anthropic", "~> 1.19"
 gem "faraday", "~> 2.0"
 
 # Google APIs for Google Forms/Sheets integration
