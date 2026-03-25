@@ -4,6 +4,7 @@ class SettingsController < ApplicationController
   def show
     @settings = load_settings
     @github_integration = Integration.find_by(source_type: 'github')
+    @user = current_user
   end
 
   def update
@@ -11,6 +12,14 @@ class SettingsController < ApplicationController
     save_settings(settings)
 
     redirect_to settings_path, notice: "Settings updated successfully."
+  end
+
+  def update_theme
+    if current_user.update(theme_params)
+      redirect_to settings_path, notice: "Theme preference updated successfully."
+    else
+      redirect_to settings_path, alert: "Failed to update theme preference."
+    end
   end
 
   def save_github
@@ -87,5 +96,9 @@ class SettingsController < ApplicationController
 
   def settings_params
     params.permit(:pulse_send_time, :ai_processing_interval_hours, :default_priority, :auto_archive_days, :github_auto_merge)
+  end
+
+  def theme_params
+    params.require(:user).permit(:theme_preference)
   end
 end
