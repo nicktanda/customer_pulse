@@ -1,0 +1,74 @@
+/* High Contrast Theme Overrides */
+.high-contrast-theme {
+  /* Primary colors - use bright green instead of blue */
+  --tw-color-primary-50: #f0fdf4;
+  --tw-color-primary-100: #dcfce7;
+  --tw-color-primary-200: #bbf7d0;
+  --tw-color-primary-300: #86efac;
+  --tw-color-primary-400: #4ade80;
+  --tw-color-primary-500: #22c55e;
+  --tw-color-primary-600: #16a34a;
+  --tw-color-primary-700: #15803d;
+  --tw-color-primary-800: #166534;
+  --tw-color-primary-900: #14532d;
+}
+
+/* High contrast overrides */
+.high-contrast-theme .bg-blue-500 { @apply bg-green-500; }
+.high-contrast-theme .bg-blue-600 { @apply bg-green-600; }
+.high-contrast-theme .bg-blue-700 { @apply bg-green-700; }
+.high-contrast-theme .text-blue-500 { @apply text-green-500; }
+.high-contrast-theme .text-blue-600 { @apply text-green-600; }
+.high-contrast-theme .text-blue-700 { @apply text-green-700; }
+.high-contrast-theme .border-blue-500 { @apply border-green-500; }
+.high-contrast-theme .border-blue-600 { @apply border-green-600; }
+.high-contrast-theme .hover\:bg-blue-600:hover { @apply hover:bg-green-600; }
+.high-contrast-theme .hover\:bg-blue-700:hover { @apply hover:bg-green-700; }
+.high-contrast-theme .focus\:ring-blue-500:focus { @apply focus:ring-green-500; }
+.high-contrast-theme .focus\:border-blue-500:focus { @apply focus:border-green-500; }
+
+/* Enhanced contrast for better accessibility */
+.high-contrast-theme {
+  /* Increase contrast ratios */
+  --tw-text-opacity: 1;
+}
+
+.high-contrast-theme .text-gray-500 { @apply text-gray-900; }
+.high-contrast-theme .text-gray-400 { @apply text-gray-800; }
+.high-contrast-theme .bg-gray-50 { @apply bg-white; }
+.high-contrast-theme .bg-gray-100 { @apply bg-gray-50; }
+
+/* High contrast buttons */
+.high-contrast-theme .btn-primary {
+  @apply bg-green-600 hover:bg-green-700 border-2 border-green-700;
+  font-weight: 600;
+}
+
+/* High contrast links */
+.high-contrast-theme a {
+  @apply text-green-700 underline;
+  font-weight: 500;
+}
+
+.high-contrast-theme a:hover {
+  @apply text-green-800;
+}
+
+/* Enhanced form elements */
+.high-contrast-theme input,
+.high-contrast-theme select,
+.high-contrast-theme textarea {
+  @apply border-2 border-gray-600 focus:border-green-600 focus:ring-2 focus:ring-green-500;
+}
+
+/* Status indicators with high contrast */
+.high-contrast-theme .status-indicator {
+  border: 2px solid currentColor;
+  font-weight: 600;
+}
+
+/* Priority indicators */
+.high-contrast-theme .priority-p1 { @apply bg-red-600 text-white border-red-700; }
+.high-contrast-theme .priority-p2 { @apply bg-orange-600 text-white border-orange-700; }
+.high-contrast-theme .priority-p3 { @apply bg-yellow-600 text-black border-yellow-700; }
+.high-contrast-theme .priority-p4 { @apply bg-green-600 text-white border-green-700; }
