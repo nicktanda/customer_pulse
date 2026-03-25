@@ -1,0 +1,115 @@
+:root {
+  /* Default Theme Variables */
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-text: #1e40af;
+  --secondary-color: #e5e7eb;
+  --accent-color: #10b981;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --background-primary: #ffffff;
+  --background-secondary: #f9fafb;
+  --border-color: #d1d5db;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --focus-ring: #3b82f6;
+}
+
+/* High Contrast Theme */
+.theme-high-contrast {
+  --primary-color: #000000;
+  --primary-hover: #1a1a1a;
+  --primary-text: #ffffff;
+  --secondary-color: #333333;
+  --accent-color: #00ff00;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --background-primary: #000000;
+  --background-secondary: #1a1a1a;
+  --border-color: #666666;
+  --success-color: #00ff00;
+  --warning-color: #ffff00;
+  --error-color: #ff0000;
+  --focus-ring: #00ff00;
+}
+
+/* Apply theme variables to common elements */
+body {
+  background-color: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.bg-blue-500 {
+  background-color: var(--primary-color) !important;
+}
+
+.hover\:bg-blue-600:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+.text-blue-600 {
+  color: var(--primary-text) !important;
+}
+
+.bg-white {
+  background-color: var(--background-primary) !important;
+}
+
+.bg-gray-50 {
+  background-color: var(--background-secondary) !important;
+}
+
+.text-gray-900 {
+  color: var(--text-primary) !important;
+}
+
+.text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+.border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+.bg-green-500 {
+  background-color: var(--success-color) !important;
+}
+
+.bg-yellow-500 {
+  background-color: var(--warning-color) !important;
+}
+
+.bg-red-500 {
+  background-color: var(--error-color) !important;
+}
+
+/* Focus indicators for accessibility */
+.focus\:ring-blue-500:focus {
+  --tw-ring-color: var(--focus-ring) !important;
+}
+
+/* High contrast specific adjustments */
+.theme-high-contrast .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.theme-high-contrast .shadow {
+  box-shadow: 0 1px 3px 0 rgba(255, 255, 255, 0.1), 0 1px 2px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Ensure text remains visible in high contrast */
+.theme-high-contrast input,
+.theme-high-contrast textarea,
+.theme-high-contrast select {
+  background-color: var(--background-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.theme-high-contrast input:focus,
+.theme-high-contrast textarea:focus,
+.theme-high-contrast select:focus {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 2px var(--accent-color) !important;
+}
