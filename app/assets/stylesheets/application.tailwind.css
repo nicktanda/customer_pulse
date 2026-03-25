@@ -1,207 +1,85 @@
-@import "tailwindcss";
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
-/* Custom base styles */
-@layer base {
-  /* Smooth transitions for all interactive elements */
-  button, a, input, select, textarea {
-    @apply transition-all duration-200 ease-in-out;
-  }
+/*
 
-  /* Better focus states for accessibility */
-  *:focus-visible {
-    @apply outline-none ring-2 ring-indigo-500 ring-offset-2;
-  }
-
-  /* Custom scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
-  }
-}
-
-/* Custom component styles */
 @layer components {
-  /* Card hover lift effect */
-  .card-hover {
-    @apply transition-all duration-300 ease-out;
-  }
-
-  .card-hover:hover {
-    @apply -translate-y-1 shadow-lg;
-  }
-
-  /* Gradient icon backgrounds */
-  .icon-gradient-indigo {
-    @apply bg-gradient-to-br from-indigo-100 to-indigo-200;
-  }
-
-  .icon-gradient-green {
-    @apply bg-gradient-to-br from-green-100 to-green-200;
-  }
-
-  .icon-gradient-yellow {
-    @apply bg-gradient-to-br from-yellow-100 to-yellow-200;
-  }
-
-  .icon-gradient-blue {
-    @apply bg-gradient-to-br from-blue-100 to-blue-200;
-  }
-
-  /* Button styles */
   .btn-primary {
-    @apply bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2 rounded-lg font-medium
-           hover:from-indigo-700 hover:to-indigo-800 active:scale-[0.98] shadow-sm hover:shadow-md;
-  }
-
-  .btn-secondary {
-    @apply bg-white text-gray-700 px-4 py-2 rounded-lg font-medium border border-gray-200
-           hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] shadow-sm;
-  }
-
-  /* Enhanced form inputs */
-  .form-input-enhanced {
-    @apply w-full rounded-lg border-gray-200 shadow-sm
-           focus:border-indigo-500 focus:ring-indigo-500
-           hover:border-gray-300 transition-colors;
-  }
-
-  /* Badge refinements */
-  .badge {
-    @apply px-2.5 py-1 text-xs font-medium rounded-full shadow-sm;
-  }
-
-  /* Progress bar animation */
-  .progress-bar {
-    @apply h-2 rounded-full bg-gray-200 overflow-hidden;
-  }
-
-  .progress-bar-fill {
-    @apply h-full rounded-full transition-all duration-500 ease-out;
-  }
-
-  /* Pulsing status dot */
-  .status-dot-active {
-    @apply relative;
-  }
-
-  .status-dot-active::before {
-    content: '';
-    @apply absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full;
-    animation: pulse-dot 2s infinite;
-  }
-
-  @keyframes pulse-dot {
-    0%, 100% {
-      opacity: 1;
-      transform: translateY(-50%) scale(1);
-    }
-    50% {
-      opacity: 0.5;
-      transform: translateY(-50%) scale(1.2);
-    }
-  }
-
-  /* Section header with underline */
-  .section-header {
-    @apply text-lg font-semibold text-gray-900 pb-2 border-b-2 border-indigo-100;
-  }
-
-  /* Nav link with animated underline */
-  .nav-link {
-    @apply relative text-white px-3 py-2 rounded-md text-sm font-medium transition-all;
-  }
-
-  .nav-link::after {
-    content: '';
-    @apply absolute bottom-0 left-1/2 w-0 h-0.5 bg-white/50 transition-all duration-300 -translate-x-1/2;
-  }
-
-  .nav-link:hover::after {
-    @apply w-4/5;
-  }
-
-  /* Flash message styles */
-  .flash-message {
-    @apply flex items-center px-4 py-3 rounded-lg shadow-sm border;
-  }
-
-  .flash-success {
-    @apply bg-green-50 border-green-200 text-green-800;
-  }
-
-  .flash-error {
-    @apply bg-red-50 border-red-200 text-red-800;
-  }
-
-  /* AI Analysis highlight */
-  .ai-analysis-card {
-    @apply bg-gradient-to-r from-indigo-50/50 to-purple-50/50 border border-indigo-100;
-  }
-
-  /* Table zebra striping */
-  .table-zebra tbody tr:nth-child(even) {
-    @apply bg-gray-50/50;
-  }
-
-  /* Animated confidence bar */
-  .confidence-bar-fill {
-    @apply h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500;
-    animation: fill-bar 1s ease-out forwards;
-  }
-
-  @keyframes fill-bar {
-    from {
-      width: 0%;
-    }
+    @apply py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75;
   }
 }
 
-/* Custom utility classes */
-@layer utilities {
-  /* Gradient text */
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600;
-  }
+*/
 
-  /* Subtle inner shadow for inputs */
-  .inner-shadow {
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
-  }
+/* Default Blue Theme */
+.theme-blue {
+  /* Primary colors - Blue theme */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-accent: #06b6d4;
+  --color-accent-hover: #0891b2;
 }
 
-/* Pagy pagination styling */
-.pagy {
-  @apply flex items-center justify-center gap-1;
+.theme-blue .bg-blue-500 { background-color: var(--color-primary); }
+.theme-blue .bg-blue-600 { background-color: var(--color-primary-hover); }
+.theme-blue .bg-blue-700 { background-color: var(--color-primary-dark); }
+.theme-blue .text-blue-500 { color: var(--color-primary); }
+.theme-blue .text-blue-600 { color: var(--color-primary-hover); }
+.theme-blue .border-blue-500 { border-color: var(--color-primary); }
+.theme-blue .hover\:bg-blue-600:hover { background-color: var(--color-primary-hover); }
+.theme-blue .hover\:bg-blue-700:hover { background-color: var(--color-primary-dark); }
+
+/* High Contrast Theme */
+.theme-high_contrast {
+  /* Primary colors - High contrast black/white */
+  --color-primary: #000000;
+  --color-primary-hover: #1f2937;
+  --color-primary-dark: #374151;
+  --color-accent: #22c55e;
+  --color-accent-hover: #16a34a;
+  --color-background: #ffffff;
+  --color-text: #000000;
+  --color-text-secondary: #374151;
 }
 
-.pagy a, .pagy span {
-  @apply px-3 py-2 text-sm font-medium rounded-lg transition-all;
+.theme-high_contrast .bg-blue-500 { background-color: var(--color-primary) !important; }
+.theme-high_contrast .bg-blue-600 { background-color: var(--color-primary-hover) !important; }
+.theme-high_contrast .bg-blue-700 { background-color: var(--color-primary-dark) !important; }
+.theme-high_contrast .text-blue-500 { color: var(--color-primary) !important; }
+.theme-high_contrast .text-blue-600 { color: var(--color-primary-hover) !important; }
+.theme-high_contrast .border-blue-500 { border-color: var(--color-primary) !important; }
+.theme-high_contrast .hover\:bg-blue-600:hover { background-color: var(--color-primary-hover) !important; }
+.theme-high_contrast .hover\:bg-blue-700:hover { background-color: var(--color-primary-dark) !important; }
+
+/* High contrast specific overrides for better visibility */
+.theme-high_contrast {
+  /* Ensure strong contrast ratios */
+  --tw-bg-opacity: 1;
 }
 
-.pagy a:not(.current) {
-  @apply text-gray-600 hover:bg-indigo-50 hover:text-indigo-600;
+.theme-high_contrast .bg-gray-50 { background-color: #f9fafb !important; }
+.theme-high_contrast .bg-gray-100 { background-color: #f3f4f6 !important; }
+.theme-high_contrast .bg-gray-200 { background-color: #e5e7eb !important; }
+.theme-high_contrast .text-gray-600 { color: var(--color-text-secondary) !important; }
+.theme-high_contrast .text-gray-700 { color: var(--color-text) !important; }
+.theme-high_contrast .text-gray-900 { color: var(--color-text) !important; }
+
+/* Success/accent colors in high contrast */
+.theme-high_contrast .bg-green-500 { background-color: var(--color-accent) !important; }
+.theme-high_contrast .text-green-600 { color: var(--color-accent-hover) !important; }
+.theme-high_contrast .border-green-500 { border-color: var(--color-accent) !important; }
+
+/* Theme toggle button styles */
+.theme-toggle {
+  @apply inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors;
 }
 
-.pagy .current {
-  @apply bg-indigo-600 text-white shadow-sm;
+.theme-blue .theme-toggle {
+  @apply text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500;
 }
 
-.pagy .disabled {
-  @apply text-gray-300 cursor-not-allowed;
-}
-
-.pagy .prev, .pagy .next {
-  @apply font-semibold;
+.theme-high_contrast .theme-toggle {
+  @apply text-white bg-black hover:bg-gray-800 focus:ring-gray-500;
 }
