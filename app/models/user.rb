@@ -1,29 +1,25 @@
 class User < ApplicationRecord
-  # Include default devise modules. Others available are:
-  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
-  devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable
+  # Theme preferences
+  enum :theme_preference, {
+    default: 0,
+    high_contrast: 1
+  }, prefix: true
 
-  enum :role, { viewer: 0, admin: 1 }
+  # Callbacks
+  after_initialize :set_default_theme
 
-  validates :name, presence: true
-
-  def admin?
-    role == "admin"
+  def theme_css_class
+    case theme_preference
+    when 'high_contrast'
+      'high-contrast-theme'
+    else
+      'default-theme'
+    end
   end
 
-  def onboarding_completed?
-    onboarding_completed_at.present?
-  end
+  private
 
-  def complete_onboarding!
-    update!(
-      onboarding_completed_at: Time.current,
-      onboarding_current_step: 'complete'
-    )
-  end
-
-  def update_onboarding_step!(step)
-    update!(onboarding_current_step: step)
+  def set_default_theme
+    self.theme_preference ||= 'default' if new_record?
   end
 end
