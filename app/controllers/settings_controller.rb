@@ -1,9 +1,11 @@
 class SettingsController < ApplicationController
   before_action :authenticate_user!
+  before_action :require_project_access!
+  before_action :require_project_editor!, except: [:show]
 
   def show
     @settings = load_settings
-    @github_integration = Integration.find_by(source_type: 'github')
+    @github_integration = current_project.integrations.find_by(source_type: 'github')
   end
 
   def update
@@ -28,7 +30,7 @@ class SettingsController < ApplicationController
       return
     end
 
-    integration = Integration.find_or_initialize_by(source_type: 'github')
+    integration = current_project.integrations.find_or_initialize_by(source_type: 'github')
     integration.name = "GitHub"
     integration.enabled = github_params[:enabled] == "1"
     integration.update_credentials(credentials)
@@ -53,7 +55,7 @@ class SettingsController < ApplicationController
       return
     end
 
-    temp_integration = Integration.new(source_type: 'github')
+    temp_integration = Integration.new(source_type: 'github', project: current_project)
     temp_integration.update_credentials(credentials)
     result = Integrations::GithubClient.new(temp_integration).test_connection
 

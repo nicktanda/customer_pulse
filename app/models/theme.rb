@@ -2,6 +2,7 @@
 
 class Theme < ApplicationRecord
   # Associations
+  belongs_to :project
   has_many :insight_themes, dependent: :destroy
   has_many :insights, through: :insight_themes
 

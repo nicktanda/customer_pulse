@@ -1,0 +1,67 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Projects</h1>
+      <p class="mt-1 text-sm text-gray-500">Manage your projects and switch between them</p>
+    </div>
+    <%= link_to new_project_path, class: "btn-primary" do %>
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+      </svg>
+      New Project
+    <% end %>
+  </div>
+
+  <% if @projects.any? %>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <% @projects.each do |project| %>
+        <div class="card hover:shadow-md transition-shadow <%= 'ring-2 ring-indigo-500' if current_project&.id == project.id %>">
+          <div class="p-5">
+            <div class="flex items-start justify-between">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-semibold text-gray-900 truncate">
+                  <%= link_to project.name, project, class: "hover:text-indigo-600" %>
+                </h3>
+                <% if project.description.present? %>
+                  <p class="mt-1 text-sm text-gray-500 line-clamp-2"><%= project.description %></p>
+                <% end %>
+              </div>
+              <% if current_project&.id == project.id %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  Current
+                </span>
+              <% end %>
+            </div>
+
+            <div class="mt-4 flex items-center text-sm text-gray-500">
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+              </svg>
+              <%= project.project_users.count %> member<%= project.project_users.count == 1 ? '' : 's' %>
+            </div>
+
+            <div class="mt-4 flex items-center gap-2">
+              <% if current_project&.id != project.id %>
+                <%= button_to "Switch", switch_project_path(project), method: :post, class: "btn-secondary text-sm py-1.5" %>
+              <% end %>
+              <%= link_to "View", project, class: "btn-secondary text-sm py-1.5" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="card">
+      <div class="p-8 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No projects</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by creating a new project.</p>
+        <div class="mt-6">
+          <%= link_to "Create Project", new_project_path, class: "btn-primary" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

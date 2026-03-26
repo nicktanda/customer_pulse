@@ -2,10 +2,12 @@ class FeedbackController < ApplicationController
   include Pagy::Backend
 
   before_action :authenticate_user!
+  before_action :require_project_access!
   before_action :set_feedback, only: [:show, :update, :override, :reprocess]
+  before_action :require_project_editor!, only: [:update, :override, :reprocess, :bulk_update]
 
   def index
-    feedbacks = Feedback.recent
+    feedbacks = current_project.feedbacks.recent
 
     # Apply filters
     feedbacks = feedbacks.where(source: params[:source]) if params[:source].present?
@@ -66,7 +68,7 @@ class FeedbackController < ApplicationController
     updates[:category] = params[:category] if params[:category].present?
 
     if feedback_ids.any? && updates.any?
-      Feedback.where(id: feedback_ids).update_all(updates)
+      current_project.feedbacks.where(id: feedback_ids).update_all(updates)
       flash[:notice] = "#{feedback_ids.count} feedback items updated."
     else
       flash[:alert] = "No items selected or no updates specified."
@@ -78,7 +80,7 @@ class FeedbackController < ApplicationController
   private
 
   def set_feedback
-    @feedback = Feedback.find(params[:id])
+    @feedback = current_project.feedbacks.find(params[:id])
   end
 
   def feedback_params

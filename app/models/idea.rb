@@ -2,6 +2,7 @@
 
 class Idea < ApplicationRecord
   # Associations
+  belongs_to :project
   belongs_to :pm_persona, optional: true
 
   has_many :idea_insights, dependent: :destroy

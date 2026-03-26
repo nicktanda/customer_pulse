@@ -1,21 +1,22 @@
 class IntegrationsController < ApplicationController
   before_action :authenticate_user!
-  before_action :require_admin!, except: [:index, :show, :sync_all]
+  before_action :require_project_access!
+  before_action :require_project_editor!, except: [:index, :show, :sync_all]
   before_action :set_integration, only: [:show, :edit, :update, :destroy, :test_connection, :sync_now]
 
   def index
-    @integrations = Integration.all.order(:name)
+    @integrations = current_project.integrations.order(:name)
   end
 
   def show
   end
 
   def new
-    @integration = Integration.new
+    @integration = current_project.integrations.build
   end
 
   def create
-    @integration = Integration.new(integration_params)
+    @integration = current_project.integrations.build(integration_params)
 
     if @integration.save
       redirect_to @integration, notice: "Integration created successfully."
@@ -70,7 +71,7 @@ class IntegrationsController < ApplicationController
   end
 
   def sync_all
-    Integration.enabled.each do |integration|
+    current_project.integrations.enabled.each do |integration|
       job_class = sync_job_for(integration.source_type)
       job_class&.new&.perform(integration.id)
     end
@@ -82,7 +83,7 @@ class IntegrationsController < ApplicationController
   private
 
   def set_integration
-    @integration = Integration.find(params[:id])
+    @integration = current_project.integrations.find(params[:id])
   end
 
   def integration_params

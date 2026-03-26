@@ -6,6 +6,9 @@ class ApplicationController < ActionController::Base
 
   before_action :configure_permitted_parameters, if: :devise_controller?
   before_action :require_onboarding!
+  before_action :set_current_project
+
+  helper_method :current_project, :current_project_user
 
   protected
 
@@ -28,5 +31,78 @@ class ApplicationController < ActionController::Base
       flash[:alert] = "You are not authorized to perform this action."
       redirect_to root_path
     end
+  end
+
+  # Project helpers
+  def current_project
+    @current_project ||= find_current_project
+  end
+
+  def current_project_user
+    return nil unless current_project && current_user
+    @current_project_user ||= current_project.project_users.find_by(user: current_user)
+  end
+
+  def set_current_project
+    return unless user_signed_in?
+    return if devise_controller?
+    return if self.class.name == "OnboardingController"
+    return if self.class.name == "ProjectsController" && action_name.in?(%w[index new create])
+
+    if current_project.nil? && current_user.projects.any?
+      session[:current_project_id] = current_user.projects.first.id
+    end
+  end
+
+  def require_project!
+    unless current_project
+      flash[:alert] = "Please select a project first."
+      redirect_to projects_path
+    end
+  end
+
+  def require_project_access!
+    require_project!
+    return if performed?
+
+    unless current_project_user
+      flash[:alert] = "You don't have access to this project."
+      redirect_to projects_path
+    end
+  end
+
+  def require_project_editor!
+    require_project_access!
+    return if performed?
+
+    unless current_project_user&.can_edit?
+      flash[:alert] = "You don't have permission to edit this project."
+      redirect_to root_path
+    end
+  end
+
+  def require_project_owner!
+    require_project_access!
+    return if performed?
+
+    unless current_project_user&.can_manage_project?
+      flash[:alert] = "You don't have permission to manage this project."
+      redirect_to root_path
+    end
+  end
+
+  private
+
+  def find_current_project
+    return nil unless user_signed_in?
+
+    # First try session
+    if session[:current_project_id]
+      project = current_user.projects.find_by(id: session[:current_project_id])
+      return project if project
+    end
+
+    # Fall back to first project
+    current_user.projects.first
   end
 end

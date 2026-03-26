@@ -1,5 +1,6 @@
 class Feedback < ApplicationRecord
   # Associations
+  belongs_to :project
   has_many :feedback_insights, dependent: :destroy
   has_many :insights, through: :feedback_insights
 

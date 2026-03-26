@@ -1,5 +1,5 @@
 Rails.application.routes.draw do
-  devise_for :users
+  devise_for :users, controllers: { omniauth_callbacks: 'users/omniauth_callbacks' }
 
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check
@@ -28,6 +28,13 @@ Rails.application.routes.draw do
   # Authenticated routes
   authenticate :user do
     root "dashboard#index"
+
+    resources :projects do
+      member do
+        post :switch
+      end
+      resources :project_users, only: [:index, :create, :update, :destroy], path: 'members'
+    end
 
     resource :onboarding, only: [:show], controller: 'onboarding' do
       post :update_step

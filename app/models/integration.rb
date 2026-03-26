@@ -3,6 +3,7 @@ class Integration < ApplicationRecord
   has_encrypted :credentials
 
   # Associations
+  belongs_to :project
   has_many :repo_analyses, dependent: :destroy
   has_many :idea_pull_requests, dependent: :destroy
 

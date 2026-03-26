@@ -1,4 +1,7 @@
 class PulseReport < ApplicationRecord
+  # Associations
+  belongs_to :project
+
   # Validations
   validates :period_start, presence: true
   validates :period_end, presence: true
@@ -24,7 +27,7 @@ class PulseReport < ApplicationRecord
   end
 
   def feedbacks
-    Feedback.in_period(period_start, period_end)
+    project.feedbacks.in_period(period_start, period_end)
   end
 
   private

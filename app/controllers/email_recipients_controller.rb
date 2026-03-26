@@ -1,21 +1,22 @@
 class EmailRecipientsController < ApplicationController
   before_action :authenticate_user!
-  before_action :require_admin!, except: [:index]
+  before_action :require_project_access!
+  before_action :require_project_editor!, except: [:index]
   before_action :set_recipient, only: [:show, :edit, :update, :destroy]
 
   def index
-    @recipients = EmailRecipient.order(:email)
+    @recipients = current_project.email_recipients.order(:email)
   end
 
   def show
   end
 
   def new
-    @recipient = EmailRecipient.new
+    @recipient = current_project.email_recipients.build
   end
 
   def create
-    @recipient = EmailRecipient.new(recipient_params)
+    @recipient = current_project.email_recipients.build(recipient_params)
 
     if @recipient.save
       redirect_to recipients_path, notice: "Recipient added successfully."
@@ -43,7 +44,7 @@ class EmailRecipientsController < ApplicationController
   private
 
   def set_recipient
-    @recipient = EmailRecipient.find(params[:id])
+    @recipient = current_project.email_recipients.find(params[:id])
   end
 
   def recipient_params

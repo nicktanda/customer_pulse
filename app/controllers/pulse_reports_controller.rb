@@ -1,18 +1,20 @@
 class PulseReportsController < ApplicationController
   before_action :authenticate_user!
+  before_action :require_project_access!
   before_action :set_pulse_report, only: [:show, :resend]
+  before_action :require_project_editor!, only: [:generate, :generate_pr, :resend]
 
   def index
-    @pagy, @pulse_reports = pagy(PulseReport.recent)
+    @pagy, @pulse_reports = pagy(current_project.pulse_reports.recent)
   end
 
   def show
     @report = @pulse_report
     @feedbacks = @report.feedbacks.recent
-    @insights = Insight.recent.includes(:ideas).limit(10)
-    @quick_wins = Idea.quick_wins.includes(:idea_pull_requests).by_impact.limit(5)
-    @high_impact = Idea.high_impact_low_effort.includes(:idea_pull_requests).limit(5)
-    @github_integration = Integration.github.enabled.first
+    @insights = current_project.insights.recent.includes(:ideas).limit(10)
+    @quick_wins = current_project.ideas.quick_wins.includes(:idea_pull_requests).by_impact.limit(5)
+    @high_impact = current_project.ideas.high_impact_low_effort.includes(:idea_pull_requests).limit(5)
+    @github_integration = current_project.integrations.github.enabled.first
 
     # Check if any PRs are pending to enable polling
     all_ideas = @quick_wins + @high_impact
@@ -20,8 +22,8 @@ class PulseReportsController < ApplicationController
   end
 
   def generate_pr
-    idea = Idea.find(params[:idea_id])
-    integration = Integration.github.enabled.first
+    idea = current_project.ideas.find(params[:idea_id])
+    integration = current_project.integrations.github.enabled.first
 
     unless integration
       flash[:alert] = "GitHub integration is not configured. Please set it up in Settings first."
@@ -61,28 +63,29 @@ class PulseReportsController < ApplicationController
 
   def generate
     generator = PulseGenerator.new(
+      project: current_project,
       period_start: 24.hours.ago,
       period_end: Time.current
     )
     report = generator.generate
 
     # Generate insights from feedback that hasn't been analyzed yet
-    feedbacks = Feedback.insight_unprocessed.limit(50)
+    feedbacks = current_project.feedbacks.insight_unprocessed.limit(50)
     if feedbacks.any?
-      discoverer = Ai::InsightDiscoverer.new
+      discoverer = Ai::InsightDiscoverer.new(project: current_project)
       insights_result = discoverer.discover(feedbacks)
       Rails.logger.info("Generated #{insights_result[:created]} insights from #{feedbacks.count} feedback items")
     end
 
     # Generate ideas for insights that don't have ideas yet
-    new_insights = Insight.actionable.where("id NOT IN (SELECT DISTINCT insight_id FROM idea_insights)").limit(10)
+    new_insights = current_project.insights.actionable.where("id NOT IN (SELECT DISTINCT insight_id FROM idea_insights)").limit(10)
     if new_insights.any?
-      idea_generator = Ai::IdeaGenerator.new
+      idea_generator = Ai::IdeaGenerator.new(project: current_project)
       ideas_result = idea_generator.generate_batch(new_insights)
       Rails.logger.info("Generated ideas for #{new_insights.count} insights")
     end
 
-    recipients = EmailRecipient.active
+    recipients = current_project.email_recipients.active
     if recipients.any?
       begin
         PulseMailer.daily_pulse(report).deliver_now
@@ -102,6 +105,6 @@ class PulseReportsController < ApplicationController
   private
 
   def set_pulse_report
-    @pulse_report = PulseReport.find(params[:id])
+    @pulse_report = current_project.pulse_reports.find(params[:id])
   end
 end
