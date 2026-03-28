@@ -31,6 +31,8 @@ A Rails 7 application that aggregates customer feedback from Linear, Google Form
 
 ## Setup
 
+> **First time?** See [LOCAL_SETUP.md](LOCAL_SETUP.md) for full instructions, including installing Ruby 3.3+, PostgreSQL, Redis, and either Docker or native tooling.
+
 1. **Clone and install dependencies**:
    ```bash
    cd customer_pulse

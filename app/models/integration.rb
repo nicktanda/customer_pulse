@@ -21,8 +21,14 @@ class Integration < ApplicationRecord
   before_create :generate_webhook_secret
 
   def parsed_credentials
-    return {} if credentials.blank?
-    JSON.parse(credentials)
+    raw = credentials
+    return {} if raw.blank?
+    JSON.parse(raw)
+  rescue Lockbox::DecryptionError
+    # Credentials were encrypted with a different key (e.g. LOCKBOX_MASTER_KEY changed or wasn't set).
+    # Clear the corrupted ciphertext so we don't keep failing; user can re-enter credentials.
+    update_column(:credentials_ciphertext, nil)
+    {}
   rescue JSON::ParserError
     {}
   end

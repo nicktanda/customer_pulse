@@ -20,12 +20,13 @@ RSpec.describe Ai::FeedbackProcessor do
       }
     end
 
+    # Real client returns a Hash-like API response; parse_response uses dig("content", 0, "text").
     let(:mock_response) do
-      double(content: [double(text: ai_response.to_json)])
+      { "content" => [{ "text" => ai_response.to_json }] }
     end
 
     before do
-      allow(mock_client).to receive_message_chain(:messages, :create).and_return(mock_response)
+      allow(mock_client).to receive(:messages).and_return(mock_response)
     end
 
     it 'updates feedback with AI analysis' do
@@ -50,7 +51,7 @@ RSpec.describe Ai::FeedbackProcessor do
 
     context 'when AI API fails' do
       before do
-        allow(mock_client).to receive_message_chain(:messages, :create).and_raise(Anthropic::Error.new('API Error'))
+        allow(mock_client).to receive(:messages).and_raise(Anthropic::Error.new('API Error'))
       end
 
       it 'marks feedback as uncategorized' do
@@ -66,11 +67,11 @@ RSpec.describe Ai::FeedbackProcessor do
 
   describe '#process_batch' do
     let(:mock_response) do
-      double(content: [double(text: { category: 'bug', priority: 'p3', summary: 'Test', confidence: 0.8 }.to_json)])
+      { "content" => [{ "text" => { category: 'bug', priority: 'p3', summary: 'Test', confidence: 0.8 }.to_json }] }
     end
 
     before do
-      allow(mock_client).to receive_message_chain(:messages, :create).and_return(mock_response)
+      allow(mock_client).to receive(:messages).and_return(mock_response)
     end
 
     it 'processes multiple feedback items' do

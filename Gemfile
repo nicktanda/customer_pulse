@@ -84,6 +84,9 @@ group :development do
 
   # Preview emails in browser
   gem "letter_opener", "~> 1.10"
+
+  # Process manager for bin/dev (runs Rails, JS, CSS, Sidekiq)
+  gem "foreman", "~> 0.90"
 end
 
 group :test do
@@ -91,4 +94,9 @@ group :test do
   gem "webmock", "~> 3.23"
   gem "vcr", "~> 6.2"
   gem "simplecov", require: false
+end
+
+# Optional error tracking in production — set SENTRY_DSN (see docs/agents.md)
+group :production do
+  gem "sentry-rails"
 end

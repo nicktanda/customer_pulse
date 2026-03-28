@@ -64,7 +64,8 @@
   </div>
 
   <div class="space-y-4">
-    <%= button_to "Go to Dashboard", complete_onboarding_path, method: :post, class: "btn-primary px-8 py-3 text-lg" do %>
+    <%# button_to block form: URL must be first arg to avoid stringify_keys error (Rails 7+) %>
+    <%= button_to complete_onboarding_path, method: :post, class: "btn-primary px-8 py-3 text-lg" do %>
       Go to Dashboard
       <svg class="w-5 h-5 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>

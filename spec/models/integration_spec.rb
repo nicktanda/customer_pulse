@@ -7,7 +7,12 @@ RSpec.describe Integration, type: :model do
   end
 
   describe 'enums' do
-    it { should define_enum_for(:source_type).with_values(linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6) }
+    it {
+      should define_enum_for(:source_type).with_values(
+        linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6,
+        logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10
+      )
+    }
   end
 
   describe 'callbacks' do
