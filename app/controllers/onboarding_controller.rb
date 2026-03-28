@@ -4,7 +4,7 @@ class OnboardingController < ApplicationController
   before_action :authenticate_user!
   skip_before_action :require_onboarding!, only: [:show, :update_step, :test_connection, :complete]
 
-  STEPS = %w[welcome project anthropic_api linear slack jira google_forms logrocket fullstory intercom zendesk sentry github recipients complete].freeze
+  STEPS = %w[welcome project team anthropic_api linear slack jira google_forms logrocket fullstory intercom zendesk sentry github recipients complete].freeze
   REQUIRED_STEPS = %w[project anthropic_api].freeze
 
   def show
@@ -25,6 +25,8 @@ class OnboardingController < ApplicationController
       true
     when 'project'
       save_project_step
+    when 'team'
+      save_team_step
     when 'anthropic_api'
       save_anthropic_api_step
     when 'linear'
@@ -134,6 +136,9 @@ class OnboardingController < ApplicationController
     case @current_step
     when 'project'
       @project = current_user.projects.first || Project.new
+    when 'team'
+      @project = onboarding_project
+      @project_users = @project&.project_users&.includes(:user) || []
     when 'linear'
       @integration = onboarding_project&.integrations&.find_by(source_type: 'linear')
     when 'slack'
@@ -191,6 +196,23 @@ class OnboardingController < ApplicationController
   rescue ActiveRecord::RecordInvalid => e
     @error_message = e.record.errors.full_messages.join(', ')
     false
+  end
+
+  def save_team_step
+    return true if params[:skip].present?
+    return true unless onboarding_project
+
+    emails = params[:emails]&.split(',')&.map(&:strip)&.reject(&:blank?) || []
+
+    emails.each do |email|
+      user = User.find_by(email: email.downcase)
+      next unless user
+      next if onboarding_project.project_users.exists?(user: user)
+
+      onboarding_project.project_users.create!(user: user, invited_by: current_user)
+    end
+
+    true
   end
 
   def save_anthropic_api_step
