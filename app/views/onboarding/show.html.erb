@@ -14,28 +14,22 @@
       </div>
 
       <!-- Step Indicators -->
-      <div class="flex justify-between mt-4">
+      <div class="flex justify-between mt-4 mb-2">
         <% @steps.each_with_index do |step, index| %>
-          <div class="group relative flex flex-col items-center">
-            <div class="<%= index < @step_index ? 'bg-indigo-600' : (index == @step_index ? 'bg-indigo-600 ring-4 ring-indigo-100' : 'bg-gray-300') %> w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer">
+          <div class="flex flex-col items-center">
+            <div class="<%= index < @step_index ? 'bg-indigo-600' : (index == @step_index ? 'bg-indigo-600 ring-4 ring-indigo-100' : 'bg-gray-300') %> w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300">
               <% if index < @step_index %>
                 <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
               <% end %>
             </div>
-            <!-- Tooltip on hover -->
-            <div class="absolute top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-              <%= step.titleize.gsub('_', ' ').gsub('Api', 'API') %>
-            </div>
-            <% if index == @step_index %>
-              <span class="absolute top-8 left-1/2 -translate-x-1/2 text-xs font-medium text-indigo-600 whitespace-nowrap">
-                <%= step.titleize.gsub('_', ' ').gsub('Api', 'API') %>
-              </span>
-            <% end %>
           </div>
         <% end %>
       </div>
+      <p class="text-center text-sm font-medium text-indigo-600">
+        <%= @current_step.titleize.gsub('_', ' ').gsub('Api', 'API') %>
+      </p>
     </div>
 
     <!-- Step Content -->
