@@ -5,7 +5,7 @@
     <!-- Progress Bar -->
     <div class="mb-8">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-sm font-medium text-gray-600">Setup Progress</span>
+        <span class="text-sm font-medium text-gray-600">Setup Progress: <span class="text-indigo-600"><%= @current_step.titleize.gsub('_', ' ').gsub('Api', 'API') %></span></span>
         <span class="text-sm font-medium text-indigo-600"><%= @step_index + 1 %> of <%= @steps.length %></span>
       </div>
       <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -14,9 +14,9 @@
       </div>
 
       <!-- Step Indicators -->
-      <div class="flex justify-between mt-4 mb-20">
+      <div class="flex justify-between mt-4">
         <% @steps.each_with_index do |step, index| %>
-          <div class="relative flex flex-col items-center">
+          <div class="flex flex-col items-center">
             <div class="<%= index < @step_index ? 'bg-indigo-600' : (index == @step_index ? 'bg-indigo-600 ring-4 ring-indigo-100' : 'bg-gray-300') %> w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300">
               <% if index < @step_index %>
                 <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,9 +24,6 @@
                 </svg>
               <% end %>
             </div>
-            <span class="absolute text-xs whitespace-nowrap <%= index == @step_index ? 'text-indigo-600 font-medium' : 'text-gray-400' %>" style="transform: rotate(-45deg); transform-origin: top center; top: 40px; left: -33px;">
-              <%= step.titleize.gsub('_', ' ').gsub('Api', 'API') %>
-            </span>
           </div>
         <% end %>
       </div>
