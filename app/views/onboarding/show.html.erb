@@ -14,7 +14,7 @@
       </div>
 
       <!-- Step Indicators -->
-      <div class="flex justify-between mt-4 mb-2">
+      <div class="flex justify-between mt-4 mb-16">
         <% @steps.each_with_index do |step, index| %>
           <div class="flex flex-col items-center">
             <div class="<%= index < @step_index ? 'bg-indigo-600' : (index == @step_index ? 'bg-indigo-600 ring-4 ring-indigo-100' : 'bg-gray-300') %> w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300">
@@ -24,12 +24,12 @@
                 </svg>
               <% end %>
             </div>
+            <span class="text-xs mt-2 origin-top-left rotate-45 whitespace-nowrap <%= index == @step_index ? 'text-indigo-600 font-medium' : 'text-gray-400' %>">
+              <%= step.titleize.gsub('_', ' ').gsub('Api', 'API') %>
+            </span>
           </div>
         <% end %>
       </div>
-      <p class="text-center text-sm font-medium text-indigo-600">
-        <%= @current_step.titleize.gsub('_', ' ').gsub('Api', 'API') %>
-      </p>
     </div>
 
     <!-- Step Content -->
