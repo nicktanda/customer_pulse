@@ -162,7 +162,6 @@ class OnboardingController < ApplicationController
   def onboarding_project
     @onboarding_project ||= current_user.projects.first
   end
-  end
 
   def next_step_for(current_step)
     current_index = STEPS.index(current_step)
