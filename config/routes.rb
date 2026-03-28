@@ -33,7 +33,7 @@ Rails.application.routes.draw do
       member do
         post :switch
       end
-      resources :project_users, only: [:index, :create, :update, :destroy], path: 'members'
+      resources :project_users, only: [:index, :create, :destroy], path: 'members'
     end
 
     resource :onboarding, only: [:show], controller: 'onboarding' do

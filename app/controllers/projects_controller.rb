@@ -11,7 +11,7 @@ class ProjectsController < ApplicationController
   end
 
   def show
-    @members = @project.project_users.includes(:user, :invited_by).order(:role)
+    @members = @project.project_users.includes(:user, :invited_by).order(is_owner: :desc)
     @stats = {
       feedbacks_count: @project.feedbacks.count,
       integrations_count: @project.integrations.count,
@@ -29,7 +29,7 @@ class ProjectsController < ApplicationController
 
     if @project.save
       # Add current user as owner
-      @project.add_user(current_user, role: :owner)
+      @project.add_user(current_user, is_owner: true)
       session[:current_project_id] = @project.id
       redirect_to @project, notice: "Project created successfully."
     else
@@ -49,13 +49,9 @@ class ProjectsController < ApplicationController
   end
 
   def destroy
-    if @project.users.count == 1 || @project.project_users.owners.count > 1 || @project.project_users.owners.first.user != current_user
-      @project.destroy
-      session.delete(:current_project_id) if session[:current_project_id] == @project.id
-      redirect_to projects_path, notice: "Project deleted."
-    else
-      redirect_to @project, alert: "Cannot delete a project where you are the sole owner. Transfer ownership first."
-    end
+    @project.destroy
+    session.delete(:current_project_id) if session[:current_project_id] == @project.id
+    redirect_to projects_path, notice: "Project deleted."
   end
 
   def switch

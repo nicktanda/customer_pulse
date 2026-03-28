@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_26_124051) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_28_114724) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -221,10 +221,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_26_124051) do
   create_table "project_users", force: :cascade do |t|
     t.bigint "project_id", null: false
     t.bigint "user_id", null: false
-    t.integer "role", default: 0, null: false
     t.bigint "invited_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "is_owner", default: false, null: false
     t.index ["invited_by_id"], name: "index_project_users_on_invited_by_id"
     t.index ["project_id", "user_id"], name: "index_project_users_on_project_id_and_user_id", unique: true
     t.index ["project_id"], name: "index_project_users_on_project_id"

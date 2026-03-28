@@ -4,11 +4,10 @@ class ProjectUsersController < ApplicationController
   before_action :authenticate_user!
   before_action :set_project
   before_action :require_project_owner!
-  before_action :set_project_user, only: [:update, :destroy]
+  before_action :set_project_user, only: [:destroy]
 
   def index
-    @project_users = @project.project_users.includes(:user, :invited_by).order(:role)
-    @available_roles = ProjectUser.roles.keys
+    @project_users = @project.project_users.includes(:user, :invited_by)
   end
 
   def create
@@ -31,10 +30,8 @@ class ProjectUsersController < ApplicationController
       return
     end
 
-    role = params[:role].presence || 'viewer'
     project_user = @project.project_users.build(
       user: user,
-      role: role,
       invited_by: current_user
     )
 
@@ -45,32 +42,14 @@ class ProjectUsersController < ApplicationController
     end
   end
 
-  def update
-    # Don't allow demoting the last owner
-    if @project_user.owner? && params[:role] != 'owner'
-      if @project.project_users.owners.count == 1
-        redirect_to project_project_users_path(@project), alert: "Cannot change role of the only owner. Add another owner first."
-        return
-      end
-    end
-
-    if @project_user.update(role: params[:role])
-      redirect_to project_project_users_path(@project), notice: "Role updated for #{@project_user.user.name || @project_user.user.email}."
-    else
-      redirect_to project_project_users_path(@project), alert: "Failed to update role."
-    end
-  end
-
   def destroy
-    # Don't allow removing the last owner
-    if @project_user.owner? && @project.project_users.owners.count == 1
-      redirect_to project_project_users_path(@project), alert: "Cannot remove the only owner. Transfer ownership first."
+    if @project_user.is_owner?
+      redirect_to project_project_users_path(@project), alert: "Cannot remove the project owner."
       return
     end
 
-    # Don't allow removing yourself if you're an owner (use leave instead)
     if @project_user.user == current_user
-      redirect_to project_project_users_path(@project), alert: "You cannot remove yourself. Ask another owner to remove you."
+      redirect_to project_project_users_path(@project), alert: "You cannot remove yourself."
       return
     end
 

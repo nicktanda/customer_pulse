@@ -26,35 +26,9 @@
         <div class="flex-1">
           <%= f.email_field :email, placeholder: "Enter email address", class: "form-input-enhanced w-full", required: true %>
         </div>
-        <div class="sm:w-40">
-          <%= f.select :role, @available_roles.map { |r| [r.titleize, r] }, {}, class: "form-input-enhanced w-full" %>
-        </div>
         <%= f.submit "Add Member", class: "btn-primary whitespace-nowrap cursor-pointer" %>
       <% end %>
       <p class="mt-2 text-xs text-gray-500">The user must already have a Customer Pulse account.</p>
-    </div>
-  </div>
-
-  <!-- Role descriptions -->
-  <div class="card">
-    <div class="p-5 border-b border-gray-200">
-      <h2 class="text-lg font-medium text-gray-900">Role Permissions</h2>
-    </div>
-    <div class="p-5">
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div>
-          <h3 class="text-sm font-semibold text-gray-900">Viewer</h3>
-          <p class="mt-1 text-sm text-gray-500">Can view all project data but cannot make changes.</p>
-        </div>
-        <div>
-          <h3 class="text-sm font-semibold text-gray-900">Editor</h3>
-          <p class="mt-1 text-sm text-gray-500">Can view and edit data, manage integrations, and update settings.</p>
-        </div>
-        <div>
-          <h3 class="text-sm font-semibold text-gray-900">Owner</h3>
-          <p class="mt-1 text-sm text-gray-500">Full access including managing team members and deleting the project.</p>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -81,6 +55,9 @@
                   <% if project_user.user == current_user %>
                     <span class="text-gray-500">(you)</span>
                   <% end %>
+                  <% if project_user.is_owner? %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 ml-1">Owner</span>
+                  <% end %>
                 </div>
                 <div class="text-sm text-gray-500 truncate"><%= project_user.user.email %></div>
                 <% if project_user.invited_by.present? %>
@@ -90,13 +67,8 @@
             </div>
 
             <div class="flex items-center gap-2 ml-4">
-              <!-- Role selector -->
-              <%= form_with url: project_project_user_path(@project, project_user), method: :patch, class: "flex items-center gap-2" do |f| %>
-                <%= f.select :role, @available_roles.map { |r| [r.titleize, r] }, { selected: project_user.role }, class: "form-input-enhanced text-sm py-1.5", onchange: "this.form.requestSubmit()" %>
-              <% end %>
-
-              <!-- Remove button (not for self) -->
-              <% unless project_user.user == current_user %>
+              <!-- Remove button (not for owner or self) -->
+              <% unless project_user.is_owner? || project_user.user == current_user %>
                 <%= button_to project_project_user_path(@project, project_user), method: :delete, data: { turbo_confirm: "Are you sure you want to remove #{project_user.user.name || project_user.user.email} from this project?" }, class: "text-red-600 hover:text-red-800 p-1.5" do %>
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>

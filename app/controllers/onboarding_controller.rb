@@ -184,7 +184,7 @@ class OnboardingController < ApplicationController
       @project.update!(name: project_name)
     else
       @project = Project.create!(name: project_name)
-      @project.add_user(current_user, role: :owner)
+      @project.add_user(current_user, is_owner: true)
     end
 
     session[:current_project_id] = @project.id

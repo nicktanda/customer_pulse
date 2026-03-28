@@ -71,16 +71,6 @@ class ApplicationController < ActionController::Base
     end
   end
 
-  def require_project_editor!
-    require_project_access!
-    return if performed?
-
-    unless current_project_user&.can_edit?
-      flash[:alert] = "You don't have permission to edit this project."
-      redirect_to root_path
-    end
-  end
-
   def require_project_owner!
     require_project_access!
     return if performed?

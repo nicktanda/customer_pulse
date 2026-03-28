@@ -46,16 +46,4 @@ module ApplicationHelper
     end
   end
 
-  def role_badge_class(role)
-    case role.to_s
-    when 'owner'
-      'bg-purple-100 text-purple-800'
-    when 'editor'
-      'bg-blue-100 text-blue-800'
-    when 'viewer'
-      'bg-gray-100 text-gray-800'
-    else
-      'bg-gray-100 text-gray-600'
-    end
-  end
 end

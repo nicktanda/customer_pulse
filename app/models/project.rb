@@ -25,35 +25,21 @@ class Project < ApplicationRecord
   # Scopes
   scope :alphabetical, -> { order(:name) }
 
-  def owners
-    project_users.owners.includes(:user).map(&:user)
+  def owner
+    project_users.owners.first&.user
   end
 
-  def editors
-    project_users.editors.includes(:user).map(&:user)
-  end
-
-  def viewers
-    project_users.viewers.includes(:user).map(&:user)
-  end
-
-  def role_for(user)
-    project_users.find_by(user: user)&.role
-  end
-
-  def user_can_edit?(user)
-    pu = project_users.find_by(user: user)
-    pu&.can_edit?
+  def user_has_access?(user)
+    project_users.exists?(user: user)
   end
 
   def user_can_manage?(user)
-    pu = project_users.find_by(user: user)
-    pu&.can_manage_project?
+    project_users.find_by(user: user)&.can_manage_project?
   end
 
-  def add_user(user, role: :viewer, invited_by: nil)
+  def add_user(user, is_owner: false, invited_by: nil)
     project_users.find_or_create_by!(user: user) do |pu|
-      pu.role = role
+      pu.is_owner = is_owner
       pu.invited_by = invited_by
     end
   end

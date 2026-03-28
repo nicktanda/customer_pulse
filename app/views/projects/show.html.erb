@@ -83,9 +83,11 @@
               <div class="text-sm text-gray-500"><%= project_user.user.email %></div>
             </div>
           </div>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= role_badge_class(project_user.role) %>">
-            <%= project_user.role_label %>
-          </span>
+          <% if project_user.is_owner? %>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+              Owner
+            </span>
+          <% end %>
         </li>
       <% end %>
     </ul>
