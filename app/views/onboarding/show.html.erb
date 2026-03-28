@@ -24,7 +24,7 @@
                 </svg>
               <% end %>
             </div>
-            <span class="absolute text-xs whitespace-nowrap <%= index == @step_index ? 'text-indigo-600 font-medium' : 'text-gray-400' %>" style="transform: rotate(-45deg); transform-origin: top left; top: 28px; left: 12px;">
+            <span class="absolute text-xs whitespace-nowrap <%= index == @step_index ? 'text-indigo-600 font-medium' : 'text-gray-400' %>" style="transform: rotate(-45deg); transform-origin: top center; top: 30px; left: -20px;">
               <%= step.titleize.gsub('_', ' ').gsub('Api', 'API') %>
             </span>
           </div>
