@@ -4,8 +4,8 @@ class OnboardingController < ApplicationController
   before_action :authenticate_user!
   skip_before_action :require_onboarding!, only: [:show, :update_step, :test_connection, :complete]
 
-  STEPS = %w[welcome anthropic_api linear slack jira google_forms logrocket fullstory intercom zendesk recipients complete].freeze
-  REQUIRED_STEPS = %w[anthropic_api].freeze
+  STEPS = %w[welcome project team anthropic_api linear slack jira google_forms logrocket fullstory intercom zendesk sentry github recipients complete].freeze
+  REQUIRED_STEPS = %w[project anthropic_api].freeze
 
   def show
     @current_step = current_user.onboarding_current_step || 'welcome'
@@ -23,6 +23,10 @@ class OnboardingController < ApplicationController
     success = case step
     when 'welcome'
       true
+    when 'project'
+      save_project_step
+    when 'team'
+      save_team_step
     when 'anthropic_api'
       save_anthropic_api_step
     when 'linear'
@@ -41,6 +45,10 @@ class OnboardingController < ApplicationController
       save_intercom_step
     when 'zendesk'
       save_zendesk_step
+    when 'sentry'
+      save_sentry_step
+    when 'github'
+      save_github_step
     when 'recipients'
       save_recipients_step
     else
@@ -97,6 +105,10 @@ class OnboardingController < ApplicationController
       test_intercom_connection(credentials)
     when 'zendesk'
       test_zendesk_connection(credentials)
+    when 'sentry'
+      test_sentry_connection(credentials)
+    when 'github'
+      test_github_connection(credentials)
     else
       { success: false, message: "Unknown integration type" }
     end
@@ -122,30 +134,85 @@ class OnboardingController < ApplicationController
 
   def load_step_data
     case @current_step
+    when 'project'
+      @project = current_user.projects.first || Project.new
+    when 'team'
+      @project = onboarding_project
+      @project_users = @project&.project_users&.includes(:user) || []
     when 'linear'
-      @integration = Integration.find_by(source_type: 'linear')
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'linear')
     when 'slack'
-      @integration = Integration.find_by(source_type: 'slack')
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'slack')
     when 'jira'
-      @integration = Integration.find_by(source_type: 'jira')
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'jira')
     when 'google_forms'
-      @integration = Integration.find_by(source_type: 'google_forms')
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'google_forms')
     when 'logrocket'
-      @integration = Integration.find_by(source_type: 'logrocket')
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'logrocket')
     when 'fullstory'
-      @integration = Integration.find_by(source_type: 'fullstory')
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'fullstory')
     when 'intercom'
-      @integration = Integration.find_by(source_type: 'intercom')
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'intercom')
     when 'zendesk'
-      @integration = Integration.find_by(source_type: 'zendesk')
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'zendesk')
+    when 'sentry'
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'sentry')
+    when 'github'
+      @integration = onboarding_project&.integrations&.find_by(source_type: 'github')
     when 'recipients'
-      @recipients = EmailRecipient.all
+      @recipients = onboarding_project&.email_recipients || EmailRecipient.none
     end
+  end
+
+  def onboarding_project
+    @onboarding_project ||= current_user.projects.first
   end
 
   def next_step_for(current_step)
     current_index = STEPS.index(current_step)
     STEPS[current_index + 1] || 'complete'
+  end
+
+  def save_project_step
+    project_name = params.dig(:project, :name)&.strip
+
+    if project_name.blank?
+      @error_message = "Project name is required."
+      return false
+    end
+
+    # Check if user already has a project from a previous attempt
+    @project = current_user.projects.first
+
+    if @project
+      @project.update!(name: project_name)
+    else
+      @project = Project.create!(name: project_name)
+      @project.add_user(current_user, is_owner: true)
+    end
+
+    session[:current_project_id] = @project.id
+    true
+  rescue ActiveRecord::RecordInvalid => e
+    @error_message = e.record.errors.full_messages.join(', ')
+    false
+  end
+
+  def save_team_step
+    return true if params[:skip].present?
+    return true unless onboarding_project
+
+    emails = params[:emails]&.split(',')&.map(&:strip)&.reject(&:blank?) || []
+
+    emails.each do |email|
+      user = User.find_by(email: email.downcase)
+      next unless user
+      next if onboarding_project.project_users.exists?(user: user)
+
+      onboarding_project.project_users.create!(user: user, invited_by: current_user)
+    end
+
+    true
   end
 
   def save_anthropic_api_step
@@ -160,6 +227,7 @@ class OnboardingController < ApplicationController
 
   def save_linear_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     credentials = {
       api_key: params.dig(:integration, :api_key)
@@ -167,7 +235,7 @@ class OnboardingController < ApplicationController
 
     return true if credentials[:api_key].blank?
 
-    integration = Integration.find_or_initialize_by(source_type: 'linear')
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'linear')
     integration.name = "Linear"
     integration.enabled = true
     integration.update_credentials(credentials)
@@ -176,6 +244,7 @@ class OnboardingController < ApplicationController
 
   def save_slack_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     credentials = {
       bot_token: params.dig(:integration, :bot_token),
@@ -185,7 +254,7 @@ class OnboardingController < ApplicationController
 
     return true if credentials[:bot_token].blank?
 
-    integration = Integration.find_or_initialize_by(source_type: 'slack')
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'slack')
     integration.name = "Slack"
     integration.enabled = true
     integration.update_credentials(credentials)
@@ -194,6 +263,7 @@ class OnboardingController < ApplicationController
 
   def save_jira_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     credentials = {
       site_url: params.dig(:integration, :site_url),
@@ -203,7 +273,7 @@ class OnboardingController < ApplicationController
 
     return true if credentials[:site_url].blank?
 
-    integration = Integration.find_or_initialize_by(source_type: 'jira')
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'jira')
     integration.name = "Jira"
     integration.enabled = true
     integration.update_credentials(credentials)
@@ -212,6 +282,7 @@ class OnboardingController < ApplicationController
 
   def save_google_forms_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     google_creds = params.dig(:integration, :google_credentials)
     spreadsheet_id = params.dig(:integration, :spreadsheet_id)
@@ -228,7 +299,7 @@ class OnboardingController < ApplicationController
       credentials[:google_credentials] = JSON.parse(google_creds) rescue google_creds
     end
 
-    integration = Integration.find_or_initialize_by(source_type: 'google_forms')
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'google_forms')
     integration.name = "Google Forms"
     integration.enabled = true
     integration.sync_frequency_minutes = 60
@@ -238,6 +309,7 @@ class OnboardingController < ApplicationController
 
   def save_logrocket_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     credentials = {
       app_id: params.dig(:integration, :app_id),
@@ -246,7 +318,7 @@ class OnboardingController < ApplicationController
 
     return true if credentials[:app_id].blank?
 
-    integration = Integration.find_or_initialize_by(source_type: 'logrocket')
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'logrocket')
     integration.name = "LogRocket"
     integration.enabled = true
     integration.update_credentials(credentials)
@@ -255,6 +327,7 @@ class OnboardingController < ApplicationController
 
   def save_fullstory_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     credentials = {
       api_key: params.dig(:integration, :api_key),
@@ -263,7 +336,7 @@ class OnboardingController < ApplicationController
 
     return true if credentials[:api_key].blank?
 
-    integration = Integration.find_or_initialize_by(source_type: 'fullstory')
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'fullstory')
     integration.name = "FullStory"
     integration.enabled = true
     integration.update_credentials(credentials)
@@ -272,6 +345,7 @@ class OnboardingController < ApplicationController
 
   def save_intercom_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     credentials = {
       access_token: params.dig(:integration, :access_token)
@@ -279,7 +353,7 @@ class OnboardingController < ApplicationController
 
     return true if credentials[:access_token].blank?
 
-    integration = Integration.find_or_initialize_by(source_type: 'intercom')
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'intercom')
     integration.name = "Intercom"
     integration.enabled = true
     integration.update_credentials(credentials)
@@ -288,6 +362,7 @@ class OnboardingController < ApplicationController
 
   def save_zendesk_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     credentials = {
       subdomain: params.dig(:integration, :subdomain),
@@ -297,8 +372,47 @@ class OnboardingController < ApplicationController
 
     return true if credentials[:subdomain].blank?
 
-    integration = Integration.find_or_initialize_by(source_type: 'zendesk')
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'zendesk')
     integration.name = "Zendesk"
+    integration.enabled = true
+    integration.update_credentials(credentials)
+    integration.save!
+  end
+
+  def save_sentry_step
+    return true if params[:skip].present?
+    return true unless onboarding_project
+
+    credentials = {
+      auth_token: params.dig(:integration, :auth_token),
+      organization_slug: params.dig(:integration, :organization_slug),
+      project_slugs: params.dig(:integration, :project_slugs)
+    }.compact
+
+    return true if credentials[:auth_token].blank?
+
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'sentry')
+    integration.name = "Sentry"
+    integration.enabled = true
+    integration.update_credentials(credentials)
+    integration.save!
+  end
+
+  def save_github_step
+    return true if params[:skip].present?
+    return true unless onboarding_project
+
+    credentials = {
+      access_token: params.dig(:integration, :access_token),
+      owner: params.dig(:integration, :owner),
+      repo: params.dig(:integration, :repo),
+      default_branch: params.dig(:integration, :default_branch).presence || 'main'
+    }.compact
+
+    return true if credentials[:access_token].blank?
+
+    integration = onboarding_project.integrations.find_or_initialize_by(source_type: 'github')
+    integration.name = "GitHub"
     integration.enabled = true
     integration.update_credentials(credentials)
     integration.save!
@@ -306,11 +420,12 @@ class OnboardingController < ApplicationController
 
   def save_recipients_step
     return true if params[:skip].present?
+    return true unless onboarding_project
 
     emails = params[:emails]&.split(',')&.map(&:strip)&.reject(&:blank?) || []
 
     emails.each do |email|
-      EmailRecipient.find_or_create_by!(email: email) do |recipient|
+      onboarding_project.email_recipients.find_or_create_by!(email: email) do |recipient|
         recipient.name = email.split('@').first.titleize
       end
     end
@@ -389,5 +504,26 @@ class OnboardingController < ApplicationController
     temp_integration = Integration.new(source_type: 'zendesk')
     temp_integration.update_credentials(credentials)
     Integrations::ZendeskClient.new(temp_integration).test_connection
+  end
+
+  def test_sentry_connection(credentials)
+    return { success: false, message: "Auth Token is required" } if credentials['auth_token'].blank?
+    return { success: false, message: "Organization Slug is required" } if credentials['organization_slug'].blank?
+
+    temp_integration = Integration.new(source_type: 'sentry')
+    temp_integration.update_credentials(credentials)
+    Integrations::SentryClient.new(temp_integration).test_connection
+  end
+
+  def test_github_connection(credentials)
+    return { success: false, message: "Access Token is required" } if credentials['access_token'].blank?
+    return { success: false, message: "Owner is required" } if credentials['owner'].blank?
+    return { success: false, message: "Repository is required" } if credentials['repo'].blank?
+
+    credentials['default_branch'] ||= 'main'
+
+    temp_integration = Integration.new(source_type: 'github')
+    temp_integration.update_credentials(credentials)
+    Integrations::GithubClient.new(temp_integration).test_connection
   end
 end

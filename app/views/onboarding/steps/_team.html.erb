@@ -1,0 +1,70 @@
+<div>
+  <div class="flex items-center mb-6">
+    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4">
+      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+      </svg>
+    </div>
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">Invite Your Team</h2>
+      <p class="text-gray-500">Add team members to collaborate on <%= @project&.name || "this project" %></p>
+    </div>
+    <span class="ml-auto px-3 py-1 bg-gray-100 text-gray-600 text-sm font-medium rounded-full">Optional</span>
+  </div>
+
+  <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+    <div class="flex">
+      <svg class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <div>
+        <h4 class="font-medium text-blue-800 mb-1">Team Collaboration</h4>
+        <p class="text-sm text-blue-700">
+          Team members will have full access to view and manage feedback, integrations, and insights.
+          They must already have a Customer Pulse account to be added.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <% if @project_users&.length&.> 1 %>
+    <div class="mb-6">
+      <h4 class="text-sm font-medium text-gray-700 mb-2">Current Team Members</h4>
+      <div class="flex flex-wrap gap-2">
+        <% @project_users.each do |pu| %>
+          <% next if pu.user == current_user %>
+          <span class="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+            <%= pu.user.name || pu.user.email %>
+          </span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%= form_with url: update_step_onboarding_path, method: :post, data: { turbo_frame: "_top" }, local: true do |f| %>
+    <%= hidden_field_tag :step, "team" %>
+
+    <div class="space-y-4 mb-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email Addresses (comma-separated)</label>
+        <textarea name="emails"
+                  rows="3"
+                  placeholder="colleague@company.com, teammate@company.com"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+        <p class="text-xs text-gray-500 mt-1">Enter email addresses of existing Customer Pulse users</p>
+      </div>
+    </div>
+
+    <div class="flex justify-between">
+      <button type="submit" name="skip" value="1" class="text-gray-500 hover:text-gray-700 font-medium px-4 py-2 transition-colors">
+        Skip for now
+      </button>
+      <button type="submit" class="btn-primary px-6 py-2.5">
+        Continue
+        <svg class="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+        </svg>
+      </button>
+    </div>
+  <% end %>
+</div>

@@ -2,6 +2,7 @@
 
 class StakeholderSegment < ApplicationRecord
   # Associations
+  belongs_to :project
   has_many :insight_stakeholders, dependent: :destroy
   has_many :insights, through: :insight_stakeholders
 

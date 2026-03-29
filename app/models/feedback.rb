@@ -1,10 +1,11 @@
 class Feedback < ApplicationRecord
   # Associations
+  belongs_to :project
   has_many :feedback_insights, dependent: :destroy
   has_many :insights, through: :feedback_insights
 
   # Enums
-  enum :source, { linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6, logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10 }
+  enum :source, { linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6, logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10, sentry: 11 }
   enum :category, { uncategorized: 0, bug: 1, feature_request: 2, complaint: 3 }
   enum :priority, { unset: 0, p1: 1, p2: 2, p3: 3, p4: 4 }
   enum :status, { new_feedback: 0, triaged: 1, in_progress: 2, resolved: 3, archived: 4 }

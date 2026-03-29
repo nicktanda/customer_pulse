@@ -45,4 +45,5 @@ module ApplicationHelper
       "bg-gray-100 text-gray-600"
     end
   end
+
 end

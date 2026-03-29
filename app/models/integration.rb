@@ -2,8 +2,13 @@ class Integration < ApplicationRecord
   # Encrypted credentials using Lockbox
   has_encrypted :credentials
 
+  # Associations
+  belongs_to :project
+  has_many :repo_analyses, dependent: :destroy
+  has_many :idea_pull_requests, dependent: :destroy
+
   # Enums
-  enum :source_type, { linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6, logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10 }
+  enum :source_type, { linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6, logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10, sentry: 11, github: 12 }
 
   # Validations
   validates :name, presence: true

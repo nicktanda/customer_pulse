@@ -1,6 +1,9 @@
 class EmailRecipient < ApplicationRecord
+  # Associations
+  belongs_to :project
+
   # Validations
-  validates :email, presence: true, uniqueness: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :email, presence: true, uniqueness: { scope: :project_id }, format: { with: URI::MailTo::EMAIL_REGEXP }
 
   # Scopes
   scope :active, -> { where(active: true) }

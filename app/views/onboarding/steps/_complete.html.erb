@@ -29,7 +29,7 @@
       </div>
 
       <% integrations = Integration.all %>
-      <% %w[linear slack jira google_forms logrocket fullstory intercom zendesk].each do |type| %>
+      <% %w[linear slack jira google_forms logrocket fullstory intercom zendesk sentry github].each do |type| %>
         <% integration = integrations.find { |i| i.source_type == type } %>
         <div class="flex items-center">
           <% if integration&.enabled? %>
@@ -64,7 +64,6 @@
   </div>
 
   <div class="space-y-4">
-    <%# button_to block form: URL must be first arg to avoid stringify_keys error (Rails 7+) %>
     <%= button_to complete_onboarding_path, method: :post, class: "btn-primary px-8 py-3 text-lg" do %>
       Go to Dashboard
       <svg class="w-5 h-5 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">

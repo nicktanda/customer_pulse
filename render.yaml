@@ -37,6 +37,8 @@ services:
         sync: false
       - key: SLACK_SIGNING_SECRET
         sync: false
+      - key: APP_HOST
+        sync: false
 
   # Background worker
   - type: worker
@@ -62,6 +64,8 @@ services:
       - key: LOCKBOX_MASTER_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SLACK_SIGNING_SECRET
         sync: false
 
   # Redis

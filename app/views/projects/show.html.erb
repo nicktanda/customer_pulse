@@ -1,0 +1,114 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold text-gray-900"><%= @project.name %></h1>
+        <% if current_project&.id == @project.id %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+            Current Project
+          </span>
+        <% end %>
+      </div>
+      <% if @project.description.present? %>
+        <p class="mt-1 text-sm text-gray-500"><%= @project.description %></p>
+      <% end %>
+    </div>
+    <div class="flex items-center gap-2">
+      <% if current_project&.id != @project.id %>
+        <%= button_to "Switch to this project", switch_project_path(@project), method: :post, class: "btn-secondary" %>
+      <% end %>
+      <% if @project.user_can_manage?(current_user) %>
+        <%= link_to "Edit", edit_project_path(@project), class: "btn-secondary" %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div class="card">
+      <div class="p-4">
+        <div class="text-sm font-medium text-gray-500">Feedback</div>
+        <div class="mt-1 text-2xl font-semibold text-gray-900"><%= @stats[:feedbacks_count] %></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="p-4">
+        <div class="text-sm font-medium text-gray-500">Integrations</div>
+        <div class="mt-1 text-2xl font-semibold text-gray-900"><%= @stats[:integrations_count] %></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="p-4">
+        <div class="text-sm font-medium text-gray-500">Insights</div>
+        <div class="mt-1 text-2xl font-semibold text-gray-900"><%= @stats[:insights_count] %></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="p-4">
+        <div class="text-sm font-medium text-gray-500">Ideas</div>
+        <div class="mt-1 text-2xl font-semibold text-gray-900"><%= @stats[:ideas_count] %></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Members -->
+  <div class="card">
+    <div class="p-5 border-b border-gray-200">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-medium text-gray-900">Team Members</h2>
+        <% if @project.user_can_manage?(current_user) %>
+          <%= link_to project_project_users_path(@project), class: "text-sm text-indigo-600 hover:text-indigo-500" do %>
+            Manage members
+            <svg class="inline-block w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <ul class="divide-y divide-gray-200">
+      <% @members.each do |project_user| %>
+        <li class="p-4 flex items-center justify-between">
+          <div class="flex items-center">
+            <% if project_user.user.avatar_url.present? %>
+              <img src="<%= project_user.user.avatar_url %>" alt="" class="w-10 h-10 rounded-full">
+            <% else %>
+              <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                <span class="text-indigo-600 font-medium text-sm"><%= project_user.user.name&.first&.upcase || project_user.user.email.first.upcase %></span>
+              </div>
+            <% end %>
+            <div class="ml-3">
+              <div class="text-sm font-medium text-gray-900"><%= project_user.user.name || project_user.user.email %></div>
+              <div class="text-sm text-gray-500"><%= project_user.user.email %></div>
+            </div>
+          </div>
+          <% if project_user.is_owner? %>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+              Owner
+            </span>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+
+  <!-- Danger Zone -->
+  <% if @project.user_can_manage?(current_user) %>
+    <div class="card border-red-200">
+      <div class="p-5 border-b border-red-200 bg-red-50">
+        <h2 class="text-lg font-medium text-red-800">Danger Zone</h2>
+      </div>
+      <div class="p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-medium text-gray-900">Delete this project</h3>
+            <p class="text-sm text-gray-500">Once deleted, all project data will be permanently removed.</p>
+          </div>
+          <%= button_to "Delete Project", project_path(@project), method: :delete, data: { turbo_confirm: "Are you sure you want to delete this project? This action cannot be undone." }, class: "px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 text-sm font-medium" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+

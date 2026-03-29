@@ -1,0 +1,28 @@
+<% latest_pr = idea.idea_pull_requests.recent.first %>
+<% if latest_pr&.failed? %>
+  <details class="mt-2 pt-2 border-t border-gray-100">
+    <summary class="text-xs text-red-600 flex items-center cursor-pointer">
+      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      Previous attempt failed - click Generate PR to retry
+    </summary>
+    <p class="text-xs text-red-500 mt-1 pl-4"><%= latest_pr.error_message&.truncate(200) %></p>
+  </details>
+<% elsif latest_pr&.open? && latest_pr.files_changed.present? %>
+  <div class="mt-2 pt-2 border-t border-gray-100">
+    <p class="text-xs text-gray-500">
+      <span class="font-medium"><%= latest_pr.files_changed.size %> file(s)</span> changed in
+      <span class="font-mono text-gray-600"><%= latest_pr.branch_name&.split('/')&.last&.truncate(30) %></span>
+    </p>
+  </div>
+<% elsif latest_pr&.merged? %>
+  <div class="mt-2 pt-2 border-t border-gray-100">
+    <p class="text-xs text-purple-600 flex items-center">
+      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+      </svg>
+      Merged <%= time_ago_in_words(latest_pr.merged_at) %> ago
+    </p>
+  </div>
+<% end %>

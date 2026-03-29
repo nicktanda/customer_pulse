@@ -2,6 +2,7 @@
 
 class PmPersona < ApplicationRecord
   # Associations
+  belongs_to :project
   has_many :insights, dependent: :nullify
   has_many :ideas, dependent: :nullify
 

@@ -2,6 +2,7 @@
 
 class Insight < ApplicationRecord
   # Associations
+  belongs_to :project
   belongs_to :pm_persona, optional: true
 
   has_many :feedback_insights, dependent: :destroy

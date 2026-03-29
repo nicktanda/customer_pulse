@@ -33,6 +33,8 @@ gem "thruster", require: false
 
 # Authentication
 gem "devise", "~> 4.9"
+gem "omniauth-google-oauth2", "~> 1.1"
+gem "omniauth-rails_csrf_protection", "~> 1.0"
 
 # Background processing
 gem "sidekiq", "~> 7.0"
@@ -40,7 +42,7 @@ gem "sidekiq-cron", "~> 2.0"
 gem "redis", "~> 5.0"
 
 # AI/Claude API
-gem "anthropic", "~> 0.3"
+gem "anthropic", "~> 1.19"
 gem "faraday", "~> 2.0"
 
 # Google APIs for Google Forms/Sheets integration

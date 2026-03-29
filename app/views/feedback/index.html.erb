@@ -1,9 +1,26 @@
 <% content_for :title, "Feedback - Customer Pulse" %>
 
+<div data-controller="polling"
+     data-polling-interval-value="30000"
+     data-polling-sync-url-value="<%= sync_all_integrations_path %>">
+</div>
+
 <div class="mb-6 flex justify-between items-center">
   <div>
     <h1 class="text-3xl font-bold text-gray-900">Feedback</h1>
     <p class="mt-1 text-gray-500">Browse and manage customer feedback</p>
+  </div>
+  <div>
+    <button type="button"
+            class="btn-secondary inline-flex items-center gap-2"
+            data-controller="sync-button"
+            data-sync-button-url-value="<%= sync_all_integrations_path %>"
+            data-action="click->sync-button#sync">
+      <svg class="w-4 h-4" data-sync-button-target="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      <span data-sync-button-target="text">Sync All</span>
+    </button>
   </div>
 </div>
 
@@ -57,42 +74,10 @@
           <th class="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-100">
+      <tbody id="feedback_list" class="divide-y divide-gray-100">
         <% if @feedbacks.any? %>
           <% @feedbacks.each do |feedback| %>
-            <tr class="hover:bg-indigo-50/50 cursor-pointer transition-colors group" onclick="window.location='<%= feedback_path(feedback) %>'">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-                  <%= feedback.source_label %>
-                </span>
-              </td>
-              <td class="px-6 py-4">
-                <div class="text-sm font-medium text-gray-900 truncate max-w-xs group-hover:text-indigo-600 transition-colors">
-                  <%= feedback.title || feedback.content.truncate(60) %>
-                </div>
-                <% if feedback.author_name.present? %>
-                  <div class="text-xs text-gray-500 mt-0.5"><%= feedback.author_name %></div>
-                <% end %>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full <%= category_badge_class(feedback.category) %>">
-                  <%= feedback.category_label %>
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full <%= priority_badge_class(feedback.priority) %>">
-                  <%= feedback.priority_label %>
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full <%= status_badge_class(feedback.status) %>">
-                  <%= feedback.status.titleize.gsub('_', ' ') %>
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                <%= feedback.created_at.strftime("%b %d, %Y") %>
-              </td>
-            </tr>
+            <%= render "feedback/feedback_row", feedback: feedback %>
           <% end %>
         <% else %>
           <tr>
