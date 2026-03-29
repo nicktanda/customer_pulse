@@ -8,13 +8,13 @@ class AnthropicApiValidator
   def validate
     return { success: false, message: "API key is not configured" } if @api_key.blank?
 
-    client = Anthropic::Client.new(access_token: @api_key)
+    client = Anthropic::Client.new(api_key: @api_key)
 
-    response = client.messages(parameters: {
+    response = client.messages(
       model: "claude-sonnet-4-20250514",
       max_tokens: 10,
       messages: [{ role: "user", content: "Say 'ok'" }]
-    })
+    )
 
     content = response.dig("content", 0, "text") || response.dig(:content, 0, :text)
 
@@ -23,11 +23,11 @@ class AnthropicApiValidator
     else
       { success: false, message: "Unexpected response from API" }
     end
-  rescue Anthropic::AuthenticationError => e
-    { success: false, message: "Invalid API key: #{e.message}" }
-  rescue Anthropic::RateLimitError => e
-    { success: false, message: "Rate limited: #{e.message}" }
-  rescue Anthropic::Error => e
+  rescue Faraday::UnauthorizedError => e
+    { success: false, message: "Invalid API key" }
+  rescue Faraday::TooManyRequestsError => e
+    { success: false, message: "Rate limited" }
+  rescue Faraday::Error => e
     { success: false, message: "API error: #{e.message}" }
   rescue => e
     { success: false, message: "Connection error: #{e.message}" }
