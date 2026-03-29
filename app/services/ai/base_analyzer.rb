@@ -6,7 +6,7 @@ module Ai
     DEFAULT_MAX_TOKENS = 4096
 
     def initialize(pm_persona: nil)
-      @client = Anthropic::Client.new(access_token: ENV["ANTHROPIC_API_KEY"])
+      @client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
       @pm_persona = pm_persona
     end
 
@@ -17,21 +17,18 @@ module Ai
 
       Rails.logger.info("Calling Claude with prompt length: #{prompt.length}, max_tokens: #{max_tokens}")
 
-      response = @client.messages(parameters: {
+      response = @client.messages.create(
         model: DEFAULT_MODEL,
         max_tokens: max_tokens,
         system: effective_system,
         messages: [{ role: "user", content: prompt }]
-      })
+      )
 
-      Rails.logger.info("Claude response received, stop_reason: #{response['stop_reason']}")
+      Rails.logger.info("Claude response received, stop_reason: #{response.stop_reason}")
 
       parse_json_response(response)
-    rescue Anthropic::Error => e
-      Rails.logger.error("Claude API error: #{e.message}")
-      { error: e.message }
     rescue => e
-      Rails.logger.error("Unexpected error calling Claude: #{e.class} - #{e.message}")
+      Rails.logger.error("Claude API error: #{e.class} - #{e.message}")
       { error: e.message }
     end
 
@@ -44,7 +41,7 @@ module Ai
     end
 
     def parse_json_response(response)
-      content = response.dig("content", 0, "text") || response.dig(:content, 0, :text)
+      content = response.content&.first&.text
 
       unless content
         Rails.logger.error("No content in AI response: #{response.inspect[0..500]}")

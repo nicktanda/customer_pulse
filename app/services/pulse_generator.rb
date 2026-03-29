@@ -56,18 +56,18 @@ class PulseGenerator
     contents = feedbacks.limit(20).pluck(:content).join("\n---\n")
 
     # Use Claude to identify common themes
-    client = Anthropic::Client.new(access_token: ENV["ANTHROPIC_API_KEY"])
+    client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
 
-    response = client.messages(parameters: {
+    response = client.messages.create(
       model: "claude-sonnet-4-20250514",
       max_tokens: 300,
       messages: [{
         role: "user",
         content: "Identify 2-3 common themes or patterns in this customer feedback. Be concise (1-2 sentences):\n\n#{contents}"
       }]
-    })
+    )
 
-    response.dig("content", 0, "text")&.strip
+    response.content&.first&.text&.strip
   rescue => e
     Rails.logger.error("Failed to generate trends summary: #{e.message}")
     nil
