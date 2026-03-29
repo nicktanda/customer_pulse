@@ -1,0 +1,46 @@
+#!/bin/bash
+set -e
+
+# Native setup script - run this AFTER installing Homebrew
+# Step 1 (run manually): /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Then add brew to PATH: eval "$(/opt/homebrew/bin/brew shellenv)"
+
+echo "== Checking prerequisites =="
+if ! command -v brew &>/dev/null; then
+  echo "Error: Homebrew not found. Install it first:"
+  echo '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+  echo '  eval "$(/opt/homebrew/bin/brew shellenv)"'
+  exit 1
+fi
+
+echo "== Installing rbenv, Ruby, PostgreSQL, Redis, Node, Yarn =="
+brew install rbenv ruby-build postgresql@16 redis node yarn
+
+echo "== Setting up rbenv =="
+eval "$(rbenv init -)"
+rbenv install -s 3.3.4 2>/dev/null || rbenv install 3.3.4
+cd "$(dirname "$0")/.."
+rbenv local 3.3.4
+
+echo "== Starting PostgreSQL and Redis =="
+brew services start postgresql@16 2>/dev/null || true
+brew services start redis 2>/dev/null || true
+
+# Give Postgres a moment to start
+sleep 2
+
+echo "== Installing Ruby gems =="
+bundle install
+
+echo "== Installing Node packages =="
+yarn install
+
+echo "== Setting up environment =="
+cp -n .env.example .env 2>/dev/null || true
+
+echo "== Setting up database =="
+bin/rails db:create db:migrate db:seed
+
+echo ""
+echo "== Done! Start the app with: bin/dev =="
+echo "Then visit http://localhost:3000 (login: admin@example.com / password123)"

@@ -79,6 +79,8 @@ Rails.application.routes.draw do
       end
     end
 
+    resources :skills
+
   end
 
   # Unauthenticated root redirects to sign in

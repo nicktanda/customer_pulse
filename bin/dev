@@ -1,11 +1,9 @@
 #!/usr/bin/env sh
 
-if gem list --no-installed --exact --silent foreman; then
-  echo "Installing foreman..."
-  gem install foreman
-fi
-
+# Use bundle exec so we always use the project's foreman (from Gemfile)
+# - avoids system Ruby / permission errors when foreman isn't installed globally
 # Default to port 3000 if not specified
 export PORT="${PORT:-3000}"
 
-exec foreman start -f Procfile.dev --env /dev/null "$@"
+# Load .env so ANTHROPIC_API_KEY etc. are available to the web/worker processes
+exec bundle exec foreman start -f Procfile.dev --env .env "$@"

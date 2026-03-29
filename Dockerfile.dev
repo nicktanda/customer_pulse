@@ -1,0 +1,52 @@
+# Development Dockerfile - for local development with docker-compose
+# Uses Ruby 3.3.4 to match .ruby-version
+FROM ruby:3.3.4-slim
+
+# Install dependencies needed for gems (pg, etc.) and build tools
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+    build-essential \
+    curl \
+    git \
+    libpq-dev \
+    libvips \
+    node-gyp \
+    pkg-config \
+    postgresql-client \
+    python-is-python3 \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+# Install Node.js 20 and Yarn (matches production Dockerfile)
+ARG NODE_VERSION=20.17.0
+ARG YARN_VERSION=1.22.22
+ENV PATH=/usr/local/node/bin:$PATH
+RUN curl -sL https://github.com/nodenv/node-build/archive/master.tar.gz | tar xz -C /tmp/ && \
+    /tmp/node-build-master/bin/node-build "${NODE_VERSION}" /usr/local/node && \
+    npm install -g yarn@$YARN_VERSION && \
+    rm -rf /tmp/node-build-master
+
+WORKDIR /rails
+
+# Install gems - use development group for hot reload, etc.
+COPY Gemfile Gemfile.lock ./
+RUN bundle config set --local deployment 'false' && \
+    bundle config set --local without 'production' && \
+    bundle install
+
+# Install node modules
+COPY package.json yarn.lock ./
+RUN yarn install
+
+# Copy app code (will be overwritten by volume mount in dev)
+COPY . .
+
+# Default env for development
+ENV RAILS_ENV=development
+ENV PORT=3000
+
+# Expose Rails server port
+EXPOSE 3000
+
+# Default command - docker-compose will override with bin/dev
+CMD ["./bin/rails", "server", "-b", "0.0.0.0", "-p", "3000"]

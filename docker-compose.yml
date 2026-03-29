@@ -1,0 +1,63 @@
+# Docker Compose for local development
+# Run: docker compose up
+# Then visit http://localhost:3000
+# Login: admin@example.com / password123
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: customer_pulse_development
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: bin/dev
+    # Give the container a TTY + stdin so asset watchers (Tailwind, etc.) do not exit
+    # immediately in Docker; without this, foreman shuts down the whole app.
+    stdin_open: true
+    tty: true
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/customer_pulse_development
+      REDIS_URL: redis://redis:6379/0
+      RAILS_ENV: development
+      # Lockbox needs a key for dev - generated random is fine for local
+      # 32-byte hex key for Lockbox encryption (dev-only placeholder)
+      LOCKBOX_MASTER_KEY: ${LOCKBOX_MASTER_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+    volumes:
+      # Mount app code for hot reload - changes reflect without rebuild
+      - .:/rails
+      # Keep node_modules from image (don't overwrite with host's empty dir)
+      - /rails/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

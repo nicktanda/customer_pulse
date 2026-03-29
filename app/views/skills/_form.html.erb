@@ -1,0 +1,48 @@
+<%= form_with model: skill, class: "space-y-6" do |f| %>
+  <% if skill.errors.any? %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div class="flex">
+        <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">Please fix the following errors:</h3>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+            <% skill.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :title, class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :title, class: "form-input-enhanced", placeholder: "e.g., API Integration Testing" %>
+    <p class="mt-1 text-xs text-gray-500">A human-readable name for this skill</p>
+  </div>
+
+  <div>
+    <%= f.label :name, "Folder Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :name, class: "form-input-enhanced font-mono", placeholder: "e.g., api-integration-testing" %>
+    <p class="mt-1 text-xs text-gray-500">Leave blank to auto-generate from title. Only lowercase letters, numbers, and hyphens.</p>
+  </div>
+
+  <div>
+    <%= f.label :description, class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_area :description, rows: 2, class: "form-input-enhanced", placeholder: "Brief description of what this skill does..." %>
+    <p class="mt-1 text-xs text-gray-500">Short description shown in skill listings</p>
+  </div>
+
+  <div>
+    <%= f.label :content, "Skill Content (Markdown)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_area :content, rows: 15, class: "form-input-enhanced font-mono text-sm", placeholder: "# When to use this skill\n\nUse this skill when...\n\n# Steps\n\n1. First, do this\n2. Then do that\n3. Finally, verify..." %>
+    <p class="mt-1 text-xs text-gray-500">The main content of your SKILL.md file. Use Markdown formatting.</p>
+  </div>
+
+  <div class="flex items-center justify-end gap-3 pt-4 border-t">
+    <%= link_to "Cancel", skills_path, class: "btn-secondary" %>
+    <%= f.submit skill.persisted? ? "Update Skill" : "Create Skill", class: "btn-primary cursor-pointer" %>
+  </div>
+<% end %>
