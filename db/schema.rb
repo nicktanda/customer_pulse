@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_28_114724) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_29_123148) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -269,6 +269,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_114724) do
     t.index ["integration_id"], name: "index_repo_analyses_on_integration_id"
   end
 
+  create_table "skills", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.text "content", null: false
+    t.bigint "user_id", null: false
+    t.bigint "project_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_skills_on_name", unique: true
+    t.index ["project_id"], name: "index_skills_on_project_id"
+    t.index ["user_id"], name: "index_skills_on_user_id"
+  end
+
   create_table "stakeholder_segments", force: :cascade do |t|
     t.string "name", null: false
     t.integer "segment_type", default: 0, null: false
@@ -349,6 +363,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_114724) do
   add_foreign_key "project_users", "users", column: "invited_by_id"
   add_foreign_key "pulse_reports", "projects"
   add_foreign_key "repo_analyses", "integrations"
+  add_foreign_key "skills", "projects"
+  add_foreign_key "skills", "users"
   add_foreign_key "stakeholder_segments", "projects"
   add_foreign_key "themes", "projects"
 end

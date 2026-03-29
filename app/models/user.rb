@@ -9,6 +9,7 @@ class User < ApplicationRecord
   has_many :project_users, dependent: :destroy
   has_many :projects, through: :project_users
   has_many :invited_project_users, class_name: 'ProjectUser', foreign_key: :invited_by_id, dependent: :nullify
+  has_many :skills, dependent: :destroy
 
   enum :role, { viewer: 0, admin: 1 }
 
