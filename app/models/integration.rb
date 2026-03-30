@@ -8,7 +8,7 @@ class Integration < ApplicationRecord
   has_many :idea_pull_requests, dependent: :destroy
 
   # Enums
-  enum :source_type, { linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6, logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10, sentry: 11, github: 12 }
+  enum :source_type, { linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6, logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10, sentry: 11, github: 12, anthropic: 13 }
 
   # Validations
   validates :name, presence: true
@@ -16,11 +16,11 @@ class Integration < ApplicationRecord
 
   # Scopes
   scope :enabled, -> { where(enabled: true) }
-  scope :needs_sync, -> {
-    enabled.where(
-      "last_synced_at IS NULL OR last_synced_at < NOW() - (sync_frequency_minutes || ' minutes')::interval"
-    )
-  }
+
+  # Database-agnostic version of needs_sync (works with both PostgreSQL and SQLite)
+  def self.needs_sync
+    enabled.select(&:sync_due?)
+  end
 
   # Generate a webhook secret if not present
   before_create :generate_webhook_secret
@@ -49,6 +49,17 @@ class Integration < ApplicationRecord
   def sync_due?
     return true if last_synced_at.nil?
     last_synced_at < sync_frequency_minutes.minutes.ago
+  end
+
+  # Get Anthropic API key from database (for project) or fall back to ENV
+  def self.anthropic_api_key(project: nil)
+    if project
+      integration = project.integrations.find_by(source_type: :anthropic, enabled: true)
+      key = integration&.parsed_credentials&.dig("api_key")
+      return key if key.present?
+    end
+
+    ENV["ANTHROPIC_API_KEY"]
   end
 
   private

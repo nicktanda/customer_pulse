@@ -1,13 +1,12 @@
-class SyncSentryJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class SyncSentryJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(integration_id = nil)
     integrations = if integration_id
       Integration.sentry.enabled.where(id: integration_id)
     else
-      Integration.sentry.enabled.needs_sync
+      Integration.sentry.needs_sync
     end
 
     integrations.each do |integration|

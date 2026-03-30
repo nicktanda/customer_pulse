@@ -447,7 +447,7 @@ module Github
     end
 
     def schedule_auto_merge(pull_request)
-      GithubAutoMergeJob.perform_in(5.minutes, pull_request.id)
+      GithubAutoMergeJob.set(wait: 5.minutes).perform_later(pull_request.id)
     end
 
     def failure(pull_request, error_message)

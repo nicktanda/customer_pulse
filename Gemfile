@@ -41,6 +41,11 @@ gem "sidekiq", "~> 7.0"
 gem "sidekiq-cron", "~> 2.0"
 gem "redis", "~> 5.0"
 
+# Solid Stack for easy local mode (SQLite + Solid Queue + Solid Cache)
+gem "sqlite3", "~> 2.0"
+gem "solid_queue", "~> 1.1"
+gem "solid_cache", "~> 1.0"
+
 # AI/Claude API
 gem "anthropic", "~> 1.19"
 gem "faraday", "~> 2.0"

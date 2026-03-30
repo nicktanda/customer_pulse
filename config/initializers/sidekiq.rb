@@ -1,13 +1,16 @@
-Sidekiq.configure_server do |config|
-  config.redis = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
+# Sidekiq configuration (only loaded when not using Solid Stack)
+unless ENV["SOLID_STACK"] == "true"
+  Sidekiq.configure_server do |config|
+    config.redis = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
 
-  # Load sidekiq-cron schedule
-  schedule_file = "config/sidekiq_schedule.yml"
-  if File.exist?(schedule_file)
-    Sidekiq::Cron::Job.load_from_hash YAML.load_file(schedule_file)
+    # Load sidekiq-cron schedule
+    schedule_file = "config/sidekiq_schedule.yml"
+    if File.exist?(schedule_file)
+      Sidekiq::Cron::Job.load_from_hash YAML.load_file(schedule_file)
+    end
   end
-end
 
-Sidekiq.configure_client do |config|
-  config.redis = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
+  Sidekiq.configure_client do |config|
+    config.redis = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
+  end
 end

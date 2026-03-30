@@ -1,15 +1,118 @@
-# examples:
-#   periodic_cleanup:
-#     class: CleanSoftDeletedRecordsJob
-#     queue: background
-#     args: [ 1000, { batch_size: 500 } ]
-#     schedule: every hour
-#   periodic_cleanup_with_command:
-#     command: "SoftDeletedRecord.due.delete_all"
-#     priority: 2
-#     schedule: at 5am every day
+# Solid Queue recurring tasks
+# Schedule format: https://github.com/rails/solid_queue#recurring-tasks
+#
+# Examples:
+#   every second / every 2 seconds
+#   every minute / every 5 minutes
+#   every hour at minute 30 / at 5am every day / every weekday at 6pm
 
-production:
+default: &default
+  # Process unprocessed feedback every 4 hours
+  process_feedback_batch:
+    class: ProcessFeedbackBatchJob
+    queue: default
+    schedule: every 4 hours
+
+  # Sync Google Forms every 15 minutes
+  sync_google_forms:
+    class: SyncGoogleFormsJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Send daily pulse email at 9:00 AM
+  send_daily_pulse:
+    class: SendDailyPulseJob
+    queue: mailers
+    schedule: at 9am every day
+
+  # Generate insights from processed feedback daily at 6:00 AM
+  generate_insights:
+    class: GenerateInsightsJob
+    queue: default
+    schedule: at 6am every day
+
+  # Weekly theme analysis on Sundays at 4:00 AM
+  weekly_theme_analysis:
+    class: WeeklyThemeAnalysisJob
+    queue: default
+    schedule: on Sunday at 4am
+
+  # Build attack groups on Mondays at 7:00 AM
+  build_attack_groups:
+    class: BuildAttackGroupsJob
+    queue: default
+    schedule: on Monday at 7am
+
+  # Sync Jira every 15 minutes
+  sync_jira:
+    class: SyncJiraJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Sync Excel Online every 15 minutes
+  sync_excel_online:
+    class: SyncExcelOnlineJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Sync Gong every 30 minutes
+  sync_gong:
+    class: SyncGongJob
+    queue: default
+    schedule: every 30 minutes
+
+  # Sync Slack every minute
+  sync_slack:
+    class: SyncSlackJob
+    queue: default
+    schedule: every minute
+
+  # Sync Sentry every 15 minutes
+  sync_sentry:
+    class: SyncSentryJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Sync Zendesk every 15 minutes
+  sync_zendesk:
+    class: SyncZendeskJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Sync Intercom every 15 minutes
+  sync_intercom:
+    class: SyncIntercomJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Sync LogRocket every 15 minutes
+  sync_logrocket:
+    class: SyncLogrocketJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Sync FullStory every 15 minutes
+  sync_fullstory:
+    class: SyncFullstoryJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Sync Linear every 15 minutes
+  sync_linear:
+    class: SyncLinearJob
+    queue: default
+    schedule: every 15 minutes
+
+  # Clean up finished Solid Queue jobs (Solid Stack mode only)
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

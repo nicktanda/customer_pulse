@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 class Insight < ApplicationRecord
+  # JSON serialization for SQLite compatibility (not needed for PostgreSQL JSONB)
+  if ENV["SOLID_STACK"] == "true"
+    serialize :evidence, coder: JSON
+    serialize :metadata, coder: JSON
+  end
+
   # Associations
   belongs_to :project
   belongs_to :pm_persona, optional: true

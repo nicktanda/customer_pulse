@@ -1,7 +1,6 @@
-class ProcessFeedbackBatchJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class ProcessFeedbackBatchJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform
     feedbacks = Feedback.unprocessed.limit(100)
@@ -17,7 +16,7 @@ class ProcessFeedbackBatchJob
 
     # If there are more unprocessed items, queue another job
     if Feedback.unprocessed.exists?
-      ProcessFeedbackBatchJob.perform_in(1.minute)
+      ProcessFeedbackBatchJob.set(wait: 1.minute).perform_later
     end
   end
 end

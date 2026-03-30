@@ -56,7 +56,7 @@ class FeedbackController < ApplicationController
   end
 
   def reprocess
-    ProcessFeedbackJob.perform_async(@feedback.id)
+    ProcessFeedbackJob.perform_later(@feedback.id)
     redirect_to @feedback, notice: "Feedback queued for reprocessing."
   end
 

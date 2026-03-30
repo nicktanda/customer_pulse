@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class PmPersona < ApplicationRecord
+  # JSON serialization for SQLite compatibility (not needed for PostgreSQL JSONB)
+  serialize :priorities, coder: JSON if ENV["SOLID_STACK"] == "true"
+
   # Associations
   belongs_to :project
   has_many :insights, dependent: :nullify

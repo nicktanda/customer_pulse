@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-class BuildAttackGroupsJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class BuildAttackGroupsJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform
     insights = Insight.actionable.includes(:themes, :ideas).where("created_at > ?", 30.days.ago)

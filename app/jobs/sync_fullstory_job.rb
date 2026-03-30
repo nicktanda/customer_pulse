@@ -1,13 +1,12 @@
-class SyncFullstoryJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class SyncFullstoryJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(integration_id = nil)
     integrations = if integration_id
       Integration.fullstory.enabled.where(id: integration_id)
     else
-      Integration.fullstory.enabled.needs_sync
+      Integration.fullstory.needs_sync
     end
 
     integrations.each do |integration|

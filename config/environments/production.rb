@@ -46,15 +46,24 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Use Redis for caching in production (fallback to memory if REDIS_URL not set)
-  if ENV["REDIS_URL"].present?
-    config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"] }
+  # Cache and job adapter configuration
+  # SOLID_STACK mode: SQLite + Solid Queue + Solid Cache (easy local deployment)
+  # Standard mode: PostgreSQL + Sidekiq + Redis (production)
+  if ENV["SOLID_STACK"] == "true"
+    config.cache_store = :solid_cache_store
+    config.solid_cache.connects_to = { database: { writing: :cache } }
+    config.active_job.queue_adapter = :solid_queue
+    config.solid_queue.connects_to = { database: { writing: :queue } }
   else
-    config.cache_store = :memory_store
+    # Use Redis for caching in production (fallback to memory if REDIS_URL not set)
+    if ENV["REDIS_URL"].present?
+      config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"] }
+    else
+      config.cache_store = :memory_store
+    end
+    # Use Sidekiq for background jobs
+    config.active_job.queue_adapter = :sidekiq
   end
-
-  # Use Sidekiq for background jobs
-  config.active_job.queue_adapter = :sidekiq
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.

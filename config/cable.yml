@@ -9,6 +9,10 @@ test:
   adapter: test
 
 production:
+<% if ENV["SOLID_STACK"] == "true" %>
+  adapter: async
+<% else %>
   adapter: redis
   url: <%= ENV["REDIS_URL"] %>
   channel_prefix: customer_pulse_production
+<% end %>

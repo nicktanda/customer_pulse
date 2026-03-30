@@ -1,7 +1,6 @@
-class SendDailyPulseJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :mailers, retry: 3
+class SendDailyPulseJob < ApplicationJob
+  queue_as :mailers
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform
     # Generate the pulse report for the last 24 hours
@@ -30,6 +29,6 @@ class SendDailyPulseJob
     )
   rescue => e
     Rails.logger.error("SendDailyPulseJob: Failed to send pulse: #{e.message}")
-    raise # Re-raise to trigger Sidekiq retry
+    raise # Re-raise to trigger retry
   end
 end

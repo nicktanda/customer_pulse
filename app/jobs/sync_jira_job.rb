@@ -1,18 +1,17 @@
 # frozen_string_literal: true
 
-class SyncJiraJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class SyncJiraJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(integration_id = nil)
     integrations = if integration_id
       Integration.where(id: integration_id, source_type: :jira, enabled: true)
     else
-      Integration.where(source_type: :jira).needs_sync
+      Integration.jira.needs_sync
     end
 
-    integrations.find_each do |integration|
+    integrations.each do |integration|
       sync_integration(integration)
     end
   end

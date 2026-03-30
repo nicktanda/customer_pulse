@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 class RepoAnalysis < ApplicationRecord
+  # JSON serialization for SQLite compatibility (not needed for PostgreSQL JSONB)
+  if ENV["SOLID_STACK"] == "true"
+    serialize :tech_stack, coder: JSON
+    serialize :structure, coder: JSON
+    serialize :conventions, coder: JSON
+  end
+
   belongs_to :integration
 
   validates :commit_sha, presence: true

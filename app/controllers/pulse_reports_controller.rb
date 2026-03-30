@@ -46,7 +46,7 @@ class PulseReportsController < ApplicationController
       progress_message: "Queued for processing..."
     )
 
-    GenerateGithubPrJob.perform_async(idea.id, integration.id, pull_request.id)
+    GenerateGithubPrJob.perform_later(idea.id, integration.id, pull_request.id)
 
     flash[:notice] = "PR generation started for \"#{idea.title}\"."
     redirect_back fallback_location: pulse_reports_path

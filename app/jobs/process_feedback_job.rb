@@ -1,7 +1,6 @@
-class ProcessFeedbackJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class ProcessFeedbackJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(feedback_id)
     feedback = Feedback.find_by(id: feedback_id)

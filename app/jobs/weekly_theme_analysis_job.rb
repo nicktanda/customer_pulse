@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-class WeeklyThemeAnalysisJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class WeeklyThemeAnalysisJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform
     insights = Insight.where("created_at > ?", 7.days.ago).actionable

@@ -61,7 +61,7 @@ class IntegrationsController < ApplicationController
     job_class = sync_job_for(@integration.source_type)
 
     if job_class
-      job_class.perform_async(@integration.id)
+      job_class.perform_later(@integration.id)
       flash[:notice] = "#{@integration.name} sync started."
     else
       flash[:alert] = "Manual sync not supported for this integration type."

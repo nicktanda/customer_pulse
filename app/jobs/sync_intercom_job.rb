@@ -1,13 +1,12 @@
-class SyncIntercomJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class SyncIntercomJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(integration_id = nil)
     integrations = if integration_id
       Integration.intercom.enabled.where(id: integration_id)
     else
-      Integration.intercom.enabled.needs_sync
+      Integration.intercom.needs_sync
     end
 
     integrations.each do |integration|

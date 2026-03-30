@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-class GithubAutoMergeJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 5
+class GithubAutoMergeJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5
 
   MAX_RETRIES = 10
   RETRY_DELAY = 2.minutes
@@ -34,7 +33,7 @@ class GithubAutoMergeJob
     unless pr["mergeable"]
       if attempt < MAX_RETRIES
         Rails.logger.info("GithubAutoMergeJob: PR ##{pull_request.pr_number} not mergeable yet, retrying (attempt #{attempt}/#{MAX_RETRIES})")
-        self.class.perform_in(RETRY_DELAY, pull_request_id, attempt + 1)
+        self.class.set(wait: RETRY_DELAY).perform_later(pull_request_id, attempt + 1)
       else
         Rails.logger.warn("GithubAutoMergeJob: PR ##{pull_request.pr_number} not mergeable after #{MAX_RETRIES} attempts")
       end
@@ -45,7 +44,7 @@ class GithubAutoMergeJob
     if status_result[:success] && status_result[:state] == "pending"
       if attempt < MAX_RETRIES
         Rails.logger.info("GithubAutoMergeJob: CI pending for PR ##{pull_request.pr_number}, retrying (attempt #{attempt}/#{MAX_RETRIES})")
-        self.class.perform_in(RETRY_DELAY, pull_request_id, attempt + 1)
+        self.class.set(wait: RETRY_DELAY).perform_later(pull_request_id, attempt + 1)
       else
         Rails.logger.warn("GithubAutoMergeJob: CI still pending for PR ##{pull_request.pr_number} after #{MAX_RETRIES} attempts")
       end
@@ -70,7 +69,7 @@ class GithubAutoMergeJob
       Rails.logger.error("GithubAutoMergeJob: Failed to merge PR ##{pull_request.pr_number}: #{merge_result[:error]}")
 
       if attempt < MAX_RETRIES
-        self.class.perform_in(RETRY_DELAY, pull_request_id, attempt + 1)
+        self.class.set(wait: RETRY_DELAY).perform_later(pull_request_id, attempt + 1)
       end
     end
   rescue ActiveRecord::RecordNotFound => e

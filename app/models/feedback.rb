@@ -1,4 +1,7 @@
 class Feedback < ApplicationRecord
+  # JSON serialization for SQLite compatibility (not needed for PostgreSQL JSONB)
+  serialize :raw_data, coder: JSON if ENV["SOLID_STACK"] == "true"
+
   # Associations
   belongs_to :project
   has_many :feedback_insights, dependent: :destroy

@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-class GenerateInsightsJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 3
+class GenerateInsightsJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(pm_persona_id: nil)
     feedbacks = Feedback.ready_for_insights.limit(100)
@@ -25,7 +24,7 @@ class GenerateInsightsJob
     )
 
     if Feedback.ready_for_insights.exists?
-      GenerateInsightsJob.perform_in(5.minutes)
+      GenerateInsightsJob.set(wait: 5.minutes).perform_later
     end
   end
 end

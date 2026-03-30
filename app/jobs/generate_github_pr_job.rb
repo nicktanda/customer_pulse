@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-class GenerateGithubPrJob
-  include Sidekiq::Job
-
-  sidekiq_options queue: :default, retry: 2
+class GenerateGithubPrJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 2
 
   def perform(idea_id, integration_id = nil, pull_request_id = nil)
     idea = Idea.find(idea_id)

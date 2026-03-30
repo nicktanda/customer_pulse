@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 class StakeholderSegment < ApplicationRecord
+  # JSON serialization for SQLite compatibility (not needed for PostgreSQL JSONB)
+  if ENV["SOLID_STACK"] == "true"
+    serialize :characteristics, coder: JSON
+    serialize :metadata, coder: JSON
+  end
+
   # Associations
   belongs_to :project
   has_many :insight_stakeholders, dependent: :destroy

@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class IdeaPullRequest < ApplicationRecord
+  # JSON serialization for SQLite compatibility (not needed for PostgreSQL JSONB)
+  serialize :files_changed, coder: JSON if ENV["SOLID_STACK"] == "true"
+
   belongs_to :idea
   belongs_to :integration
 
