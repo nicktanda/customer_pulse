@@ -37,7 +37,7 @@ gem "omniauth-google-oauth2", "~> 1.1"
 gem "omniauth-rails_csrf_protection", "~> 1.0"
 
 # Background processing
-gem "sidekiq", "~> 7.0"
+gem "sidekiq", "~> 8.1"
 gem "sidekiq-cron", "~> 2.0"
 gem "redis", "~> 5.0"
 
