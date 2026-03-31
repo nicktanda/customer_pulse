@@ -18,7 +18,7 @@ class PmPersona < ApplicationRecord
   scope :active, -> { where(active: true) }
 
   # Archetype constants
-  ARCHETYPES = %w[data_driven user_advocate strategist innovator pragmatist].freeze
+  ARCHETYPES = %w[data_driven user_advocate strategist innovator pragmatist ceo].freeze
 
   validates :archetype, inclusion: { in: ARCHETYPES }
 
@@ -40,5 +40,9 @@ class PmPersona < ApplicationRecord
 
   def self.pragmatist
     find_by(archetype: "pragmatist")
+  end
+
+  def self.ceo
+    find_by(archetype: "ceo")
   end
 end

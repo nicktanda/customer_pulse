@@ -22,13 +22,14 @@ module Ai
       - P4: Nice-to-haves, minor improvements, cosmetic issues
     PROMPT
 
-    def initialize(project: nil)
+    def initialize(project: nil, include_objectives: true)
       api_key = Integration.anthropic_api_key(project: project)
       @client = Anthropic::Client.new(api_key: api_key)
       @project = project
+      @include_objectives = include_objectives
     end
 
-    def process(feedback)
+    def process(feedback, objectives: nil)
       return if feedback.ai_processed_at.present? && !feedback.manually_reviewed
 
       prompt = build_prompt(feedback)
@@ -38,13 +39,23 @@ module Ai
           model: "claude-sonnet-4-20250514",
           max_tokens: 500,
           system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: prompt }]
+          messages: [ { role: "user", content: prompt } ]
         )
 
         result = parse_response(response)
-        update_feedback(feedback, result)
 
-        { success: true, result: result }
+        # Optionally analyze objective alignment
+        alignment_result = nil
+        if @include_objectives
+          objectives ||= load_active_objectives(feedback)
+          if objectives.any?
+            alignment_result = analyze_objective_alignment(feedback, objectives)
+          end
+        end
+
+        update_feedback(feedback, result, alignment_result)
+
+        { success: true, result: result, alignment: alignment_result }
       rescue => e
         handle_error(feedback, e)
         { success: false, error: e.message }
@@ -93,14 +104,35 @@ module Ai
       JSON.parse(json_match[0])
     end
 
-    def update_feedback(feedback, result)
-      feedback.update!(
+    def update_feedback(feedback, result, alignment_result = nil)
+      attrs = {
         category: result["category"],
         priority: result["priority"],
         ai_summary: result["summary"],
         ai_confidence_score: result["confidence"].to_f,
         ai_processed_at: Time.current
-      )
+      }
+
+      if alignment_result
+        attrs[:objective_alignment_score] = alignment_result[:alignment_score]
+        attrs[:aligned_objective_ids] = alignment_result[:aligned_objective_ids]
+      end
+
+      feedback.update!(attrs)
+    end
+
+    def load_active_objectives(feedback)
+      return [] unless feedback.project
+
+      BusinessObjective.for_ai_context(project: feedback.project)
+    end
+
+    def analyze_objective_alignment(feedback, objectives)
+      aligner = ObjectiveAligner.new(project: @project)
+      aligner.analyze_feedback(feedback, objectives: objectives)
+    rescue => e
+      Rails.logger.error("Objective alignment failed for Feedback##{feedback.id}: #{e.message}")
+      nil
     end
 
     def handle_error(feedback, error)

@@ -41,11 +41,22 @@ module Ai
 
     BATCH_SIZE = 25
 
-    def discover(feedbacks)
+    def initialize(pm_persona: nil, project: nil, include_objectives: true)
+      super(pm_persona: pm_persona, project: project)
+      @include_objectives = include_objectives
+    end
+
+    def discover(feedbacks, objectives: nil)
       return { insights: [], created: 0 } if feedbacks.empty?
 
       feedback_array = feedbacks.to_a
       all_insights = []
+
+      # Load objectives if not provided and enabled
+      if @include_objectives && objectives.nil? && feedback_array.first&.project
+        objectives = BusinessObjective.for_ai_context(project: feedback_array.first.project)
+      end
+      @objectives = objectives || []
 
       batch_items(feedback_array, batch_size: BATCH_SIZE).each_with_index do |batch, batch_index|
         batch_offset = batch_index * BATCH_SIZE
@@ -75,7 +86,7 @@ module Ai
     end
 
     def build_batch_prompt(batch, batch_offset)
-      parts = ["Analyze the following #{batch.count} feedback items:\n"]
+      parts = [ "Analyze the following #{batch.count} feedback items:\n" ]
 
       batch.each_with_index do |feedback, index|
         global_index = batch_offset + index
@@ -87,6 +98,16 @@ module Ai
         parts << "Source: #{feedback.source}"
         parts << "Author: #{feedback.author_name}" if feedback.author_name.present?
         parts << ""
+      end
+
+      # Include business objectives context if available
+      if @objectives.any?
+        parts << "\n--- Business Objectives Context ---"
+        parts << "When analyzing feedback, consider alignment with these business objectives:"
+        @objectives.each do |obj|
+          parts << "- [#{obj[:priority].to_s.upcase}] #{obj[:title]}: #{obj[:description]}"
+        end
+        parts << "\nNote any insights that strongly align with or contradict these objectives."
       end
 
       parts.join("\n")

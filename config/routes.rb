@@ -82,6 +82,7 @@ Rails.application.routes.draw do
     end
 
     resources :skills
+    resources :business_objectives
 
   end
 

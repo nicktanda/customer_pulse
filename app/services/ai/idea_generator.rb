@@ -42,7 +42,18 @@ module Ai
       - Include at least one quick win if applicable
     PROMPT
 
-    def generate(insight)
+    def initialize(pm_persona: nil, project: nil, include_objectives: true)
+      super(pm_persona: pm_persona, project: project)
+      @include_objectives = include_objectives
+    end
+
+    def generate(insight, objectives: nil)
+      # Load objectives if not provided and enabled
+      if @include_objectives && objectives.nil? && insight.project
+        objectives = BusinessObjective.for_ai_context(project: insight.project)
+      end
+      @objectives = objectives || []
+
       result = analyze_insight(insight)
 
       if result[:error]
@@ -55,11 +66,16 @@ module Ai
       { ideas: created, created: created.count }
     end
 
-    def generate_batch(insights)
+    def generate_batch(insights, objectives: nil)
       all_ideas = []
 
+      # Load objectives once for all insights if not provided
+      if @include_objectives && objectives.nil? && insights.first&.project
+        objectives = BusinessObjective.for_ai_context(project: insights.first.project)
+      end
+
       insights.each do |insight|
-        result = generate(insight)
+        result = generate(insight, objectives: objectives)
         all_ideas.concat(result[:ideas]) unless result[:error]
         rate_limit_sleep
       end
@@ -75,7 +91,7 @@ module Ai
     end
 
     def build_insight_prompt(insight)
-      parts = ["Generate solution ideas for the following insight:\n"]
+      parts = [ "Generate solution ideas for the following insight:\n" ]
       parts << "Title: #{insight.title}"
       parts << "Description: #{insight.description}"
       parts << "Type: #{insight.insight_type}"
@@ -86,6 +102,16 @@ module Ai
       if insight.evidence.present?
         parts << "\nSupporting Evidence:"
         insight.evidence.each { |e| parts << "- #{e}" }
+      end
+
+      # Include business objectives context if available
+      if @objectives.any?
+        parts << "\n\n--- Business Objectives Context ---"
+        parts << "Prioritize ideas that align with these business objectives:"
+        @objectives.each do |obj|
+          parts << "- [#{obj[:priority].to_s.upcase}] #{obj[:title]}: #{obj[:description]}"
+        end
+        parts << "\nConsider objective alignment when estimating impact."
       end
 
       parts.join("\n")

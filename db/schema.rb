@@ -10,9 +10,29 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_29_123148) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_31_104346) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "business_objectives", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.integer "objective_type", default: 0, null: false
+    t.integer "priority", default: 0, null: false
+    t.integer "status", default: 0, null: false
+    t.date "target_date"
+    t.text "success_metrics"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_business_objectives_on_active"
+    t.index ["objective_type"], name: "index_business_objectives_on_objective_type"
+    t.index ["priority"], name: "index_business_objectives_on_priority"
+    t.index ["project_id"], name: "index_business_objectives_on_project_id"
+    t.index ["status"], name: "index_business_objectives_on_status"
+    t.index ["target_date"], name: "index_business_objectives_on_target_date"
+  end
 
   create_table "email_recipients", force: :cascade do |t|
     t.string "email", null: false
@@ -57,10 +77,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_29_123148) do
     t.datetime "updated_at", null: false
     t.datetime "insight_processed_at"
     t.bigint "project_id", null: false
+    t.float "objective_alignment_score"
+    t.jsonb "aligned_objective_ids", default: []
     t.index ["ai_processed_at"], name: "index_feedbacks_on_ai_processed_at"
     t.index ["category"], name: "index_feedbacks_on_category"
     t.index ["created_at"], name: "index_feedbacks_on_created_at"
     t.index ["insight_processed_at"], name: "index_feedbacks_on_insight_processed_at"
+    t.index ["objective_alignment_score"], name: "index_feedbacks_on_objective_alignment_score"
     t.index ["priority"], name: "index_feedbacks_on_priority"
     t.index ["project_id"], name: "index_feedbacks_on_project_id"
     t.index ["source", "source_external_id"], name: "index_feedbacks_on_source_and_source_external_id", unique: true
@@ -338,6 +361,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_29_123148) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "business_objectives", "projects"
   add_foreign_key "email_recipients", "projects"
   add_foreign_key "feedback_insights", "feedbacks"
   add_foreign_key "feedback_insights", "insights"

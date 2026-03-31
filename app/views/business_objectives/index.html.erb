@@ -1,0 +1,113 @@
+<% content_for :title, "Business Objectives - Customer Pulse" %>
+
+<div class="mb-6 flex justify-between items-center">
+  <div>
+    <h1 class="text-3xl font-bold text-gray-900">Business Objectives</h1>
+    <p class="mt-1 text-gray-500">Define strategic goals to align feedback analysis</p>
+  </div>
+  <% if current_project_user&.can_manage_project? %>
+    <%= link_to new_business_objective_path, class: "btn-primary text-sm inline-flex items-center" do %>
+      <svg class="h-5 w-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+      </svg>
+      Add Objective
+    <% end %>
+  <% end %>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <% @objectives.each do |objective| %>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden card-hover group">
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center">
+            <div class="p-2.5 rounded-xl <%= objective_type_bg(objective.objective_type) %> group-hover:scale-110 transition-transform">
+              <%= objective_type_icon(objective.objective_type) %>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-1"><%= objective.title %></h3>
+              <p class="text-sm text-gray-500"><%= objective.objective_type_label %></p>
+            </div>
+          </div>
+          <%= render partial: "business_objectives/priority_badge", locals: { priority: objective.priority } %>
+        </div>
+
+        <% if objective.description.present? %>
+          <p class="text-sm text-gray-600 line-clamp-2 mb-4"><%= objective.description %></p>
+        <% end %>
+
+        <div class="text-sm text-gray-600 space-y-2">
+          <div class="flex items-center">
+            <svg class="h-4 w-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-gray-500">Status:</span>
+            <span class="ml-1 font-medium <%= objective_status_color(objective.status) %>">
+              <%= objective.status_label %>
+            </span>
+          </div>
+          <% if objective.target_date.present? %>
+            <div class="flex items-center">
+              <svg class="h-4 w-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              <span class="text-gray-500">Target:</span>
+              <span class="ml-1 font-medium <%= objective.overdue? ? 'text-red-600' : 'text-gray-700' %>">
+                <%= objective.target_date.strftime("%b %d, %Y") %>
+                <% if objective.overdue? %>
+                  <span class="text-xs">(Overdue)</span>
+                <% end %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="mt-5 flex gap-2">
+          <%= link_to "View", business_objective_path(objective), class: "flex-1 text-center btn-secondary text-sm py-2" %>
+          <% if current_project_user&.can_manage_project? %>
+            <%= link_to "Edit", edit_business_objective_path(objective), class: "flex-1 text-center bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg hover:bg-indigo-100 text-sm font-medium transition-colors" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @objectives.empty? %>
+    <div class="col-span-full">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center relative overflow-hidden">
+        <div class="absolute inset-0 opacity-5">
+          <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="1"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div class="relative">
+          <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
+            <svg class="h-8 w-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900">No business objectives yet</h3>
+          <p class="mt-2 text-sm text-gray-500 max-w-sm mx-auto">
+            Define your strategic goals to help align feedback analysis with what matters most to your business.
+          </p>
+          <% if current_project_user&.can_manage_project? %>
+            <div class="mt-6">
+              <%= link_to new_business_objective_path, class: "btn-primary inline-flex items-center" do %>
+                <svg class="h-5 w-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Add Your First Objective
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

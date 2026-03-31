@@ -14,10 +14,11 @@ class Project < ApplicationRecord
   has_many :pm_personas, dependent: :destroy
   has_many :pulse_reports, dependent: :destroy
   has_many :email_recipients, dependent: :destroy
+  has_many :business_objectives, dependent: :destroy
 
   # Validations
   validates :name, presence: true
-  validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9-]+\z/, message: 'can only contain lowercase letters, numbers, and hyphens' }
+  validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9-]+\z/, message: "can only contain lowercase letters, numbers, and hyphens" }
 
   # Callbacks
   before_validation :generate_slug, on: :create
