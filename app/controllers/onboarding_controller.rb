@@ -216,10 +216,10 @@ class OnboardingController < ApplicationController
   end
 
   def save_anthropic_api_step
-    # Anthropic API key is stored as an environment variable
-    # We just verify it's configured and working
-    if ENV['ANTHROPIC_API_KEY'].blank?
-      @error_message = "Anthropic API key is not configured. Please set the ANTHROPIC_API_KEY environment variable."
+    # Anthropic API key can be stored per-project or as environment variable
+    api_key = Integration.anthropic_api_key(project: onboarding_project)
+    if api_key.blank?
+      @error_message = "Anthropic API key is not configured. Please set it in Settings or via the ANTHROPIC_API_KEY environment variable."
       return false
     end
     true

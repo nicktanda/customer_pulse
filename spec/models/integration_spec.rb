@@ -10,7 +10,7 @@ RSpec.describe Integration, type: :model do
     it {
       should define_enum_for(:source_type).with_values(
         linear: 0, google_forms: 1, slack: 2, custom: 3, gong: 4, excel_online: 5, jira: 6,
-        logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10
+        logrocket: 7, fullstory: 8, intercom: 9, zendesk: 10, sentry: 11, github: 12, anthropic: 13
       )
     }
   end
@@ -69,6 +69,53 @@ RSpec.describe Integration, type: :model do
     it 'updates last_synced_at to current time' do
       integration = create(:integration)
       expect { integration.mark_synced! }.to change { integration.reload.last_synced_at }
+    end
+  end
+
+  describe '.anthropic_api_key' do
+    let(:project) { Project.create!(name: 'Test Project', slug: 'test-project') }
+
+    context 'with project-level anthropic integration' do
+      it 'returns API key from integration when enabled' do
+        integration = Integration.create!(
+          project: project,
+          name: 'Anthropic',
+          source_type: :anthropic,
+          enabled: true
+        )
+        integration.update_credentials(api_key: 'sk-ant-project-key')
+        integration.save!
+
+        expect(Integration.anthropic_api_key(project: project)).to eq('sk-ant-project-key')
+      end
+
+      it 'falls back to ENV when integration is disabled' do
+        integration = Integration.create!(
+          project: project,
+          name: 'Anthropic',
+          source_type: :anthropic,
+          enabled: false
+        )
+        integration.update_credentials(api_key: 'sk-ant-project-key')
+        integration.save!
+
+        allow(ENV).to receive(:[]).with('ANTHROPIC_API_KEY').and_return('sk-ant-env-key')
+        expect(Integration.anthropic_api_key(project: project)).to eq('sk-ant-env-key')
+      end
+    end
+
+    context 'without project-level integration' do
+      it 'falls back to ENV' do
+        allow(ENV).to receive(:[]).with('ANTHROPIC_API_KEY').and_return('sk-ant-env-key')
+        expect(Integration.anthropic_api_key(project: project)).to eq('sk-ant-env-key')
+      end
+    end
+
+    context 'without project' do
+      it 'returns ENV value' do
+        allow(ENV).to receive(:[]).with('ANTHROPIC_API_KEY').and_return('sk-ant-env-key')
+        expect(Integration.anthropic_api_key).to eq('sk-ant-env-key')
+      end
     end
   end
 end

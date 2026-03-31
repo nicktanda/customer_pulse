@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class AnthropicApiValidator
-  def initialize(api_key: nil)
-    @api_key = api_key || ENV["ANTHROPIC_API_KEY"]
+  def initialize(api_key: nil, project: nil)
+    @api_key = api_key || Integration.anthropic_api_key(project: project)
   end
 
   def validate

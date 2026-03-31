@@ -5,9 +5,11 @@ module Ai
     DEFAULT_MODEL = "claude-sonnet-4-20250514"
     DEFAULT_MAX_TOKENS = 4096
 
-    def initialize(pm_persona: nil)
-      @client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
+    def initialize(pm_persona: nil, project: nil)
+      api_key = Integration.anthropic_api_key(project: project)
+      @client = Anthropic::Client.new(api_key: api_key)
       @pm_persona = pm_persona
+      @project = project
     end
 
     protected

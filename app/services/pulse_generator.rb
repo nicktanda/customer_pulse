@@ -1,7 +1,8 @@
 class PulseGenerator
-  def initialize(period_start: 24.hours.ago, period_end: Time.current)
+  def initialize(period_start: 24.hours.ago, period_end: Time.current, project: nil)
     @period_start = period_start
     @period_end = period_end
+    @project = project
   end
 
   def generate
@@ -52,11 +53,11 @@ class PulseGenerator
   private
 
   def generate_trends_summary(feedbacks)
-    processor = Ai::FeedbackProcessor.new
     contents = feedbacks.limit(20).pluck(:content).join("\n---\n")
 
     # Use Claude to identify common themes
-    client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
+    api_key = Integration.anthropic_api_key(project: @project)
+    client = Anthropic::Client.new(api_key: api_key)
 
     response = client.messages.create(
       model: "claude-sonnet-4-20250514",

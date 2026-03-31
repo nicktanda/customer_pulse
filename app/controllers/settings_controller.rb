@@ -6,6 +6,7 @@ class SettingsController < ApplicationController
   def show
     @settings = load_settings
     @github_integration = current_project.integrations.find_by(source_type: 'github')
+    @anthropic_integration = current_project.integrations.find_by(source_type: 'anthropic')
   end
 
   def update
@@ -59,6 +60,40 @@ class SettingsController < ApplicationController
     temp_integration.update_credentials(credentials)
     result = Integrations::GithubClient.new(temp_integration).test_connection
 
+    render json: result
+  end
+
+  def save_anthropic
+    anthropic_params = params.require(:anthropic).permit(:api_key, :enabled)
+
+    if anthropic_params[:api_key].blank?
+      redirect_to settings_path, alert: "API key is required."
+      return
+    end
+
+    credentials = { api_key: anthropic_params[:api_key] }
+
+    integration = current_project.integrations.find_or_initialize_by(source_type: 'anthropic')
+    integration.name = "Anthropic"
+    integration.enabled = anthropic_params[:enabled] == "1"
+    integration.update_credentials(credentials)
+
+    if integration.save
+      redirect_to settings_path, notice: "Anthropic API key saved successfully."
+    else
+      redirect_to settings_path, alert: "Failed to save Anthropic API key: #{integration.errors.full_messages.join(', ')}"
+    end
+  end
+
+  def test_anthropic
+    api_key = params.dig(:anthropic, :api_key)
+
+    if api_key.blank?
+      render json: { success: false, message: "API key is required" }
+      return
+    end
+
+    result = AnthropicApiValidator.new(api_key: api_key).validate
     render json: result
   end
 

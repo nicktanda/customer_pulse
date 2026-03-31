@@ -67,6 +67,8 @@ Rails.application.routes.draw do
     resource :settings, only: [:show, :update] do
       post :save_github
       post :test_github
+      post :save_anthropic
+      post :test_anthropic
     end
 
     resources :pulse_reports, only: [:index, :show] do

@@ -22,8 +22,10 @@ module Ai
       - P4: Nice-to-haves, minor improvements, cosmetic issues
     PROMPT
 
-    def initialize
-      @client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
+    def initialize(project: nil)
+      api_key = Integration.anthropic_api_key(project: project)
+      @client = Anthropic::Client.new(api_key: api_key)
+      @project = project
     end
 
     def process(feedback)
