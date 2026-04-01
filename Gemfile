@@ -50,6 +50,9 @@ gem "solid_cache", "~> 1.0"
 gem "anthropic", "~> 1.19"
 gem "faraday", "~> 2.0"
 
+# Email delivery via Resend
+gem "resend", "~> 0.17"
+
 # Google APIs for Google Forms/Sheets integration
 gem "google-apis-sheets_v4", "~> 0.30"
 gem "googleauth", "~> 1.8"
