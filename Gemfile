@@ -47,7 +47,7 @@ gem "solid_queue", "~> 1.1"
 gem "solid_cache", "~> 1.0"
 
 # AI/Claude API
-gem "anthropic", "~> 1.19"
+gem "anthropic", "~> 1.26"
 gem "faraday", "~> 2.0"
 
 # Email delivery via Resend
