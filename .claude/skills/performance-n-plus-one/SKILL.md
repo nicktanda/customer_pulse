@@ -1,27 +1,27 @@
 ---
 name: performance-n-plus-one
 description: >-
-  Reduces N+1 queries and heavy loops in Rails: eager loading, batching, and
-  job chunk sizes. Use when pages or jobs slow down, Bullet flags queries, or
+  Reduces N+1 SQL and heavy loops in the Next.js app and worker: Drizzle query
+  batching, pagination, and job chunk sizes. Use when pages or jobs slow down or
   feedback lists grow large.
 ---
 
 # Performance N+1 and batching
 
-Slow feedback dashboards and **Sidekiq** jobs often trace back to **N+1 SQL** or **unbounded** `find_each` / API calls.
+Slow feedback dashboards and **BullMQ** jobs often trace back to **N+1 SQL** (many small queries in a loop) or **unbounded** full-table scans / API calls.
 
 ## When to use
 
-- Optimizing **`Feedback`**, **`Integration`**, or dashboard controllers.
-- Changing **`app/jobs/`** that loop over many records or call external APIs.
-- Investigating slow request specs or production latency.
+- Optimizing feedback lists, project dashboards, or integration-heavy pages in **`apps/web`**.
+- Changing **`apps/worker`** jobs that loop over many records or call external APIs.
+- Investigating slow Vitest cases or production latency.
 
 ## Steps
 
-1. **Identify** — Use logs, `rack-mini-profiler` or **Bullet** if added in development; look for repeated identical queries.
-2. **ActiveRecord** — Prefer **`includes`**, **`preload`**, or **`eager_load`** on associations shown in the same request; avoid loading large collections into memory without pagination (**`pagy`** is in the Gemfile).
-3. **Jobs** — Batch external APIs; respect rate limits; keep **`sleep`** between calls (see **`ai-feedback-pipeline`** patterns).
-4. **Verify** — `EXPLAIN` in development for hot queries; run **`bundle exec rspec`** for affected areas.
+1. **Identify** — Use logs, database `EXPLAIN`, or temporary timing around **server components** / **server actions** in **`apps/web`**; look for repeated identical queries per request or per job tick in **`apps/worker`**.
+2. **Drizzle / SQL** — Prefer **single queries with joins** or **explicit `inArray` batches** instead of per-row queries inside loops; always paginate large lists (`limit` / cursor patterns).
+3. **Jobs** — Batch external APIs; respect rate limits; add short delays between batches when providers are sensitive (see **`ai-feedback-pipeline`** patterns).
+4. **Verify** — Re-run hot paths locally; run **`yarn test`** for affected packages.
 
 ## Notes
 

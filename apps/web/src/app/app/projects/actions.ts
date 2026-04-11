@@ -1,0 +1,197 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { and, eq, ne, sql } from "drizzle-orm";
+import { auth } from "@/auth";
+import { getDb } from "@/lib/db";
+import { projects, projectUsers, users } from "@customer-pulse/db/client";
+import {
+  userHasProjectAccess,
+  userIsProjectOwner,
+} from "@/lib/project-access";
+import { CURRENT_PROJECT_COOKIE } from "@/lib/current-project";
+import { cookies } from "next/headers";
+import { slugifyName } from "./slug";
+
+async function requireUserId(): Promise<number> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+  return Number(session.user.id);
+}
+
+export async function createProjectAction(formData: FormData): Promise<void> {
+  const userId = await requireUserId();
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  if (!name) {
+    redirect("/app/projects/new?error=name");
+  }
+
+  const db = getDb();
+  const now = new Date();
+  let slug = slugifyName(name);
+  const [existing] = await db.select({ id: projects.id }).from(projects).where(eq(projects.slug, slug)).limit(1);
+  if (existing) {
+    slug = `${slug}-${Date.now().toString(36)}`;
+  }
+
+  const [proj] = await db
+    .insert(projects)
+    .values({
+      name,
+      description,
+      slug,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: projects.id });
+
+  if (!proj) {
+    redirect("/app/projects/new?error=save");
+  }
+
+  await db.insert(projectUsers).values({
+    projectId: proj.id,
+    userId,
+    isOwner: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const cookieStore = await cookies();
+  cookieStore.set(CURRENT_PROJECT_COOKIE, String(proj.id), {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 400,
+  });
+
+  revalidatePath("/app");
+  revalidatePath("/app/projects");
+  redirect(`/app/projects/${proj.id}`);
+}
+
+export async function updateProjectAction(projectId: number, formData: FormData): Promise<void> {
+  const userId = await requireUserId();
+  if (!(await userIsProjectOwner(userId, projectId))) {
+    redirect("/app/projects");
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  if (!name) {
+    redirect(`/app/projects/${projectId}/edit?error=name`);
+  }
+
+  const db = getDb();
+  const now = new Date();
+  let slug = slugifyName(name);
+  const [conflict] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.slug, slug), ne(projects.id, projectId)))
+    .limit(1);
+  if (conflict) {
+    slug = `${slug}-${Date.now().toString(36)}`;
+  }
+
+  await db
+    .update(projects)
+    .set({ name, description, slug, updatedAt: now })
+    .where(eq(projects.id, projectId));
+
+  revalidatePath("/app/projects");
+  revalidatePath(`/app/projects/${projectId}`);
+  redirect(`/app/projects/${projectId}`);
+}
+
+export async function deleteProjectAction(projectId: number, _formData?: FormData): Promise<void> {
+  const userId = await requireUserId();
+  if (!(await userIsProjectOwner(userId, projectId))) {
+    redirect("/app/projects");
+  }
+
+  const db = getDb();
+  await db.delete(projects).where(eq(projects.id, projectId));
+
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(CURRENT_PROJECT_COOKIE)?.value;
+  if (cookie === String(projectId)) {
+    cookieStore.delete(CURRENT_PROJECT_COOKIE);
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/app/projects");
+  redirect("/app/projects");
+}
+
+export async function addProjectMemberAction(projectId: number, formData: FormData): Promise<void> {
+  const userId = await requireUserId();
+  if (!(await userIsProjectOwner(userId, projectId))) {
+    redirect(`/app/projects/${projectId}/members`);
+  }
+
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  if (!email) {
+    redirect(`/app/projects/${projectId}/members?error=email`);
+  }
+
+  const db = getDb();
+  const [target] = await db.select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
+  if (!target) {
+    redirect(`/app/projects/${projectId}/members?error=nouser`);
+  }
+
+  const [dup] = await db
+    .select()
+    .from(projectUsers)
+    .where(and(eq(projectUsers.projectId, projectId), eq(projectUsers.userId, target.id)))
+    .limit(1);
+  if (dup) {
+    redirect(`/app/projects/${projectId}/members?error=dup`);
+  }
+
+  const now = new Date();
+  await db.insert(projectUsers).values({
+    projectId,
+    userId: target.id,
+    invitedById: userId,
+    isOwner: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  revalidatePath(`/app/projects/${projectId}/members`);
+  redirect(`/app/projects/${projectId}/members`);
+}
+
+export async function removeProjectMemberAction(
+  projectId: number,
+  projectUserId: number,
+  _formData?: FormData,
+): Promise<void> {
+  const userId = await requireUserId();
+  if (!(await userIsProjectOwner(userId, projectId))) {
+    redirect(`/app/projects/${projectId}/members`);
+  }
+
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(projectUsers)
+    .where(and(eq(projectUsers.id, projectUserId), eq(projectUsers.projectId, projectId)))
+    .limit(1);
+  if (!row || row.isOwner) {
+    redirect(`/app/projects/${projectId}/members?error=remove`);
+  }
+
+  await db.delete(projectUsers).where(eq(projectUsers.id, projectUserId));
+
+  revalidatePath(`/app/projects/${projectId}/members`);
+  redirect(`/app/projects/${projectId}/members`);
+}

@@ -1,7 +1,3 @@
-# -b 0.0.0.0: required for Docker (port publish); localhost-only would block host→container access.
-web: env RUBY_DEBUG_OPEN=true bin/rails server -b 0.0.0.0
-# --watch=forever: without this, esbuild exits when stdin is closed (e.g. Docker),
-# which makes foreman kill web/worker/css too.
-js: yarn build --watch=forever
-css: yarn build:css --watch
-worker: bundle exec sidekiq
+# Local dev: Next.js app + background worker (install Foreman or use `bin/dev` / `yarn dev`).
+web: yarn workspace web dev
+worker: yarn workspace worker dev

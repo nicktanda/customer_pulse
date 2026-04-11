@@ -13,7 +13,7 @@ description: >-
 
 ## When to use
 
-- Editing **onboarding** or **settings** views under **`app/views/`** (guided steps, labels, helper text).
+- Editing **onboarding** or **settings** UI under **`apps/web/src/app/app/`** (guided steps, labels, helper text).
 - Improving **integration** instructions (Linear, Slack, Google Forms, Jira, custom API) in UI or **`README.md`** sections aimed at operators.
 - Clarifying **pulse email** content, subject lines, or **pulse report** explanations.
 - Documenting **`POST /api/v1/feedback`** for API consumers (authentication, fields, examples) in README or a dedicated customer-facing doc.
@@ -22,7 +22,7 @@ description: >-
 ## Steps
 
 1. **Identify the audience** — Admin configuring integrations vs developer calling the API vs recipient reading the digest. Adjust depth and jargon.
-2. **Match the product** — Steps must reflect actual routes and screens (`config/routes.rb`, real button labels). Wrong paths erode trust.
+2. **Match the product** — Steps must reflect real URLs (**`/app/onboarding`**, **`/app/settings`**, etc.) and the matching files under **`apps/web/src/app/app/`**. Wrong paths erode trust.
 3. **Safety** — Never document “disable webhook verification” as a fix. Prefer secure defaults and troubleshooting that doesn’t expose secrets.
 4. **Examples** — Use placeholder domains and fake API keys in examples; say “your-domain.com” and “your-api-key” explicitly.
 5. **Consistency** — Terminology (e.g. “Customer Pulse”, “integration”, “feedback”) should match the rest of the app and emails.

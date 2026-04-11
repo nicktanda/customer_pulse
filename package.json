@@ -1,17 +1,34 @@
 {
-  "name": "app",
+  "name": "customer_pulse",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "devDependencies": {
-    "esbuild": "^0.27.3"
+    "bcryptjs": "^2.4.3",
+    "concurrently": "^9.1.2",
+    "postgres": "^3.4.5",
+    "yaml": "^2.7.0"
   },
   "scripts": {
-    "build": "esbuild app/javascript/*.* --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets",
-    "build:css": "npx @tailwindcss/cli -i ./app/assets/stylesheets/application.tailwind.css -o ./app/assets/builds/application.css --minify"
-  },
-  "dependencies": {
-    "@hotwired/stimulus": "^3.2.2",
-    "@hotwired/turbo-rails": "^8.0.23",
-    "@tailwindcss/cli": "^4.1.18",
-    "tailwindcss": "^4.1.18"
+    "dev": "concurrently -n web,worker -c blue,green \"yarn workspace web dev\" \"yarn workspace worker dev\"",
+    "dev:web": "yarn workspace web dev",
+    "dev:worker": "yarn workspace worker dev",
+    "clean:web-next": "yarn workspace web clean",
+    "build": "yarn build:web && yarn build:worker",
+    "build:web": "yarn workspace web build",
+    "build:worker": "yarn workspace worker build",
+    "test": "yarn test:db && yarn test:web && yarn test:worker && yarn workspace worker build",
+    "test:db": "yarn workspace @customer-pulse/db test",
+    "test:web": "yarn workspace web test",
+    "test:worker": "yarn workspace worker test",
+    "bootstrap:dev-users": "node scripts/bootstrap-dev-user.mjs",
+    "db:ensure-membership": "node --env-file=.env scripts/ensure-projects-membership-tables.mjs",
+    "db:migrate": "cd packages/db && node --env-file=../../.env ../../node_modules/drizzle-kit/bin.cjs migrate",
+    "db:ensure-users-schema": "node scripts/ensure-users-schema.mjs",
+    "document-skills": "node scripts/document-skills-and-agents.mjs",
+    "ci:local": "yarn workspace web lint && yarn test && AUTH_SECRET='ci-test-secret-at-least-32-chars-long!!' NEXTAUTH_URL='http://localhost:3001' yarn build:web && node scripts/document-skills-and-agents.mjs --check",
+    "ci:local:full": "yarn install --frozen-lockfile && yarn ci:local"
   }
 }

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -o errexit
-
-bundle install
 yarn install --frozen-lockfile
-bundle exec rails assets:precompile
-bundle exec rails assets:clean
-bundle exec rails db:migrate
+export AUTH_SECRET="${AUTH_SECRET:-build-placeholder-min-32-characters-long}"
+export NEXTAUTH_URL="${NEXTAUTH_URL:-http://localhost:3000}"
+yarn build:web

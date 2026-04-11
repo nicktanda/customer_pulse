@@ -4,97 +4,83 @@ This file is read by **Claude Code** so every session starts with accurate proje
 
 ## What this app is
 
-**Customer Pulse** is a Rails app that ingests customer feedback from Linear, Google Forms, Slack, and a custom API, stores it in PostgreSQL, and uses the **Anthropic API** (in-app, not this file) to classify and triage items. It sends a daily email digest (“Customer Pulse”). Authentication uses **Devise**; background work uses **Sidekiq** + **Redis**.
+**Customer Pulse** ingests customer feedback from Linear, Google Forms, Slack, Jira, and a custom API, stores it in **PostgreSQL**, and uses the **Anthropic API** to classify and triage items. It sends a daily email digest (“Customer Pulse”). The app is a **TypeScript monorepo**: **Next.js** (App Router) for the web UI and HTTP APIs, **BullMQ** workers for background jobs, **Drizzle** for the DB schema, and **Auth.js** for login (JWT sessions; bcrypt-compatible with existing `users.encrypted_password` hashes).
 
 ## Stack (high level)
 
 | Area | Choice |
 |------|--------|
-| Framework | Rails **8.0** (see `Gemfile`) |
-| DB | **PostgreSQL** |
-| Cache / jobs | **Redis** + **Sidekiq** (+ sidekiq-cron for schedules) |
-| Front end | **Hotwire** (Turbo, Stimulus), **Tailwind** CSS, **Propshaft**, JS/CSS via **esbuild** (`package.json` scripts) |
-| Auth | **Devise** |
-| Tests | **RSpec** (see `spec/`) |
+| Web + API | **Next.js 15** (`apps/web`) |
+| Worker + cron | **BullMQ** + Redis (`apps/worker`) |
+| DB | **PostgreSQL** — schema in `packages/db` (Drizzle) |
+| ORM | **Drizzle** + `postgres` driver |
+| Auth | **Auth.js** (credentials + optional Google OAuth) |
+| Encryption | **Lockbox-compatible** helpers in `packages/db` (`LOCKBOX_MASTER_KEY`) |
+| Tests | **Vitest** (`packages/db`, `apps/web`, `apps/worker`); worker also typechecked via `tsc` |
 
-Ruby version: see **`.ruby-version`**. Node/Yarn: see README — assets use `yarn`.
+Node **20+**, **Yarn** workspaces.
 
 ## Running locally
 
 From the repo root:
 
 ```bash
-bundle install
 yarn install
 cp .env.example .env   # then edit — never commit real secrets
-bin/rails db:create db:migrate db:seed
-bin/dev                # Foreman: web, JS watch, CSS watch, Sidekiq (loads `.env`)
+# If the DB has no users yet:
+node --env-file=.env scripts/bootstrap-dev-user.mjs
+yarn dev               # Next (3001) + worker, or: yarn dev:web only
 ```
 
-- **`bin/dev`** runs **`Procfile.dev`** via Foreman: Rails server, `yarn build --watch`, `yarn build:css --watch`, and Sidekiq.
-- Full native/Docker setup notes: **`LOCAL_SETUP.md`** and **`README.md`**.
+- **`yarn dev`**: Next.js dev server and BullMQ worker (see root `package.json`).
+- **`bin/dev`**: same as `yarn dev`.
+- Docker: **`docker compose up`** — see `docker-compose.yml` (web on **3001**).
 
 ## Tests and CI
 
+**Same checks as GitHub Actions before you push:**
+
 ```bash
-bundle exec rspec
-bundle exec rspec spec/models/    # examples — narrow paths as needed
+yarn ci:local          # web lint + yarn test + Next production build (CI auth env) + skills doc --check
+yarn ci:local:full     # yarn install --frozen-lockfile, then ci:local
 ```
 
-CI (`.github/workflows/ci.yml`) runs **`bin/rubocop -f github`**, **`bin/brakeman --no-pager`**, and **`bundle exec rspec`** (with PostgreSQL and `yarn install` for assets tooling). Details and optional **Sentry** / **Dependabot**: [`docs/agents.md`](docs/agents.md).
+Individual steps (see `.github/workflows/ci.yml`):
+
+```bash
+yarn test              # db + web + worker Vitest, then worker tsc
+yarn workspace web lint
+# Next build needs AUTH_SECRET + NEXTAUTH_URL (set in your .env or match CI):
+AUTH_SECRET='ci-test-secret-at-least-32-chars-long!!' NEXTAUTH_URL='http://localhost:3001' yarn build:web
+node scripts/document-skills-and-agents.mjs --check
+```
 
 ## Environment variables
 
-**Do not paste secrets into chat or into this file.** Names and purpose are documented in **`README.md`** and **`/.env.example`**. Typical needs for AI feedback features: database URL, Redis URL, `ANTHROPIC_API_KEY`, integration secrets, `LOCKBOX_MASTER_KEY`, `SECRET_KEY_BASE`.
+**Do not paste secrets into chat or into this file.** Names are documented in **`README.md`**, **`/.env.example`**, **`apps/web/.env.example`**, and **`apps/worker/.env.example`**. Typical needs: `DATABASE_URL`, `REDIS_URL`, `AUTH_SECRET`, `NEXTAUTH_URL`, `ANTHROPIC_API_KEY`, `LOCKBOX_MASTER_KEY`, integration secrets.
 
 ## Where things live
 
 | Path | Contents |
 |------|----------|
-| `app/controllers/` | Web, API, webhooks (Linear, Slack) |
-| `app/models/` | Domain models |
-| `app/services/` | AI processing, integrations, pulse generation |
-| `app/jobs/` | Sidekiq jobs (batch processing, Google sync, daily email) |
-| `config/` | Routes, Sidekiq, credentials patterns |
-| `db/` | Migrations and schema |
+| `apps/web/src/app` | App Router UI + `api/*` route handlers (webhooks, `api/v1/feedback`, Auth.js) |
+| `apps/worker/src` | BullMQ workers, repeatable schedules, Bull Board |
+| `packages/db/src` | Drizzle schema, enums, Lockbox, `createDb` |
+| `docs/next-migration/PARITY_MATRIX.md` | Legacy route/job → Next.js parity; enum integers |
+| `docs/archive/next-migration/` | Archived cutover, auth, Lockbox, observability docs |
 
-Sidekiq Web UI: **`/sidekiq`** (admin-only per app rules).
+Bull Board (queue admin): worker HTTP port (default **3002**), not exposed on the Next app.
 
 ## Conventions
 
-- Follow **RuboCop** as configured; use **`bin/rubocop`** to check.
-- Prefer existing patterns in `app/services/` and `app/jobs/` for new behavior.
-- Migrations: reversible when possible; avoid destructive changes without a clear rollout story.
-- Product-facing or integration changes: consider webhooks, encrypted credentials (Lockbox), and background retries.
+- Prefer **Drizzle** + shared enums in `packages/db` for DB access; keep integer enums aligned with `docs/next-migration/PARITY_MATRIX.md` (legacy DB compatibility).
+- Long-running or scheduled work belongs in **`apps/worker`**, not in Next route handlers.
+- Regenerate **`docs/skills-and-agents.md`** with **`yarn document-skills`** after skill/CI changes (CI enforces).
 
 ## Claude Code skills
 
-Reusable workflows live under **`.claude/skills/<skill-name>/SKILL.md`**. To refresh recommendations for *additional* skills, use **`auto-skill-setup`**.
+Reusable workflows live under **`.claude/skills/<skill-name>/SKILL.md`**.
 
-**Authoritative list (auto-generated from each skill’s YAML frontmatter):** [`docs/skills-and-agents.md`](docs/skills-and-agents.md) — run **`bin/document-skills-and-agents`** after adding or renaming skills (CI enforces this).
+**Authoritative inventory:** [`docs/skills-and-agents.md`](docs/skills-and-agents.md) — run **`yarn document-skills`** after adding or renaming skills.
 
-**Skills in this repo** (short index; keep in sync via the script above):
-
-| Skill folder | Focus |
-|--------------|--------|
-| `auto-skill-setup` | Scan repo and suggest/scaffold skills |
-| `skills-and-agents-documenter` | Regenerate `docs/skills-and-agents.md` inventory |
-| `ship-rails-feature` | Rails 8 + Hotwire + Tailwind feature work |
-| `database-migrations-rollout` | PostgreSQL migrations and deploy safety |
-| `sidekiq-jobs-and-schedules` | Background jobs and cron |
-| `webhooks-integration-safety` | Linear / Slack / Jira webhooks |
-| `public-api-feedback` | `POST /api/v1/feedback` |
-| `ai-feedback-pipeline` | Anthropic processing in `app/services/ai/` |
-| `encrypted-integrations` | Lockbox and `Integration` credentials |
-| `email-pulse-and-recipients` | Digest email and pulse reports |
-| `product-ui-pr-review` | User-visible / release-note checklist |
-| `test-and-ci-gate` | RSpec, RuboCop, Brakeman like CI |
-| `docker-and-local-dev` | Docker Compose / local env alignment |
-| `dev-documentation` | Internal README, setup, CLAUDE.md, tooling docs |
-| `customer-documentation` | User/admin docs, onboarding, integrations, API for integrators |
-| `security-pii-review` | PII, logging, secrets, Lockbox, webhook safety |
-| `incident-triage-production` | Production incidents, Sentry, Sidekiq, rollback |
-| `dependency-upgrade-rails` | Gem/Rails upgrades and Dependabot PRs |
-| `performance-n-plus-one` | Query batching, N+1, job chunk sizes |
-| `commit-message-conventions` | Commit and PR title style |
-| `backfill-data-migration` | Data backfills separate from schema migrations |
+Skills under `.claude/skills/` target this TypeScript stack (`apps/web`, `apps/worker`, `packages/db`).

@@ -1,7 +1,8 @@
-# Docker Compose for local development
+# Docker Compose for local development (Next.js + Postgres + Redis).
 # Run: docker compose up
-# Then visit http://localhost:3000
-# Login: admin@example.com / password123
+# App: http://localhost:3001
+# Create logins: docker compose run --rm web node --env-file=.env scripts/bootstrap-dev-user.mjs
+#   (or run the same on your host against the DB)
 
 services:
   postgres:
@@ -34,25 +35,46 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: bin/dev
-    # Give the container a TTY + stdin so asset watchers (Tailwind, etc.) do not exit
-    # immediately in Docker; without this, foreman shuts down the whole app.
+    command: yarn workspace web dev
     stdin_open: true
     tty: true
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/customer_pulse_development
       REDIS_URL: redis://redis:6379/0
-      RAILS_ENV: development
-      # Lockbox needs a key for dev - generated random is fine for local
-      # 32-byte hex key for Lockbox encryption (dev-only placeholder)
+      NEXTAUTH_URL: http://localhost:3001
+      AUTH_SECRET: ${AUTH_SECRET:-dev-auth-secret-change-me-32chars-min!!}
       LOCKBOX_MASTER_KEY: ${LOCKBOX_MASTER_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
     volumes:
-      # Mount app code for hot reload - changes reflect without rebuild
-      - .:/rails
-      # Keep node_modules from image (don't overwrite with host's empty dir)
-      - /rails/node_modules
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/worker/node_modules
+      # Keep Next's .next inside the container. A host `yarn build:web` + bind mount can mix prod
+      # artifacts with `next dev` and cause 404s for /_next/static/chunks/*.js and css/app/layout.css.
+      - /app/apps/web/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: yarn workspace worker dev
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/customer_pulse_development
+      REDIS_URL: redis://redis:6379/0
+      BULL_BOARD_PORT: "3002"
+    ports:
+      - "3002:3002"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/worker/node_modules
     depends_on:
       postgres:
         condition: service_healthy

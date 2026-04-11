@@ -21,7 +21,7 @@ Good messages make **`git blame`** and release archaeology useful for the whole 
 1. **Subject line** — ~50 chars; imperative mood (“Add webhook idempotency”), not past tense.
 2. **Optional body** — Why the change, tradeoffs, or links to tickets — wrap at ~72 chars.
 3. **Optional prefix** — If the team uses Conventional Commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:` — match what `git log` already shows in this repo.
-4. **Scope** — Mention area when helpful: `webhooks:`, `integrations:`, `pulse:`.
+4. **Scope** — Mention area when helpful: `web:`, `worker:`, `db:`, `webhooks:`, `integrations:`, `pulse:` (this repo is a **Next.js + worker** monorepo).
 
 ## Notes
 

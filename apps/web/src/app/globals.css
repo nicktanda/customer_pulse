@@ -1,0 +1,517 @@
+/* Bootstrap 5 provides base typography, reboot, and theme tokens (`data-bs-theme` on `<html>`). */
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+/* Keep Tailwind utilities for any remaining helpers; disable preflight so it does not fight Bootstrap. */
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Monochrome theme (sleek black / grey)
+   ---------------------------------------------------------------------------
+   Bootstrap’s default “primary” color and default link color are blue (#0d6efd).
+   This app overrides CSS *custom properties* so every `btn-primary`, `link-primary`,
+   plain `<a href>`, focus rings, and most accents stay in a neutral palette.
+
+   These rules are loaded *after* Bootstrap, so they win over the library defaults.
+   Light vs dark mode: the root `<html>` sets `data-bs-theme` (see `layout.tsx` +
+   `ThemeToggle`), and we mirror Bootstrap by defining tokens for both themes.
+   --------------------------------------------------------------------------- */
+
+:root,
+[data-bs-theme="light"] {
+  /* Main actions (was blue) */
+  --bs-primary: #181818;
+  --bs-primary-rgb: 24, 24, 24;
+  --bs-primary-text-emphasis: #0f0f0f;
+  --bs-primary-bg-subtle: #ebebeb;
+  --bs-primary-border-subtle: #c8c8c8;
+
+  /* Default hyperlinks (was blue) — still clearly clickable via hover underline below */
+  --bs-link-color: #2a2a2a;
+  --bs-link-color-rgb: 42, 42, 42;
+  --bs-link-hover-color: #000000;
+  --bs-link-hover-color-rgb: 0, 0, 0;
+  --bs-link-decoration: none;
+
+  /* Keyboard focus ring (was a blue glow tied to primary) */
+  --bs-focus-ring-color: rgba(24, 24, 24, 0.25);
+
+  /* Success flash messages → neutral grey banner (keeps role="status" semantics) */
+  --bs-success: #383838;
+  --bs-success-rgb: 56, 56, 56;
+  --bs-success-text-emphasis: #1a1a1a;
+  --bs-success-bg-subtle: #eeeeee;
+  --bs-success-border-subtle: #d0d0d0;
+
+  /* Warning / info → grey so leftover utility classes don’t reintroduce amber or cyan */
+  --bs-warning: #6c757d;
+  --bs-warning-rgb: 108, 117, 125;
+  --bs-warning-text-emphasis: #3a3a3a;
+  --bs-warning-bg-subtle: #f3f3f3;
+  --bs-warning-border-subtle: #dddddd;
+
+  --bs-info: #4a4a4a;
+  --bs-info-rgb: 74, 74, 74;
+  --bs-info-text-emphasis: #252525;
+  --bs-info-bg-subtle: #ededed;
+  --bs-info-border-subtle: #d0d0d0;
+
+  /* Inline <code> (Bootstrap defaults to pink / teal) */
+  --bs-code-color: #3a3a3a;
+}
+
+[data-bs-theme="dark"] {
+  /* Mid-grey so white label text on primary buttons stays readable */
+  --bs-primary: #9a9a9a;
+  --bs-primary-rgb: 154, 154, 154;
+  --bs-primary-text-emphasis: #e2e2e2;
+  --bs-primary-bg-subtle: #2d2d2d;
+  --bs-primary-border-subtle: #4f4f4f;
+
+  --bs-link-color: #d0d0d0;
+  --bs-link-color-rgb: 208, 208, 208;
+  --bs-link-hover-color: #ffffff;
+  --bs-link-hover-color-rgb: 255, 255, 255;
+  --bs-link-decoration: none;
+
+  --bs-focus-ring-color: rgba(255, 255, 255, 0.2);
+
+  --bs-success: #8a8a8a;
+  --bs-success-rgb: 138, 138, 138;
+  --bs-success-text-emphasis: #dedede;
+  --bs-success-bg-subtle: #2a2a2a;
+  --bs-success-border-subtle: #4a4a4a;
+
+  --bs-warning: #8a8a8a;
+  --bs-warning-rgb: 138, 138, 138;
+  --bs-warning-text-emphasis: #e0e0e0;
+  --bs-warning-bg-subtle: #2c2c2c;
+  --bs-warning-border-subtle: #4a4a4a;
+
+  --bs-info: #8a8a8a;
+  --bs-info-rgb: 138, 138, 138;
+  --bs-info-text-emphasis: #dedede;
+  --bs-info-bg-subtle: #2a2a2a;
+  --bs-info-border-subtle: #4a4a4a;
+
+  --bs-code-color: #c8c8c8;
+}
+
+/*
+ * Sidebar nav pills: Bootstrap hard-codes the active pill background to blue.
+ * Point those variables at our primary token so active state stays on-brand.
+ */
+.nav-pills {
+  --bs-nav-pills-link-active-bg: var(--bs-primary);
+  --bs-nav-pills-link-active-color: #fff;
+}
+
+[data-bs-theme="dark"] .nav-pills {
+  /* Light pill + dark type reads better here than mid-grey + white */
+  --bs-nav-pills-link-active-bg: #eaeaea;
+  --bs-nav-pills-link-active-color: #121212;
+}
+
+/* Inactive routes: quiet grey; hover darkens without flashing blue */
+.nav-pills .nav-link {
+  color: var(--bs-body-secondary);
+}
+
+/* Only non-active pills: hover text color. Including .active here overwrote the active
+   pill’s foreground on hover (e.g. dark mode: near-white body text on light pill). */
+.nav-pills .nav-link:not(.active):hover {
+  color: var(--bs-body-color);
+}
+
+/* “Sign out” / ghost actions: muted text, not a loud link color */
+.btn-link:not(.text-danger) {
+  --bs-btn-color: var(--bs-secondary-color);
+  --bs-btn-hover-color: var(--bs-body-color);
+  --bs-btn-active-color: var(--bs-body-color);
+}
+
+/* Underline on hover so links stay obvious without default blue */
+a:hover,
+.link-primary:hover,
+.link-secondary:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* Sidebar nav uses pill styling, not “document links” — no hover underline */
+.app-sidebar a:hover,
+.app-sidebar a:focus-visible {
+  text-decoration: none;
+}
+
+.card.shadow-sm {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-bs-theme="dark"] .card.shadow-sm {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Two-line clamp for feedback previews (Tailwind's line-clamp is not available without the plugin). */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   App layout primitives (PageShell, BackLink)
+   --------------------------------------------------------------------------- */
+
+.app-page-shell {
+  width: 100%;
+}
+
+.app-page-shell--narrow {
+  max-width: 32rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.app-page-shell--medium {
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.app-page-shell--wide {
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Dashboard: clickable KPI card focus/hover (whole card is a link). */
+.feedback-stat-card-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
+  border-radius: var(--bs-border-radius);
+}
+
+.feedback-stat-card-link:hover .card {
+  border-color: var(--bs-primary-border-subtle);
+}
+
+/* Dashboard breakdown: proportion bar inside each row. */
+.feedback-breakdown-bar {
+  height: 0.35rem;
+  background-color: var(--bs-secondary-bg);
+  overflow: hidden;
+}
+
+.feedback-breakdown-bar__fill {
+  height: 100%;
+  min-width: 2px;
+  background-color: var(--bs-primary);
+  opacity: 0.65;
+}
+
+/* Feedback list: removable filter chips (links styled as pills). */
+a.feedback-filter-chip:hover {
+  background-color: var(--bs-secondary-bg) !important;
+}
+
+/*
+ * Feedback priority badges (P2 / P3): use fixed accent colors.
+ * Bootstrap `text-bg-warning` is not used here because this theme remaps `--bs-warning`
+ * to grey (see :root above) so generic “warning” UI stays neutral — priorities should stay vivid.
+ */
+.badge.feedback-priority-badge--p2 {
+  background-color: #e65100;
+  color: #fff;
+}
+
+.badge.feedback-priority-badge--p3 {
+  background-color: #f9a825;
+  color: #1a1a1a;
+}
+
+[data-bs-theme="dark"] .badge.feedback-priority-badge--p2 {
+  background-color: #fb8c00;
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .badge.feedback-priority-badge--p3 {
+  background-color: #ffca28;
+  color: #121212;
+}
+
+/* Feedback list: thead matches the rest of the app (avoid Bootstrap’s bright `table-light` strip). */
+.feedback-results-table thead th {
+  background-color: var(--bs-secondary-bg) !important;
+  color: var(--bs-body-color) !important;
+  border-bottom-color: var(--bs-border-color) !important;
+}
+
+/* Master–detail row: pointer + subtle highlight + left accent for the open item. */
+.feedback-results-table tbody tr {
+  cursor: pointer;
+}
+
+/* Background only — inset box-shadow on each `<td>` drew extra vertical “divider” lines between columns. */
+.feedback-list-row-selected td {
+  background-color: rgba(var(--bs-primary-rgb), 0.12) !important;
+}
+
+/* List groups / cards: whole row opens detail panel (cursor + hover). */
+.app-clickable-list-row {
+  cursor: pointer;
+}
+
+.app-clickable-list-row:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+/* Selected row in master–detail lists (list-group-item or card body). */
+.app-list-row-selected {
+  background-color: rgba(var(--bs-primary-rgb), 0.12) !important;
+  box-shadow: inset 3px 0 0 0 var(--bs-primary);
+}
+
+/* ---------------------------------------------------------------------------
+   App layout: main pane scrolls on lg+ so detail panels stick to its top (Notion-style).
+   --------------------------------------------------------------------------- */
+
+.app-layout-shell {
+  min-height: 100dvh;
+}
+
+@media (min-width: 992px) {
+  .app-layout-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .app-main-pane {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* Master–detail: panel pins to top of `.app-main-pane` scrollport; inner body scrolls. */
+@media (min-width: 992px) {
+  .feedback-detail-aside-shell {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 5.5rem);
+    min-height: 0;
+    background-color: var(--bs-body-bg);
+  }
+
+  .feedback-detail-aside-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Same behavior for insights / pulse reports / integrations / projects (`StickyDetailAside`). */
+  .app-detail-aside {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    max-height: calc(100dvh - 5.5rem);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background-color: var(--bs-body-bg);
+  }
+
+  .app-detail-aside__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-top: 0.75rem;
+    padding-bottom: 1rem;
+  }
+}
+
+/* Feedback list panel: same inner scroll padding as `StickyDetailAside` (`app-detail-aside__scroll`). */
+.feedback-detail-aside-scroll {
+  padding-top: 0.75rem;
+  padding-bottom: 1rem;
+}
+
+/* Shared master–detail peek header (Feedback, Insights, Pulse, Integrations, Projects, …) */
+.peek-panel-header {
+  padding-top: 0.25rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+.peek-panel-header__main {
+  margin-top: 0.35rem;
+}
+
+.peek-panel-title {
+  margin-top: 0.65rem;
+  line-height: 1.35;
+}
+
+.peek-panel-toolbar {
+  justify-content: flex-start;
+  gap: 0.2rem 0.45rem !important;
+  row-gap: 0.35rem !important;
+  max-width: 100%;
+}
+
+.peek-panel-toolbar__rule {
+  width: 1px;
+  align-self: stretch;
+  min-height: 1.125rem;
+  margin: 0 0.2rem 0 0.35rem;
+  background-color: var(--bs-border-color-translucent);
+  flex-shrink: 0;
+}
+
+.peek-panel-nav-pair {
+  gap: 0.05rem;
+}
+
+a.peek-panel-entity-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  padding: 0.35rem 0.7rem;
+  line-height: 1.2;
+  border-radius: var(--bs-border-radius-pill);
+  border: 1px solid var(--bs-border-color);
+  background-color: var(--bs-tertiary-bg);
+  transition:
+    color 0.12s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+a.peek-panel-entity-link:hover {
+  color: var(--bs-primary);
+  border-color: var(--bs-primary-border-subtle);
+  background-color: rgba(var(--bs-primary-rgb), 0.12);
+}
+
+a.peek-panel-entity-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.35);
+}
+
+.peek-panel-toolbar-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.peek-panel-icon-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0.35rem !important;
+  line-height: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+a.peek-panel-icon-btn:hover,
+button.peek-panel-icon-btn:hover {
+  background-color: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+}
+
+.peek-panel-icon-btn:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.35);
+}
+
+.peek-panel-icon-btn.disabled,
+.peek-panel-icon-btn[aria-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Muted back control: not a loud primary link; clear focus for keyboard users. */
+.app-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  border-radius: var(--bs-border-radius);
+  padding: 0.25rem 0.35rem;
+  margin: -0.25rem -0.35rem;
+}
+
+.app-back-link:hover {
+  color: var(--bs-body-color);
+  text-decoration: none;
+}
+
+.app-back-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
+}
+
+.app-back-link__icon {
+  opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive app sidebar (drawer on small screens; see ResponsiveSidebar.tsx)
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1050;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 0 0 1.25rem rgba(0, 0, 0, 0.12);
+  }
+
+  [data-bs-theme="dark"] .app-sidebar {
+    box-shadow: 0 0 1.25rem rgba(0, 0, 0, 0.5);
+  }
+
+  .app-sidebar.app-sidebar--open {
+    transform: translateX(0);
+  }
+}
+
+@media (min-width: 992px) {
+  .app-sidebar {
+    position: relative !important;
+    transform: none !important;
+    height: auto !important;
+    box-shadow: none !important;
+    align-self: stretch;
+    max-height: 100dvh;
+    overflow-y: auto;
+  }
+}

@@ -1,9 +1,4 @@
 #!/usr/bin/env sh
-
-# Use bundle exec so we always use the project's foreman (from Gemfile)
-# - avoids system Ruby / permission errors when foreman isn't installed globally
-# Default to port 3000 if not specified
-export PORT="${PORT:-3000}"
-
-# Load .env so ANTHROPIC_API_KEY etc. are available to the web/worker processes
-exec bundle exec foreman start -f Procfile.dev --env .env "$@"
+# Start Next.js (port 3001) + BullMQ worker together (same idea as the old Foreman setup).
+cd "$(dirname "$0")/.." || exit 1
+exec yarn dev "$@"

@@ -1,91 +1,62 @@
-# Getting Customer Pulse Running Locally
+# Local setup (TypeScript stack)
 
-This guide helps you run the app on your machine. Choose **one** of the two paths below.
+## Prerequisites
 
----
+- **Node.js 20+** and **Yarn** (Classic 1.x)
+- **PostgreSQL 14+** and **Redis 7+** running locally, *or* **Docker Compose** (`docker compose up`)
 
-## Option A: Docker (Recommended if you have Docker)
+## Steps
 
-If you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed:
+1. **Install dependencies**
 
-```bash
-# Build and start everything (PostgreSQL, Redis, Rails)
-docker compose up --build
+   ```bash
+   yarn install
+   ```
 
-# On first run, you'll need to seed the database. In another terminal:
-docker compose exec web bin/rails db:seed
-```
+2. **Environment**
 
-Then open **http://localhost:3000** and log in with:
-- **Email:** `admin@example.com`
-- **Password:** `password123`
+   ```bash
+   cp .env.example .env
+   ```
 
----
+   Edit `.env` with at least `DATABASE_URL`, `REDIS_URL`, and `LOCKBOX_MASTER_KEY` (64 hex chars, same as before if you already had integrations). For Auth.js add `AUTH_SECRET` (e.g. `openssl rand -base64 32`) and `NEXTAUTH_URL=http://localhost:3001`.
 
-## Option B: Native Setup (Ruby, PostgreSQL, Redis on your Mac)
+   Copy into the Next app if you use separate files:
 
-### 1. Install prerequisites
+   ```bash
+   cp .env apps/web/.env.local
+   cp .env apps/worker/.env
+   ```
 
-You need **Homebrew** first. If you don't have it, install from https://brew.sh
+3. **Database**
 
-Then install everything:
+   Use an existing database that already has the `users` / `projects` / `feedbacks` tables (e.g. a shared or legacy Postgres), **or** apply schema with Drizzle from `packages/db` (`drizzle-kit push` / your migration process — see `db/README.md`).
 
-```bash
-# Ruby 3.3 via rbenv
-brew install rbenv ruby-build
-rbenv install 3.3.4
-rbenv global 3.3.4  # or: cd customer_pulse && rbenv local 3.3.4
+4. **Dev users**
 
-# Database and caching
-brew install postgresql@16 redis
+   ```bash
+   node scripts/bootstrap-dev-user.mjs
+   ```
 
-# Start services (run these in the background or as needed)
-brew services start postgresql@16
-brew services start redis
+5. **Run**
 
-# Node.js and Yarn (for JS/CSS assets)
-brew install node yarn
-```
+   ```bash
+   yarn dev
+   ```
 
-### 2. Install dependencies
+## Docker
 
-```bash
-cd customer_pulse
-bundle install
-yarn install
-```
-
-### 3. Configure environment
+From the repo root:
 
 ```bash
-cp .env.example .env
-# Edit .env if needed - most things work with defaults for local dev
+docker compose up
 ```
 
-### 4. Set up the database
-
-```bash
-bin/rails db:create db:migrate db:seed
-```
-
-### 5. Start the app
-
-```bash
-bin/dev
-```
-
-Then open **http://localhost:3000** and log in with:
-- **Email:** `admin@example.com`
-- **Password:** `password123`
-
----
+Web listens on **3001**. Set `AUTH_SECRET` in the environment or `.env` for compose overrides.
 
 ## Troubleshooting
 
-**"Could not find 'bundler'"** — You're using the wrong Ruby version. Run `ruby -v` (should show 3.3.x) and ensure rbenv is in your PATH.
-
-**"Connection refused" for PostgreSQL** — Make sure PostgreSQL is running: `brew services start postgresql@16`
-
-**"Connection refused" for Redis** — Make sure Redis is running: `brew services start redis`
-
-**Port 3000 in use** — Stop any other app using that port, or set `PORT=3001 bin/dev` to use a different port.
+- **`relation "project_users" does not exist` (500 on `/app`)**: Your Postgres database is missing core membership tables (partial or empty schema). From the repo root run `yarn db:ensure-membership` (uses `.env` / `apps/web/.env.local` for `DATABASE_URL`). For a **brand-new** database you can instead apply the full Drizzle baseline: `cd packages/db && node --env-file=../../.env ../../node_modules/drizzle-kit/bin.cjs migrate` (only if tables are not already partially created from an older stack).
+- **Login fails**: Re-run `bootstrap:dev-users`; confirm `users.encrypted_password` is bcrypt and email matches.
+- **API / integrations**: Confirm `LOCKBOX_MASTER_KEY` matches the key used when credentials were encrypted.
+- **Jobs not running**: Start `yarn dev:worker` and ensure `REDIS_URL` is correct.
