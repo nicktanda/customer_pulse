@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
-import { integrations, IntegrationSourceType } from "@customer-pulse/db/client";
+import { integrations, projectSettings, IntegrationSourceType } from "@customer-pulse/db/client";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
@@ -77,4 +77,70 @@ export async function saveGithubSettingsAction(formData: FormData): Promise<void
 
   revalidatePath("/app/settings");
   redirect("/app/settings?notice=github");
+}
+
+/** Persists per-project general settings (pulse time, AI interval, etc.) */
+export async function saveGeneralSettingsAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditorProject();
+
+  const pulseSendTime = String(formData.get("pulse_send_time") ?? "09:00").trim();
+  const aiProcessingIntervalHours = Number(formData.get("ai_processing_interval_hours") ?? 4);
+  const defaultPriority = String(formData.get("default_priority") ?? "unset").trim();
+  const autoArchiveDays = Number(formData.get("auto_archive_days") ?? 30);
+  const githubAutoMerge = formData.get("github_auto_merge") === "on" || formData.get("github_auto_merge") === "true";
+
+  const db = getDb();
+  const now = new Date();
+
+  const [existing] = await db
+    .select({ id: projectSettings.id })
+    .from(projectSettings)
+    .where(eq(projectSettings.projectId, projectId))
+    .limit(1);
+
+  if (existing) {
+    await db.update(projectSettings).set({
+      pulseSendTime,
+      aiProcessingIntervalHours: Number.isFinite(aiProcessingIntervalHours) ? aiProcessingIntervalHours : 4,
+      defaultPriority,
+      autoArchiveDays: Number.isFinite(autoArchiveDays) ? autoArchiveDays : 30,
+      githubAutoMerge,
+      updatedAt: now,
+    }).where(eq(projectSettings.id, existing.id));
+  } else {
+    await db.insert(projectSettings).values({
+      projectId,
+      pulseSendTime,
+      aiProcessingIntervalHours: Number.isFinite(aiProcessingIntervalHours) ? aiProcessingIntervalHours : 4,
+      defaultPriority,
+      autoArchiveDays: Number.isFinite(autoArchiveDays) ? autoArchiveDays : 30,
+      githubAutoMerge,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  revalidatePath("/app/settings");
+  redirect("/app/settings?notice=settings");
+}
+
+/** Persists Anthropic API key as an integration credential (type 13). */
+export async function saveAnthropicSettingsAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditorProject();
+  const apiKey = String(formData.get("api_key") ?? "").trim();
+
+  if (!apiKey) {
+    redirect("/app/settings?error=anthropic_key");
+  }
+
+  await upsertIntegrationCredentials(
+    projectId,
+    13, // anthropic source type
+    "Anthropic",
+    { api_key: apiKey },
+    { enabled: true },
+  );
+
+  revalidatePath("/app/settings");
+  redirect("/app/settings?notice=anthropic");
 }

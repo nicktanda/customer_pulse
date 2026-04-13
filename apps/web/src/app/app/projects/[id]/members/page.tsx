@@ -2,9 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
-import { projects, projectUsers, users } from "@customer-pulse/db/client";
+import { projects, projectUsers, projectInvitations, users } from "@customer-pulse/db/client";
 import { userHasProjectAccess, userIsProjectOwner } from "@/lib/project-access";
-import { addProjectMemberAction, removeProjectMemberAction } from "../../actions";
+import { addProjectMemberAction, removeProjectMemberAction, cancelInvitationAction } from "../../actions";
 import { InlineAlert, PageHeader, PageShell } from "@/components/ui";
 
 export default async function ProjectMembersPage({
@@ -46,6 +46,18 @@ export default async function ProjectMembersPage({
     .where(eq(projectUsers.projectId, projectId))
     .orderBy(desc(projectUsers.isOwner));
 
+  const pendingInvites = isOwner
+    ? await db
+        .select({
+          piId: projectInvitations.id,
+          email: projectInvitations.email,
+          createdAt: projectInvitations.createdAt,
+        })
+        .from(projectInvitations)
+        .where(eq(projectInvitations.projectId, projectId))
+        .orderBy(desc(projectInvitations.createdAt))
+    : [];
+
   const err = typeof sp.error === "string" ? sp.error : undefined;
   const errorMsg =
     err === "email"
@@ -54,9 +66,11 @@ export default async function ProjectMembersPage({
         ? "No user with that email — they must sign up first."
         : err === "dup"
           ? "That user is already on the project."
-          : err === "remove"
-            ? "Could not remove member (owners cannot be removed)."
-            : null;
+          : err === "dup_invite"
+            ? "That email has already been invited."
+            : err === "remove"
+              ? "Could not remove member (owners cannot be removed)."
+              : null;
 
   return (
     <PageShell width="full">
@@ -116,6 +130,30 @@ export default async function ProjectMembersPage({
           </li>
         ))}
       </ul>
+
+      {isOwner && pendingInvites.length > 0 ? (
+        <>
+          <h2 className="h6 mt-4 mb-2 text-body-secondary">Pending invitations</h2>
+          <ul className="list-group shadow-sm">
+            {pendingInvites.map((inv) => (
+              <li
+                key={inv.piId}
+                className="list-group-item d-flex align-items-center justify-content-between gap-3 flex-wrap"
+              >
+                <div>
+                  <p className="text-body-secondary mb-0">{inv.email}</p>
+                  <span className="badge text-bg-warning mt-1">pending signup</span>
+                </div>
+                <form action={cancelInvitationAction.bind(null, projectId, inv.piId)}>
+                  <button type="submit" className="btn btn-link btn-sm text-danger p-0 text-decoration-none">
+                    Cancel
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
     </PageShell>
   );
 }

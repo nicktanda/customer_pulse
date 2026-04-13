@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
-import { users, projects, projectUsers, emailRecipients, IntegrationSourceType } from "@customer-pulse/db/client";
+import { users, projects, projectUsers, projectInvitations, emailRecipients, IntegrationSourceType } from "@customer-pulse/db/client";
 import { nextOnboardingStep, ONBOARDING_STEPS } from "@/lib/onboarding-steps";
 import { slugifyName } from "@/app/app/projects/slug";
 import { upsertIntegrationCredentials } from "@/lib/integrations-upsert";
@@ -127,6 +127,19 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
                 createdAt: new Date(),
                 updatedAt: new Date(),
               });
+            }
+          } else {
+            // User doesn't exist yet — create a pending invitation
+            try {
+              await db.insert(projectInvitations).values({
+                projectId: pid,
+                email,
+                invitedById: userId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+            } catch {
+              // Unique constraint (duplicate invite) — safe to ignore
             }
           }
         }

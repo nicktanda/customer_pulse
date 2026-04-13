@@ -1,8 +1,8 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { eq, sql } from "drizzle-orm";
-import { users } from "@customer-pulse/db/client";
+import { eq, and, sql } from "drizzle-orm";
+import { users, projectInvitations, projectUsers, UserRole } from "@customer-pulse/db/client";
 import { getDb } from "@/lib/db";
 
 /**
@@ -87,17 +87,52 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       } else {
         const bcrypt = (await import("bcryptjs")).default;
         const randomPassword = await bcrypt.hash(globalThis.crypto.randomUUID(), 10);
+
+        // Check for pending project invitations
+        const pendingInvites = await db
+          .select()
+          .from(projectInvitations)
+          .where(eq(projectInvitations.email, email));
+        const hasInvites = pendingInvites.length > 0;
+
         await db.insert(users).values({
           email,
           name: (profile.name as string) ?? email.split("@")[0]!,
           encryptedPassword: randomPassword,
-          role: 0,
+          role: UserRole.admin,
           createdAt: now,
           updatedAt: now,
           provider: "google_oauth2",
           uid: account.providerAccountId,
           avatarUrl: picture,
+          onboardingCompletedAt: hasInvites ? now : null,
+          onboardingCurrentStep: hasInvites ? "complete" : "welcome",
         });
+
+        // Convert pending invitations to project memberships
+        if (hasInvites) {
+          const [newUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+          if (newUser) {
+            for (const invite of pendingInvites) {
+              const [existing] = await db
+                .select()
+                .from(projectUsers)
+                .where(and(eq(projectUsers.projectId, invite.projectId), eq(projectUsers.userId, newUser.id)))
+                .limit(1);
+              if (!existing) {
+                await db.insert(projectUsers).values({
+                  projectId: invite.projectId,
+                  userId: newUser.id,
+                  invitedById: invite.invitedById,
+                  isOwner: false,
+                  createdAt: now,
+                  updatedAt: now,
+                });
+              }
+            }
+            await db.delete(projectInvitations).where(eq(projectInvitations.email, email));
+          }
+        }
       }
       return true;
     },

@@ -100,7 +100,12 @@ export function LoginForm({ showGoogle }: { showGoogle: boolean }) {
               />
             </Form.Group>
             <Form.Group className="mb-3" controlId="login-password">
-              <Form.Label>Password</Form.Label>
+              <div className="d-flex justify-content-between align-items-baseline">
+                <Form.Label>Password</Form.Label>
+                <a href="/forgot-password" className="small text-decoration-none">
+                  Forgot password?
+                </a>
+              </div>
               <Form.Control
                 type="password"
                 required
@@ -126,6 +131,13 @@ export function LoginForm({ showGoogle }: { showGoogle: boolean }) {
           Continue with Google
         </Button>
       ) : null}
+
+      <p className="text-center small text-body-secondary mt-3 mb-0">
+        Don&apos;t have an account?{" "}
+        <a href="/signup" className="text-decoration-none">
+          Sign up
+        </a>
+      </p>
     </div>
   );
 }

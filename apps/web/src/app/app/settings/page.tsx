@@ -1,7 +1,7 @@
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
-import { integrations, IntegrationSourceType, UserRole } from "@customer-pulse/db/client";
+import { integrations, projectSettings, IntegrationSourceType, UserRole } from "@customer-pulse/db/client";
 import {
   getCurrentProjectIdForUser,
   getCurrentProjectSummaryForUser,
@@ -11,7 +11,7 @@ import { ProjectSwitcher } from "../ProjectSwitcher";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { projectHasDemoSeedData } from "@/lib/demo-project-seed";
-import { saveGithubSettingsAction } from "./actions";
+import { saveGithubSettingsAction, saveGeneralSettingsAction, saveAnthropicSettingsAction } from "./actions";
 import { DemoModeSwitch } from "./DemoModeSwitch";
 import {
   FormActions,
@@ -21,13 +21,12 @@ import {
   ProjectAccessDenied,
 } from "@/components/ui";
 
-/** Read-only defaults for this card until per-project settings are persisted in the DB. */
 const DEFAULT_SETTINGS = {
-  pulse_send_time: "09:00",
-  ai_processing_interval_hours: 4,
-  default_priority: "unset",
-  auto_archive_days: 30,
-  github_auto_merge: false,
+  pulseSendTime: "09:00",
+  aiProcessingIntervalHours: 4,
+  defaultPriority: "unset",
+  autoArchiveDays: 30,
+  githubAutoMerge: false,
 };
 
 export default async function SettingsPage({
@@ -94,6 +93,21 @@ export default async function SettingsPage({
     }
   }
 
+  // Load project-level settings
+  const [settings] = await db
+    .select()
+    .from(projectSettings)
+    .where(eq(projectSettings.projectId, projectId))
+    .limit(1);
+  const currentSettings = settings ?? DEFAULT_SETTINGS;
+
+  // Load Anthropic integration
+  const [anthropicInt] = await db
+    .select()
+    .from(integrations)
+    .where(and(eq(integrations.projectId, projectId), eq(integrations.sourceType, 13)))
+    .limit(1);
+
   // Demo mode is “on” when tagged demo feedback exists (same tag the seed uses in `raw_data`).
   const demoModeOn = showDemoModeCard ? await projectHasDemoSeedData(db, projectId) : false;
 
@@ -120,12 +134,11 @@ export default async function SettingsPage({
         </div>
       </section>
 
-      {notice === "github" ? (
-        <InlineAlert variant="success">GitHub integration saved.</InlineAlert>
-      ) : null}
-      {err === "github_token" ? (
-        <InlineAlert variant="danger">GitHub access token is required.</InlineAlert>
-      ) : null}
+      {notice === "github" ? <InlineAlert variant="success">GitHub integration saved.</InlineAlert> : null}
+      {notice === "settings" ? <InlineAlert variant="success">General settings saved.</InlineAlert> : null}
+      {notice === "anthropic" ? <InlineAlert variant="success">Anthropic API key saved.</InlineAlert> : null}
+      {err === "github_token" ? <InlineAlert variant="danger">GitHub access token is required.</InlineAlert> : null}
+      {err === "anthropic_key" ? <InlineAlert variant="danger">Anthropic API key is required.</InlineAlert> : null}
       {notice === "demo_on" || notice === "demo" ? (
         <InlineAlert variant="success">
           Demo mode is on: synthetic data is loaded for this project. Refresh other open tabs if counts look stale.
@@ -179,20 +192,77 @@ export default async function SettingsPage({
 
       <section className="card shadow-sm border-secondary-subtle">
         <div className="card-body">
-          <h2 className="h5 text-body-emphasis">Scheduled jobs &amp; defaults</h2>
-          <p className="small text-body-secondary mt-1 mb-0">
-            Pulse send time, AI batch interval, and related defaults are controlled by your deployment (environment and
-            worker configuration), not this screen. The values below are what the app uses today so you can see them at
-            a glance.
+          <h2 className="h5 text-body-emphasis">General settings</h2>
+          <p className="small text-body-secondary mt-1 mb-3">
+            Configure pulse send time, AI processing interval, and default behavior for this project.
           </p>
-          <dl className="row small mt-3 mb-0 g-2">
-            {Object.entries(DEFAULT_SETTINGS).map(([k, v]) => (
-              <div key={k} className="col-sm-6">
-                <dt className="text-body-secondary">{k}</dt>
-                <dd className="fw-medium mb-0">{String(v)}</dd>
+          {canEdit ? (
+            <form action={saveGeneralSettingsAction} className="d-flex flex-column gap-3">
+              <div className="row g-3">
+                <div className="col-sm-6">
+                  <label htmlFor="settings-pulse-time" className="form-label small">Pulse send time</label>
+                  <input id="settings-pulse-time" name="pulse_send_time" type="time" className="form-control form-control-sm" defaultValue={currentSettings.pulseSendTime} />
+                </div>
+                <div className="col-sm-6">
+                  <label htmlFor="settings-ai-interval" className="form-label small">AI processing interval (hours)</label>
+                  <input id="settings-ai-interval" name="ai_processing_interval_hours" type="number" min="1" max="24" className="form-control form-control-sm" defaultValue={currentSettings.aiProcessingIntervalHours} />
+                </div>
+                <div className="col-sm-6">
+                  <label htmlFor="settings-priority" className="form-label small">Default priority</label>
+                  <select id="settings-priority" name="default_priority" className="form-select form-select-sm" defaultValue={currentSettings.defaultPriority}>
+                    <option value="unset">Unset</option>
+                    <option value="p1">P1</option>
+                    <option value="p2">P2</option>
+                    <option value="p3">P3</option>
+                    <option value="p4">P4</option>
+                  </select>
+                </div>
+                <div className="col-sm-6">
+                  <label htmlFor="settings-archive" className="form-label small">Auto-archive days</label>
+                  <input id="settings-archive" name="auto_archive_days" type="number" min="1" max="365" className="form-control form-control-sm" defaultValue={currentSettings.autoArchiveDays} />
+                </div>
               </div>
-            ))}
-          </dl>
+              <div className="form-check">
+                <input type="checkbox" name="github_auto_merge" value="true" defaultChecked={currentSettings.githubAutoMerge} className="form-check-input" id="settings-auto-merge" />
+                <label className="form-check-label small" htmlFor="settings-auto-merge">Auto-merge GitHub PRs</label>
+              </div>
+              <FormActions variant="plain">
+                <button type="submit" className="btn btn-primary btn-sm">Save settings</button>
+              </FormActions>
+            </form>
+          ) : (
+            <dl className="row small mt-3 mb-0 g-2">
+              <div className="col-sm-6"><dt className="text-body-secondary">Pulse send time</dt><dd className="fw-medium mb-0">{currentSettings.pulseSendTime}</dd></div>
+              <div className="col-sm-6"><dt className="text-body-secondary">AI interval (hours)</dt><dd className="fw-medium mb-0">{currentSettings.aiProcessingIntervalHours}</dd></div>
+              <div className="col-sm-6"><dt className="text-body-secondary">Default priority</dt><dd className="fw-medium mb-0">{currentSettings.defaultPriority}</dd></div>
+              <div className="col-sm-6"><dt className="text-body-secondary">Auto-archive days</dt><dd className="fw-medium mb-0">{currentSettings.autoArchiveDays}</dd></div>
+            </dl>
+          )}
+        </div>
+      </section>
+
+      <section className="card shadow-sm border-secondary-subtle">
+        <div className="card-body">
+          <h2 className="h5 text-body-emphasis">Anthropic API</h2>
+          <p className="small text-body-secondary mt-1">
+            Used for AI-powered feedback classification, insight discovery, and reporting. Stored as an encrypted integration.
+          </p>
+          {canEdit ? (
+            <form action={saveAnthropicSettingsAction} className="mt-3 d-flex flex-column gap-3">
+              <div>
+                <label htmlFor="anthropic-key" className="form-label">API key</label>
+                <input id="anthropic-key" name="api_key" type="password" autoComplete="off" required={!anthropicInt} className="form-control" placeholder={anthropicInt ? "Leave blank to keep existing key" : "sk-ant-…"} />
+                {anthropicInt ? (
+                  <p className="form-text small text-body-secondary mb-0">Key is saved. Enter a new one to replace it.</p>
+                ) : null}
+              </div>
+              <FormActions variant="plain">
+                <button type="submit" className="btn btn-primary btn-sm">Save Anthropic key</button>
+              </FormActions>
+            </form>
+          ) : (
+            <p className="small text-body-secondary mt-3 mb-0">{anthropicInt ? "Anthropic API key is configured." : "No API key set — ask a project admin to configure it."}</p>
+          )}
         </div>
       </section>
 

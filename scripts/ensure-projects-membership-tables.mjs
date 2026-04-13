@@ -59,6 +59,8 @@ const sqlFiles = [
   path.join(ROOT, "packages", "db", "sql", "ensure_project_id_columns.sql"),
   // Matches Drizzle 0001_strategy_reporting; safe if you only ran 0000_init or a legacy schema.
   path.join(ROOT, "packages", "db", "sql", "ensure_strategy_reporting.sql"),
+  // project_invitations + project_settings tables.
+  path.join(ROOT, "packages", "db", "sql", "ensure_new_tables.sql"),
 ];
 
 const sql = postgres(DATABASE_URL, { onnotice: () => {} });

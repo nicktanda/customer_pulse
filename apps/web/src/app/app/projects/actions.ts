@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
-import { projects, projectUsers, users } from "@customer-pulse/db/client";
+import { projects, projectUsers, projectInvitations, users } from "@customer-pulse/db/client";
 import {
   userHasProjectAccess,
   userIsProjectOwner,
@@ -143,28 +143,66 @@ export async function addProjectMemberAction(projectId: number, formData: FormDa
 
   const db = getDb();
   const [target] = await db.select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
-  if (!target) {
-    redirect(`/app/projects/${projectId}/members?error=nouser`);
-  }
-
-  const [dup] = await db
-    .select()
-    .from(projectUsers)
-    .where(and(eq(projectUsers.projectId, projectId), eq(projectUsers.userId, target.id)))
-    .limit(1);
-  if (dup) {
-    redirect(`/app/projects/${projectId}/members?error=dup`);
-  }
 
   const now = new Date();
-  await db.insert(projectUsers).values({
-    projectId,
-    userId: target.id,
-    invitedById: userId,
-    isOwner: false,
-    createdAt: now,
-    updatedAt: now,
-  });
+
+  if (target) {
+    // Existing user — add directly
+    const [dup] = await db
+      .select()
+      .from(projectUsers)
+      .where(and(eq(projectUsers.projectId, projectId), eq(projectUsers.userId, target.id)))
+      .limit(1);
+    if (dup) {
+      redirect(`/app/projects/${projectId}/members?error=dup`);
+    }
+
+    await db.insert(projectUsers).values({
+      projectId,
+      userId: target.id,
+      invitedById: userId,
+      isOwner: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } else {
+    // User doesn't exist yet — create pending invitation
+    const [existingInvite] = await db
+      .select()
+      .from(projectInvitations)
+      .where(and(eq(projectInvitations.projectId, projectId), eq(projectInvitations.email, email)))
+      .limit(1);
+    if (existingInvite) {
+      redirect(`/app/projects/${projectId}/members?error=dup_invite`);
+    }
+
+    await db.insert(projectInvitations).values({
+      projectId,
+      email,
+      invitedById: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  revalidatePath(`/app/projects/${projectId}/members`);
+  redirect(`/app/projects/${projectId}/members`);
+}
+
+export async function cancelInvitationAction(
+  projectId: number,
+  invitationId: number,
+  _formData?: FormData,
+): Promise<void> {
+  const userId = await requireUserId();
+  if (!(await userIsProjectOwner(userId, projectId))) {
+    redirect(`/app/projects/${projectId}/members`);
+  }
+
+  const db = getDb();
+  await db
+    .delete(projectInvitations)
+    .where(and(eq(projectInvitations.id, invitationId), eq(projectInvitations.projectId, projectId)));
 
   revalidatePath(`/app/projects/${projectId}/members`);
   redirect(`/app/projects/${projectId}/members`);

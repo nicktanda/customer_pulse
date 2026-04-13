@@ -60,6 +60,23 @@ export const projects = pgTable(
   (t) => [uniqueIndex("index_projects_on_slug").on(t.slug)],
 );
 
+/** Per-project settings (pulse send time, AI interval, defaults). */
+export const projectSettings = pgTable(
+  "project_settings",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    pulseSendTime: varchar("pulse_send_time", { length: 10 }).notNull().default("09:00"),
+    aiProcessingIntervalHours: integer("ai_processing_interval_hours").notNull().default(4),
+    defaultPriority: varchar("default_priority", { length: 20 }).notNull().default("unset"),
+    autoArchiveDays: integer("auto_archive_days").notNull().default(30),
+    githubAutoMerge: boolean("github_auto_merge").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex("index_project_settings_on_project_id").on(t.projectId)],
+);
+
 /** Named teams under a project; objectives/strategy only in v1 (no member assignment). */
 export const teams = pgTable(
   "teams",
@@ -465,6 +482,28 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   feedbacks: many(feedbacks),
   teams: many(teams),
   reportingRequests: many(reportingRequests),
+}));
+
+/** Pending invitations for users who don't have accounts yet. Converted to projectUsers on signup. */
+export const projectInvitations = pgTable(
+  "project_invitations",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    invitedById: bigint("invited_by_id", { mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("index_project_invitations_on_project_id_and_email").on(t.projectId, t.email),
+    index("index_project_invitations_on_email").on(t.email),
+  ],
+);
+
+export const projectInvitationsRelations = relations(projectInvitations, ({ one }) => ({
+  project: one(projects, { fields: [projectInvitations.projectId], references: [projects.id] }),
+  invitedBy: one(users, { fields: [projectInvitations.invitedById], references: [users.id] }),
 }));
 
 export const projectUsersRelations = relations(projectUsers, ({ one }) => ({
