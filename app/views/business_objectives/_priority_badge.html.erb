@@ -1,0 +1,15 @@
+<%
+  badge_classes = case priority
+  when "critical"
+    "bg-red-100 text-red-700"
+  when "high"
+    "bg-orange-100 text-orange-700"
+  when "medium"
+    "bg-yellow-100 text-yellow-700"
+  else
+    "bg-gray-100 text-gray-600"
+  end
+%>
+<span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full <%= badge_classes %>">
+  <%= priority.to_s.titleize %>
+</span>

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#
+# Easy local development with SQLite + Solid Queue + Solid Cache
+# No PostgreSQL, Redis, or Sidekiq required!
+#
+# Usage: bin/dev-local
+#
+
+set -e
+
+export SOLID_STACK=true
+export SOLID_QUEUE_IN_PUMA=true
+
+# Ensure storage directory exists
+mkdir -p storage
+
+# Prepare all databases (creates if missing, runs migrations)
+echo "Preparing databases..."
+bin/rails db:prepare 2>/dev/null || bin/rails db:create db:migrate
+
+# Load queue and cache schemas
+if [ ! -f storage/development_queue.sqlite3 ]; then
+  echo "Loading queue schema..."
+  RAILS_ENV=development bin/rails db:schema:load:queue 2>/dev/null || true
+fi
+
+if [ ! -f storage/development_cache.sqlite3 ]; then
+  echo "Loading cache schema..."
+  RAILS_ENV=development bin/rails db:schema:load:cache 2>/dev/null || true
+fi
+
+echo ""
+echo "Starting Customer Pulse in Solid Stack mode..."
+echo "  - Database: SQLite (storage/*.sqlite3)"
+echo "  - Jobs: Solid Queue (running in Puma)"
+echo "  - Cache: Solid Cache"
+echo ""
+
+exec foreman start -f Procfile.local
