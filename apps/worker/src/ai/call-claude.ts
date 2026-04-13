@@ -1,12 +1,22 @@
 /**
  * Shared Anthropic HTTP helper for AI pipeline jobs.
  * Direct HTTP calls (no SDK) — matches the pattern in reporting-nl.ts.
+ *
+ * API key resolution: checks process.env.ANTHROPIC_API_KEY first, then falls
+ * back to the Anthropic integration stored in the DB (encrypted via Lockbox).
  */
+import { eq } from "drizzle-orm";
+import { integrations } from "@customer-pulse/db/client";
+import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
+import { getWorkerDb } from "../db.js";
 
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 const RATE_LIMIT_MS = 500;
 
 let lastCallTime = 0;
+let cachedDbKey: string | null = null;
+let dbKeyCheckedAt = 0;
+const DB_KEY_CACHE_MS = 60_000; // re-check DB every 60s
 
 async function rateLimitSleep(): Promise<void> {
   const elapsed = Date.now() - lastCallTime;
@@ -14,6 +24,41 @@ async function rateLimitSleep(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_MS - elapsed));
   }
   lastCallTime = Date.now();
+}
+
+export async function resolveApiKey(): Promise<string | null> {
+  // Prefer env var
+  const envKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (envKey) return envKey;
+
+  // Fall back to DB-stored key (cached for 60s)
+  if (cachedDbKey && Date.now() - dbKeyCheckedAt < DB_KEY_CACHE_MS) {
+    return cachedDbKey;
+  }
+
+  try {
+    const db = getWorkerDb();
+    const masterKey = process.env.LOCKBOX_MASTER_KEY ?? "";
+    // source_type 13 = anthropic
+    const rows = await db
+      .select({ ciphertext: integrations.credentialsCiphertext })
+      .from(integrations)
+      .where(eq(integrations.sourceType, 13))
+      .limit(1);
+
+    if (rows[0]?.ciphertext) {
+      const decrypted = decryptCredentialsColumn(rows[0].ciphertext, masterKey);
+      const creds = JSON.parse(decrypted) as { api_key?: string };
+      cachedDbKey = creds.api_key?.trim() ?? null;
+    } else {
+      cachedDbKey = null;
+    }
+    dbKeyCheckedAt = Date.now();
+  } catch {
+    cachedDbKey = null;
+  }
+
+  return cachedDbKey;
 }
 
 export interface ClaudeResponse {
@@ -26,7 +71,7 @@ export async function callClaude(options: {
   user: string;
   maxTokens?: number;
 }): Promise<ClaudeResponse> {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const apiKey = await resolveApiKey();
   if (!apiKey) {
     return { text: "", ok: false };
   }

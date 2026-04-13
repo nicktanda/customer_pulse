@@ -5,7 +5,7 @@
 import { eq } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
 import { feedbacks, projects } from "@customer-pulse/db/client";
-import { callClaudeJson } from "./call-claude.js";
+import { callClaudeJson, resolveApiKey } from "./call-claude.js";
 
 interface ClassificationResult {
   category: string;
@@ -98,9 +98,9 @@ export async function processFeedbackBatch(
   db: Database,
   batchSize: number = 100,
 ): Promise<{ processed: number; remaining: boolean }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const apiKey = await resolveApiKey();
   if (!apiKey) {
-    console.warn("[ai] ProcessFeedbackBatch skipped — ANTHROPIC_API_KEY not set");
+    console.warn("[ai] ProcessFeedbackBatch skipped — no Anthropic API key configured");
     return { processed: 0, remaining: false };
   }
 

@@ -149,8 +149,14 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
     }
 
     case "anthropic_api": {
-      if (!skip && !process.env.ANTHROPIC_API_KEY?.trim()) {
-        redirect("/app/onboarding?error=anthropic_env");
+      if (!skip) {
+        const apiKey = String(formData.get("anthropic_api_key") ?? "").trim();
+        if (apiKey) {
+          const pid = await firstProjectId();
+          if (pid != null) {
+            await upsertIntegrationCredentials(pid, 13, "Anthropic", { api_key: apiKey });
+          }
+        }
       }
       await setStep(nextOnboardingStep("anthropic_api"));
       return;
@@ -160,6 +166,7 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
     case "slack":
     case "jira":
     case "google_forms":
+    case "gong":
     case "logrocket":
     case "fullstory":
     case "intercom":
@@ -184,6 +191,7 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
             slack: { type: IntegrationSourceType.slack, name: "Slack" },
             jira: { type: IntegrationSourceType.jira, name: "Jira" },
             google_forms: { type: IntegrationSourceType.google_forms, name: "Google Forms" },
+            gong: { type: IntegrationSourceType.gong, name: "Gong" },
             logrocket: { type: IntegrationSourceType.logrocket, name: "LogRocket" },
             fullstory: { type: IntegrationSourceType.fullstory, name: "FullStory" },
             intercom: { type: IntegrationSourceType.intercom, name: "Intercom" },
@@ -270,4 +278,12 @@ export async function onboardingGoBackAction(formData: FormData): Promise<void> 
     .where(eq(users.id, userId));
   revalidatePath("/app/onboarding");
   redirect("/app/onboarding");
+}
+
+/** Skip the current step — wraps dispatch with skip=1 so buttons don't need a name prop. */
+export async function onboardingSkipAction(formData: FormData): Promise<void> {
+  const newFormData = new FormData();
+  newFormData.set("_onboarding_step", formData.get("_onboarding_step") as string);
+  newFormData.set("skip", "1");
+  return onboardingDispatchAction(newFormData);
 }

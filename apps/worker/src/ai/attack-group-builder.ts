@@ -6,7 +6,7 @@
 import { eq, desc } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
 import { insights, ideas, themes } from "@customer-pulse/db/client";
-import { callClaudeJson } from "./call-claude.js";
+import { callClaudeJson, resolveApiKey } from "./call-claude.js";
 
 export interface AttackGroup {
   name: string;
@@ -40,7 +40,7 @@ export async function buildAttackGroups(
   db: Database,
   projectId: number,
 ): Promise<AttackGroup[]> {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const apiKey = await resolveApiKey();
   if (!apiKey) return [];
 
   const recentInsights = await db

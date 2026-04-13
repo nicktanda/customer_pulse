@@ -119,9 +119,10 @@ export async function buildReportingContextBundle(db: Database, projectId: numbe
 }
 
 async function callAnthropic(system: string, user: string, maxTokens: number): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const { resolveApiKey } = await import("./ai/call-claude.js");
+  const apiKey = await resolveApiKey();
   if (!apiKey) {
-    return "ANTHROPIC_API_KEY is not set — configure it to enable natural-language reporting.";
+    return "No Anthropic API key configured — add one in Settings or during onboarding.";
   }
   const model = process.env.ANTHROPIC_MODEL ?? "claude-3-5-haiku-20241022";
   const res = await fetch("https://api.anthropic.com/v1/messages", {

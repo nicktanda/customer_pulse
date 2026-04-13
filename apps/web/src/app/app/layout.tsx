@@ -70,6 +70,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .where(eq(users.id, userId))
     .limit(1);
 
+  // JWT is valid but user was deleted from DB — force sign out
+  if (!userRow) {
+    redirect("/api/auth/signout");
+  }
+
   // `middleware.ts` attaches this header so we can tell we are on the wizard (no cookie redirect loop).
   const pathname = (await headers()).get("x-pathname") ?? "";
   const isOnboardingPath = pathname.startsWith("/app/onboarding");
@@ -84,8 +89,32 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     await ensureCurrentProjectCookie(userId);
   }
 
+  const onboardingComplete = Boolean(userRow?.onboardingCompletedAt);
   const bullBoardUrl = process.env.NEXT_PUBLIC_BULL_BOARD_URL;
   const isAdmin = session.user.role === 1;
+
+  // During onboarding, show a minimal shell — no sidebar nav links
+  if (!onboardingComplete) {
+    return (
+      <div className="min-vh-100 bg-body-tertiary">
+        <header className="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-secondary-subtle bg-body">
+          <p className="small fw-semibold text-uppercase text-body-secondary mb-0">Customer Pulse</p>
+          <div className="d-flex align-items-center gap-3">
+            <ThemeToggle />
+            <span className="small text-body-secondary">{session.user.email}</span>
+            <form action={signOutAction}>
+              <button type="submit" className="btn btn-link btn-sm p-0 text-decoration-none">
+                Sign out
+              </button>
+            </form>
+          </div>
+        </header>
+        <main className="px-4 pb-4 pt-5 p-lg-5" style={{ maxWidth: "48rem", margin: "0 auto" }}>
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     // On large screens the shell is viewport-tall and only `main` scrolls — so master–detail panels can
@@ -93,7 +122,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="d-flex min-vh-100 app-layout-shell">
       <ResponsiveSidebar>
         <p className="small fw-semibold text-uppercase text-body-secondary mb-0">Customer Pulse</p>
-        <SidebarNav groups={sidebarNavGroups(Boolean(userRow?.onboardingCompletedAt))}>
+        <SidebarNav groups={sidebarNavGroups(true)}>
           {isAdmin && bullBoardUrl ? (
             <a
               href={bullBoardUrl}

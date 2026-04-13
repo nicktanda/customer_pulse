@@ -5,7 +5,7 @@
 import { eq, desc, sql } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
 import { insights, themes, insightThemes } from "@customer-pulse/db/client";
-import { callClaudeJson } from "./call-claude.js";
+import { callClaudeJson, resolveApiKey } from "./call-claude.js";
 
 interface IdentifiedTheme {
   name: string;
@@ -35,7 +35,7 @@ export async function identifyThemes(
   db: Database,
   projectId: number,
 ): Promise<number> {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const apiKey = await resolveApiKey();
   if (!apiKey) return 0;
 
   const allInsights = await db

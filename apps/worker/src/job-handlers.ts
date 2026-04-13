@@ -22,6 +22,7 @@ import { identifyThemes } from "./ai/theme-identifier.js";
 import { buildAttackGroups } from "./ai/attack-group-builder.js";
 import { createClient, SYNC_JOB_SOURCE_MAP } from "./integrations/index.js";
 import { createPullRequest } from "./github/pr-creator.js";
+import { resolveApiKey } from "./ai/call-claude.js";
 
 /**
  * BullMQ job processors (syncs, mail, AI, etc.) — keep handlers idempotent when possible.
@@ -43,8 +44,8 @@ export async function runJob(job: Job): Promise<void> {
         return;
       }
       const now = new Date();
-      let summary = "AI processing stub — configure ANTHROPIC_API_KEY for live summaries.";
-      const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+      let summary = "AI processing — configure Anthropic API key in Settings or onboarding for live summaries.";
+      const apiKey = await resolveApiKey();
       if (apiKey) {
         try {
           const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -167,7 +168,7 @@ export async function runJob(job: Job): Promise<void> {
 
         // Generate summary with Anthropic if available
         let summary = `${count} feedback items received in the last 24 hours.`;
-        const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+        const apiKey = await resolveApiKey();
         if (apiKey && count > 0) {
           try {
             const top20 = periodFeedback.slice(0, 20).map((f) => `- [${categoryNames[f.category]}/${priorityNames[f.priority]}] ${f.title ?? f.content.slice(0, 100)}`).join("\n");

@@ -5,7 +5,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
 import { feedbacks, insights, feedbackInsights } from "@customer-pulse/db/client";
-import { callClaudeJson } from "./call-claude.js";
+import { callClaudeJson, resolveApiKey } from "./call-claude.js";
 
 interface DiscoveredInsight {
   title: string;
@@ -40,7 +40,7 @@ export async function discoverInsights(
   projectId: number,
   batchSize: number = 25,
 ): Promise<{ created: number; remaining: boolean }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const apiKey = await resolveApiKey();
   if (!apiKey) {
     return { created: 0, remaining: false };
   }

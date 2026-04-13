@@ -1,11 +1,22 @@
 import { redirect } from "next/navigation";
 import { FormActions, InlineAlert, NarrowCardForm, PageHeader, PageShell } from "@/components/ui";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb } from "@/lib/db";
-import { users } from "@customer-pulse/db/client";
+import {
+  users,
+  projects,
+  projectUsers,
+  integrations,
+  emailRecipients,
+  IntegrationSourceType,
+} from "@customer-pulse/db/client";
+import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { ONBOARDING_STEPS, humanOnboardingStepTitle } from "@/lib/onboarding-steps";
-import { onboardingDispatchAction, onboardingGoBackAction } from "./actions";
+import { onboardingDispatchAction, onboardingGoBackAction, onboardingSkipAction } from "./actions";
+import { IntegrationStepClient, GitHubStepClient, AnthropicStepClient } from "./IntegrationStepClient";
+import { ProjectStepClient } from "./ProjectStepClient";
+import { RecipientsStepClient } from "./RecipientsStepClient";
 
 export default async function OnboardingPage({
   searchParams,
@@ -38,6 +49,57 @@ export default async function OnboardingPage({
 
   const step = user?.onboardingCurrentStep ?? "welcome";
   const stepIndex = Math.max(0, ONBOARDING_STEPS.indexOf(step as (typeof ONBOARDING_STEPS)[number]));
+
+  // Load existing data so going back shows what was saved
+  const [puRow] = await db
+    .select({ projectId: projectUsers.projectId })
+    .from(projectUsers)
+    .where(eq(projectUsers.userId, userId))
+    .limit(1);
+  const projectId = puRow?.projectId ?? null;
+
+  let savedProject: { name: string } | null = null;
+  if (projectId) {
+    const [p] = await db.select({ name: projects.name }).from(projects).where(eq(projects.id, projectId)).limit(1);
+    savedProject = p ?? null;
+  }
+
+  // Load saved integrations for the project (to show "configured" state)
+  const savedIntegrations: Record<string, boolean> = {};
+  if (projectId) {
+    const rows = await db
+      .select({ sourceType: integrations.sourceType })
+      .from(integrations)
+      .where(eq(integrations.projectId, projectId));
+    const sourceMap: Record<number, string> = {
+      [IntegrationSourceType.linear]: "linear",
+      [IntegrationSourceType.slack]: "slack",
+      [IntegrationSourceType.jira]: "jira",
+      [IntegrationSourceType.google_forms]: "google_forms",
+      [IntegrationSourceType.logrocket]: "logrocket",
+      [IntegrationSourceType.fullstory]: "fullstory",
+      [IntegrationSourceType.intercom]: "intercom",
+      [IntegrationSourceType.zendesk]: "zendesk",
+      [IntegrationSourceType.sentry]: "sentry",
+      [IntegrationSourceType.github]: "github",
+      13: "anthropic_api",
+    };
+    for (const r of rows) {
+      const name = sourceMap[r.sourceType];
+      if (name) savedIntegrations[name] = true;
+    }
+  }
+
+  // Load saved recipients
+  let savedRecipient: { email: string; name: string | null } | null = null;
+  if (projectId) {
+    const [r] = await db
+      .select({ email: emailRecipients.email, name: emailRecipients.name })
+      .from(emailRecipients)
+      .where(eq(emailRecipients.projectId, projectId))
+      .limit(1);
+    savedRecipient = r ?? null;
+  }
 
   return (
     <PageShell width="medium">
@@ -73,8 +135,8 @@ export default async function OnboardingPage({
         </InlineAlert>
       ) : null}
 
-      <NarrowCardForm className="mt-4" bodyClassName="">
-        <StepBody step={step} />
+      <NarrowCardForm key={step} className="mt-4" bodyClassName="">
+        <StepBody step={step} savedProject={savedProject} savedIntegrations={savedIntegrations} savedRecipient={savedRecipient} />
       </NarrowCardForm>
 
       <p className="mt-4 text-center small text-body-secondary mb-0">
@@ -85,7 +147,14 @@ export default async function OnboardingPage({
   );
 }
 
-function StepBody({ step }: { step: string }) {
+interface StepBodyProps {
+  step: string;
+  savedProject: { name: string } | null;
+  savedIntegrations: Record<string, boolean>;
+  savedRecipient: { email: string; name: string | null } | null;
+}
+
+function StepBody({ step, savedProject, savedIntegrations, savedRecipient }: StepBodyProps) {
   switch (step) {
     case "welcome":
       return (
@@ -107,27 +176,19 @@ function StepBody({ step }: { step: string }) {
     case "project":
       return (
         <form className="d-flex flex-column gap-3">
-          <input type="hidden" name="_onboarding_step" value="project" />
-          <div>
-            <label htmlFor="onb-project-name" className="form-label">
-              Project name
-            </label>
-            <input
-              id="onb-project-name"
-              name="project_name"
-              required
-              className="form-control"
-              placeholder="Acme Customer Voice"
-            />
-          </div>
-          <FormActions>
-            <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
-              Back
-            </button>
-            <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
-              Continue
-            </button>
-          </FormActions>
+          <ProjectStepClient
+            savedName={savedProject?.name ?? ""}
+            formActions={
+              <FormActions>
+                <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
+                  Back
+                </button>
+                <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
+                  Continue
+                </button>
+              </FormActions>
+            }
+          />
         </form>
       );
 
@@ -136,7 +197,7 @@ function StepBody({ step }: { step: string }) {
         <form className="d-flex flex-column gap-3">
           <input type="hidden" name="_onboarding_step" value="team" />
           <p className="small text-body-secondary mb-0">
-            Invite an existing user by email (they must already have an account).
+            Invite a teammate by email. If they don&apos;t have an account yet, they&apos;ll be added when they sign up.
           </p>
           <div>
             <label htmlFor="onb-member-email" className="form-label">
@@ -151,7 +212,7 @@ function StepBody({ step }: { step: string }) {
             <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
               Add &amp; continue
             </button>
-            <button type="submit" formAction={onboardingDispatchAction} name="skip" value="1" className="btn btn-outline-secondary">
+            <button type="submit" formAction={onboardingSkipAction} className="btn btn-outline-secondary">
               Skip
             </button>
           </FormActions>
@@ -161,24 +222,26 @@ function StepBody({ step }: { step: string }) {
     case "anthropic_api":
       return (
         <form className="d-flex flex-column gap-3">
-          <input type="hidden" name="_onboarding_step" value="anthropic_api" />
-          <p className="small text-body-secondary mb-0">
-            AI classification needs an Anthropic API key on the server. Your administrator should set{" "}
-            <code className="px-1 rounded bg-body-secondary">ANTHROPIC_API_KEY</code> in the app environment (e.g.{" "}
-            <code className="px-1 rounded bg-body-secondary">.env</code> when running locally). You can skip for now and
-            configure later.
-          </p>
-          <FormActions>
-            <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
-              Back
-            </button>
-            <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
-              Continue
-            </button>
-            <button type="submit" formAction={onboardingDispatchAction} name="skip" value="1" className="btn btn-outline-secondary">
-              Skip
-            </button>
-          </FormActions>
+          {savedIntegrations["anthropic_api"] ? (
+            <div className="alert alert-success py-2 small mb-0">
+              Anthropic API key is already configured. You can update it below or continue.
+            </div>
+          ) : null}
+          <AnthropicStepClient
+            formActions={
+              <FormActions>
+                <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
+                  Back
+                </button>
+                <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
+                  Save &amp; continue
+                </button>
+                <button type="submit" formAction={onboardingSkipAction} className="btn btn-outline-secondary">
+                  Skip
+                </button>
+              </FormActions>
+            }
+          />
         </form>
       );
 
@@ -186,42 +249,60 @@ function StepBody({ step }: { step: string }) {
     case "slack":
     case "jira":
     case "google_forms":
+    case "gong":
     case "logrocket":
     case "fullstory":
     case "intercom":
     case "zendesk":
     case "sentry":
+      return <IntegrationStep step={step} configured={!!savedIntegrations[step]} />;
+
     case "github":
-      return <IntegrationStep step={step} />;
+      return (
+        <form className="d-flex flex-column gap-3">
+          {savedIntegrations["github"] ? (
+            <div className="alert alert-success py-2 small mb-0">
+              GitHub is already configured. You can update credentials below or continue.
+            </div>
+          ) : null}
+          <GitHubStepClient
+            formActions={
+              <FormActions>
+                <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
+                  Back
+                </button>
+                <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
+                  Save &amp; continue
+                </button>
+                <button type="submit" formAction={onboardingSkipAction} className="btn btn-outline-secondary">
+                  Skip
+                </button>
+              </FormActions>
+            }
+          />
+        </form>
+      );
 
     case "recipients":
       return (
         <form className="d-flex flex-column gap-3">
-          <input type="hidden" name="_onboarding_step" value="recipients" />
-          <p className="small text-body-secondary mb-0">Optional: add a digest recipient for the current project.</p>
-          <div>
-            <label htmlFor="onb-recipient-email" className="form-label">
-              Email
-            </label>
-            <input id="onb-recipient-email" name="recipient_email" type="email" className="form-control" />
-          </div>
-          <div>
-            <label htmlFor="onb-recipient-name" className="form-label">
-              Name (optional)
-            </label>
-            <input id="onb-recipient-name" name="recipient_name" className="form-control" />
-          </div>
-          <FormActions>
-            <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
-              Back
-            </button>
-            <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
-              Save &amp; continue
-            </button>
-            <button type="submit" formAction={onboardingDispatchAction} name="skip" value="1" className="btn btn-outline-secondary">
-              Skip
-            </button>
-          </FormActions>
+          <RecipientsStepClient
+            savedEmail={savedRecipient?.email ?? ""}
+            savedName={savedRecipient?.name ?? ""}
+            formActions={
+              <FormActions>
+                <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
+                  Back
+                </button>
+                <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
+                  Save &amp; continue
+                </button>
+                <button type="submit" formAction={onboardingSkipAction} className="btn btn-outline-secondary">
+                  Skip
+                </button>
+              </FormActions>
+            }
+          />
         </form>
       );
 
@@ -246,7 +327,7 @@ function StepBody({ step }: { step: string }) {
   }
 }
 
-function IntegrationStep({ step }: { step: string }) {
+function IntegrationStep({ step, configured }: { step: string; configured?: boolean }) {
   const example =
     step === "linear"
       ? '{"api_key":"lin_api_..."}'
@@ -254,40 +335,36 @@ function IntegrationStep({ step }: { step: string }) {
         ? '{"bot_token":"xoxb-...","channels":["general"],"keywords":["feedback"]}'
         : step === "jira"
           ? '{"site_url":"https://your.atlassian.net","email":"you@co.com","api_token":"..."}'
-          : step === "github"
-            ? '{"access_token":"ghp_...","owner":"org","repo":"app","default_branch":"main"}'
-            : '{"api_key":"..."}';
+          : step === "gong"
+            ? '{"access_key":"...","access_key_secret":"..."}'
+            : step === "github"
+              ? '{"access_token":"ghp_...","owner":"org","repo":"app","default_branch":"main"}'
+              : '{"api_key":"..."}';
 
   return (
     <form className="d-flex flex-column gap-3">
-      <input type="hidden" name="_onboarding_step" value={step} />
-      <p className="small text-body-secondary mb-0">
-        Paste credentials as JSON — they are encrypted at rest. Example:{" "}
-        <code className="d-inline-block text-break px-1 rounded bg-body-secondary small">{example}</code>
-      </p>
-      <div>
-        <label htmlFor="onb-creds-json" className="form-label">
-          Credentials JSON (optional)
-        </label>
-        <textarea
-          id="onb-creds-json"
-          name="credentials_json"
-          rows={5}
-          className="form-control font-monospace small"
-          placeholder={example}
-        />
-      </div>
-      <FormActions>
-        <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
-          Back
-        </button>
-        <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
-          Save &amp; continue
-        </button>
-        <button type="submit" formAction={onboardingDispatchAction} name="skip" value="1" className="btn btn-outline-secondary">
-          Skip
-        </button>
-      </FormActions>
+      {configured ? (
+        <div className="alert alert-success py-2 small mb-0">
+          This integration is already configured. You can update credentials below or continue.
+        </div>
+      ) : null}
+      <IntegrationStepClient
+        step={step}
+        example={example}
+        formActions={
+          <FormActions>
+            <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
+              Back
+            </button>
+            <button type="submit" formAction={onboardingDispatchAction} className="btn btn-primary">
+              Save &amp; continue
+            </button>
+            <button type="submit" formAction={onboardingSkipAction} className="btn btn-outline-secondary">
+              Skip
+            </button>
+          </FormActions>
+        }
+      />
     </form>
   );
 }
