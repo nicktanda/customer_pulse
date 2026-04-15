@@ -12,17 +12,17 @@ Use this when a change touches **what users see** or **what integrators experien
 
 ## When to use
 
-- Before merging PRs that change **`app/views/`**, mailers, flash messages, or public API JSON errors.
+- Before merging PRs that change **`apps/web/src/app/`** UI, mail-related copy, toast/error strings, or public API JSON errors.
 - Writing **release notes** or a short **changelog** entry for stakeholders.
 
 ## Steps
 
-1. Identify surfaces: **web UI** (authenticated pages), **emails**, **webhook/API** responses.
+1. Identify surfaces: **web UI** (authenticated **App Router** pages under **`/app/...`** in **`apps/web/src/app/app/`**), **emails**, **webhook/API** responses (**`api/webhooks/*`**, **`api/v1/*`**).
 2. Check **copy clarity**: button labels, empty states, error strings — match tone with nearby views.
-3. For **onboarding** (`onboarding` routes), verify step order and failure messages when integrations fail.
+3. For **onboarding** (`/app/onboarding`), verify step order and failure messages when integrations fail.
 4. For **accessibility basics**: focus order, form labels, meaningful link text — improve when trivial; flag larger gaps.
 5. Summarize **user impact** in 3–5 bullets suitable for a PR description or release note.
 
 ## Notes
 
-- This complements **`ship-rails-feature`** (how to build) with **what to verify** before ship.
+- This complements **`ship-next-feature`** (how to build) with **what to verify** before ship.

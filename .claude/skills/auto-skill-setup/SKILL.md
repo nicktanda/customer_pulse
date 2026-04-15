@@ -19,19 +19,18 @@ This skill tells **you** (Claude) how to analyze **this codebase** and produce *
 
 Scan what actually exists; skip missing paths without error.
 
-1. **Project intent:** `README.md`, `PLAN.md` (if present).
-2. **Dependencies:** `Gemfile`, `Gemfile.lock` (Ruby/Rails stack), `package.json` (JS/CSS tooling).
+1. **Project intent:** **`CLAUDE.md`**, **`README.md`**, and **`docs/next-migration/PARITY_MATRIX.md`** (legacy DB / enum parity). Optional archive context: **`docs/archive/plans/legacy-rails-project-plan.md`** if present.
+2. **Dependencies:** Root and workspace **`package.json`** / **`yarn.lock`** (Yarn monorepo: `apps/web`, `apps/worker`, `packages/db`).
 3. **Automation:** `.github/workflows/*` (CI steps, deploy hints).
 4. **How devs run the app:** `Procfile.dev`, `bin/dev`, `docker-compose.yml` / `Dockerfile*` if present.
-5. **Rails layout:** `config/routes.rb`, `config/sidekiq.yml` or initializer, `db/schema.rb` or migrations overview (size/complexity only if useful).
-6. **Application code:** `app/controllers/`, `app/models/`, `app/jobs/`, `app/services/`, `app/views/` — enough to see domains (e.g. webhooks, AI, mailers, onboarding).
-7. **Tests:** `spec/` vs `test/`, key patterns (requests, system, jobs).
-8. **Env contract:** `.env.example` and README env tables — **variable names and purpose only**; never echo real secret values from `.env` or elsewhere.
-9. **Documentation signals:**
-   - **Developer-facing:** `README.md`, `LOCAL_SETUP.md`, `CLAUDE.md`, `PLAN.md`, `docs/` (e.g. **`docs/agents.md`** for CI, Dependabot, Sentry), `.github/` templates, comments in `bin/*` and Docker files.
-   - **Customer / integrator-facing:** in-app copy under `app/views/` (especially onboarding and settings), mailer templates, and README sections that describe integrations or the public API for non-developers.
+5. **App layout:** **`apps/web/src/app/`** — public **`api/*`** routes (webhooks, `api/v1/feedback`, Auth.js) and authenticated product UI under **`app/app/`** (URLs like `/app/...`); **`apps/worker/src/`** (BullMQ processors); **`packages/db/src/`** (Drizzle schema, Lockbox).
+6. **Tests:** `packages/db` Vitest, `apps/web` Vitest, worker `tsc` via **`yarn test`**.
+7. **Env contract:** `.env.example`, `apps/web/.env.example`, `apps/worker/.env.example`, README — **variable names and purpose only**; never echo real secret values from `.env` or elsewhere.
+8. **Documentation signals:**
+   - **Developer-facing:** `README.md`, `LOCAL_SETUP.md`, `CLAUDE.md`, `docs/` (e.g. **`docs/agents.md`** for CI, Dependabot, Sentry), `.github/` templates, comments in `bin/*` and Docker files.
+   - **Customer / integrator-facing:** in-app copy under **`apps/web/src/app/app/`** (onboarding, settings, integrations), email-related UI, and README sections that describe integrations or the public API for non-developers.
 
-From this, **summarize stack and workflows** in a short paragraph (e.g. "Rails 8 + Sidekiq + Redis + RSpec; daily digest job; Linear/Slack webhooks").
+From this, **summarize stack and workflows** in a short paragraph (e.g. "Next.js 15 + BullMQ + Redis + Drizzle/Postgres; Vitest in db/web packages; Linear/Slack webhooks").
 
 ---
 
@@ -50,7 +49,7 @@ Output a **markdown list** (or table) of **recommended new skills**. For each ro
 
 - **Core shipping** — feature work, DB changes, API/webhooks
 - **Quality** — tests, security review, regression risks
-- **Ops / release** — migrations in prod, Sidekiq, monitoring, rollbacks
+- **Ops / release** — Drizzle migrations in prod, BullMQ workers, monitoring, rollbacks
 - **Documentation** — internal dev docs vs customer-facing docs (see below)
 
 **Include product-oriented examples only when justified** by the scan, e.g.:
@@ -58,7 +57,7 @@ Output a **markdown list** (or table) of **recommended new skills**. For each ro
 - PR checklist for user-visible UI or email copy
 - Changelog / release note prompts
 - Integration or webhook change checklist (signatures, idempotency, retries)
-- Background job and cron safety (Sidekiq)
+- Background job and cron safety (**BullMQ** repeatables)
 - AI or external API behavior changes (cost, failure modes)
 - **`dev-documentation`** — README / setup / `CLAUDE.md` / tooling changes; keeping install and test instructions accurate
 - **`customer-documentation`** — onboarding, integration setup, API docs for integrators, digest/email explanations; anything a customer or admin reads
@@ -67,10 +66,10 @@ When the repo has both audiences (engineers + customers/admins), recommend **bot
 
 - **`security-pii-review`** — feedback, webhooks, AI, integrations (PII and secrets)
 - **`incident-triage-production`** — when CI/docs mention Sentry, production, or on-call
-- **`dependency-upgrade-rails`** — Dependabot, `Gemfile`, or upgrade work
-- **`performance-n-plus-one`** — slow dashboards, large `Feedback` lists, job batching
+- **`dependency-upgrade-node`** — Dependabot npm PRs or workspace version bumps
+- **`performance-n-plus-one`** — slow dashboards, large feedback lists, job batching
 - **`commit-message-conventions`** — team asks for commit/PR title standards
-- **`backfill-data-migration`** — data fixes separate from `db/migrate` schema changes
+- **`backfill-data-migration`** — data fixes separate from Drizzle schema migrations
 
 If **`docs/agents.md`** (or similar) exists, use it to infer **CI, Dependabot, and error-tracking** automation already in place. If **`docs/skills-and-agents.md`** exists, treat it as the **generated index** of skills and automation (see **`skills-and-agents-documenter`**).
 
@@ -85,8 +84,8 @@ If the user explicitly asks you to **create** or **scaffold** skills (e.g. "crea
 1. Read the template file at **`.claude/skills/auto-skill-setup/references/skill-template.md`**.
 2. For each chosen skill, create **`.claude/skills/<kebab-name>/SKILL.md`** by copying the template structure and filling in **real** `name`, `description`, and body tailored to this repository.
 3. **Never overwrite** an existing `.claude/skills/<name>/` directory. If a name collides, **skip** or **ask** for a new name.
-4. Keep each skill **one workflow**; link to paths under `app/` or `config/` where helpful.
-5. Regenerate the inventory: run **`bin/document-skills-and-agents`** from the repo root and **commit** **`docs/skills-and-agents.md`** together with the new skill (CI **`docs_inventory`** job enforces this).
+4. Keep each skill **one workflow**; link to paths under `apps/web`, `apps/worker`, or `packages/db` where helpful.
+5. Regenerate the inventory: run **`yarn document-skills`** from the repo root and **commit** **`docs/skills-and-agents.md`** together with the new skill (CI **`docs_inventory`** job enforces this).
 
 ---
 

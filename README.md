@@ -1,167 +1,80 @@
 # Customer Pulse
 
-A Rails 7 application that aggregates customer feedback from Linear, Google Forms, Slack, and custom forms into a unified database. An AI agent (Claude) processes feedback to categorize, prioritize, and triage items. A daily email digest ("Customer Pulse") is sent to configured recipients.
+Customer feedback from Linear, Slack, Jira, Google Forms, and a custom API lands in **PostgreSQL**. Workers process feedback with the **Anthropic** API and send a daily **Customer Pulse** email digest.
 
-## Features
+## Stack
 
-- **Multi-source feedback aggregation**: Linear webhooks, Google Forms polling, Slack events, and custom API
-- **AI-powered processing**: Claude API categorizes, prioritizes, and summarizes feedback
-- **Daily email digest**: Automated "Customer Pulse" email with summary and highlights
-- **Modern UI**: Tailwind CSS + Hotwire (Turbo/Stimulus)
-- **Background processing**: Sidekiq + Redis for async jobs
-- **Secure**: Devise authentication, encrypted credentials, role-based access
+- **Web & API**: Next.js 15 (`apps/web`) — UI, Auth.js, webhooks, `POST /api/v1/feedback`
+- **Jobs**: BullMQ + Redis (`apps/worker`) — syncs, AI feedback processing, scheduled mail (see [PARITY_MATRIX](docs/next-migration/PARITY_MATRIX.md) for legacy parity and known gaps)
+- **Database**: PostgreSQL — Drizzle schema in `packages/db`
+- **Secrets**: Integration credentials encrypted with **Lockbox**-compatible crypto (`LOCKBOX_MASTER_KEY`)
 
-## Tech Stack
+**Prerequisites:** Node **20+** and **Yarn** (workspaces at repo root).
 
-- **Framework**: Rails 8.0 with PostgreSQL
-- **Background Jobs**: Sidekiq + Redis
-- **AI**: Claude API (Anthropic)
-- **UI**: Tailwind CSS + Hotwire (Turbo/Stimulus)
-- **Auth**: Devise
-- **Email**: ActionMailer with Sidekiq
-- **Testing**: RSpec + FactoryBot
+## Quick start
 
-## Requirements
-
-- Ruby 3.3+
-- PostgreSQL 14+
-- Redis 7+
-- Node.js 18+
-- Yarn
-
-## Setup
-
-> **First time?** See [LOCAL_SETUP.md](LOCAL_SETUP.md) for full instructions, including installing Ruby 3.3+, PostgreSQL, Redis, and either Docker or native tooling.
-
-1. **Clone and install dependencies**:
-   ```bash
-   cd customer_pulse
-   bundle install
-   yarn install
-   ```
-
-2. **Configure environment variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Set up the database**:
-   ```bash
-   rails db:create db:migrate db:seed
-   ```
-
-4. **Start the development server**:
-   ```bash
-   bin/dev
-   ```
-
-5. **Visit the application**:
-   Open http://localhost:3000 and log in with:
-   - Email: `admin@example.com`
-   - Password: `password123`
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection URL |
-| `REDIS_URL` | Redis connection URL |
-| `ANTHROPIC_API_KEY` | Anthropic Claude API key |
-| `GOOGLE_CREDENTIALS_JSON` | Google service account credentials (JSON) |
-| `SLACK_SIGNING_SECRET` | Slack app signing secret |
-| `LINEAR_WEBHOOK_SECRET` | Linear webhook secret |
-| `LOCKBOX_MASTER_KEY` | 32-byte hex key for encryption |
-| `SECRET_KEY_BASE` | Rails secret key |
-
-## Integrations
-
-### Linear (Webhooks)
-1. Create a webhook in Linear pointing to `https://your-domain.com/webhooks/linear`
-2. Use the webhook secret from your integration settings
-
-### Google Forms (Polling)
-1. Create a Google service account
-2. Share your Google Sheet with the service account email
-3. Configure the spreadsheet ID and sheet name in integration settings
-
-### Slack (Events API)
-1. Create a Slack app with Events API enabled
-2. Point event subscriptions to `https://your-domain.com/webhooks/slack`
-3. Subscribe to `message.channels` events
-
-### Custom API
-Send feedback via POST to `/api/v1/feedback`:
 ```bash
-curl -X POST https://your-domain.com/api/v1/feedback \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
-  -d '{"title": "Bug report", "content": "Description...", "author_email": "user@example.com"}'
+yarn install
+cp .env.example .env
+# Edit .env: DATABASE_URL, REDIS_URL, LOCKBOX_MASTER_KEY, ANTHROPIC_API_KEY, AUTH_SECRET, NEXTAUTH_URL, etc.
+
+# Apply schema/migrations to Postgres when setting up (see db/README.md and packages/db if unsure):
+yarn db:migrate
+
+# Create dev users (seed-style admin + viewer accounts):
+node --env-file=.env scripts/bootstrap-dev-user.mjs
+
+yarn dev
 ```
 
-## Background Jobs
+- **App**: http://localhost:3001  
+- **Login**: `admin@example.com` / `password123` or `viewer@example.com` / `password123` (from bootstrap script)
 
-Jobs are managed by Sidekiq with the following schedule:
+Single-process web only: `yarn dev:web`. Worker + Bull Board: `yarn dev:worker` (Board default http://localhost:3002, path often `/admin/queues` — see `apps/worker/.env.example`).
 
-| Job | Schedule | Description |
-|-----|----------|-------------|
-| `ProcessFeedbackBatchJob` | Every 4 hours | Process unprocessed feedback with AI |
-| `SyncGoogleFormsJob` | Every 15 minutes | Sync feedback from Google Sheets |
-| `SendDailyPulseJob` | Daily at 9:00 AM | Send Customer Pulse email digest |
+`bin/dev` is the same as `yarn dev`.
 
-Access the Sidekiq dashboard at `/sidekiq` (admin only).
+## Reviewing the Next.js migration (Nick)
 
-## Testing
+If you are **reviewing or QA’ing** the Rails → TypeScript cutover, start here:
 
-Run the test suite:
+- **[NEXTJS_REFACTOR_REVIEW_FOR_NICK.md](NEXTJS_REFACTOR_REVIEW_FOR_NICK.md)** — branch expectations, repo map, suggested PR reading order, manual test checklist, and secrets hygiene (do not commit `.env` or `apps/web/.env.local`).
+- **[docs/next-migration/PARITY_MATRIX.md](docs/next-migration/PARITY_MATRIX.md)** — authoritative route/job/enum checklist vs legacy; keep it open during review.
+
+Work may land on a feature branch (e.g. `nextjs-refactor`) before `main`; match the PR branch your teammate gives you and pull the latest.
+
+## Useful commands
+
+| Command | Purpose |
+|--------|---------|
+| `yarn dev` | Next (3001) + worker |
+| `yarn build` | Production build web + worker |
+| `yarn test` | Vitest (db, web, worker) + worker `tsc` |
+| `yarn ci:local` | Same gate as CI before push: web lint, tests, Next production build, skills doc `--check` |
+| `yarn ci:local:full` | `yarn install --frozen-lockfile`, then `ci:local` |
+| `yarn workspace web lint` | ESLint (Next) |
+| `yarn db:migrate` | Run Drizzle migrations (from root; uses root `.env`) |
+| `yarn document-skills` | Regenerate `docs/skills-and-agents.md` |
+| `yarn bootstrap:dev-users` | Upsert admin/viewer dev users (reads `.env` / `apps/web/.env.local`) |
+
+## Docker
+
 ```bash
-bundle exec rspec
+docker compose up
 ```
 
-Run specific tests:
-```bash
-bundle exec rspec spec/models/
-bundle exec rspec spec/requests/
-```
+Then open http://localhost:3001. Run bootstrap against the compose DB from your host (with `DATABASE_URL` pointing at `localhost:5432`) or exec into a container.
 
-## Project Structure
+## Docs
 
-```
-app/
-├── controllers/
-│   ├── dashboard_controller.rb
-│   ├── feedback_controller.rb
-│   ├── integrations_controller.rb
-│   ├── email_recipients_controller.rb
-│   ├── settings_controller.rb
-│   ├── pulse_reports_controller.rb
-│   ├── webhooks/
-│   │   ├── linear_controller.rb
-│   │   └── slack_controller.rb
-│   └── api/v1/
-│       └── feedback_controller.rb
-├── models/
-│   ├── feedback.rb
-│   ├── integration.rb
-│   ├── email_recipient.rb
-│   ├── pulse_report.rb
-│   └── user.rb
-├── services/
-│   ├── ai/
-│   │   └── feedback_processor.rb
-│   ├── integrations/
-│   │   ├── linear_client.rb
-│   │   ├── google_forms_client.rb
-│   │   └── slack_client.rb
-│   └── pulse_generator.rb
-├── jobs/
-│   ├── process_feedback_batch_job.rb
-│   ├── sync_google_forms_job.rb
-│   └── send_daily_pulse_job.rb
-└── mailers/
-    └── pulse_mailer.rb
-```
+- [CLAUDE.md](CLAUDE.md) — AI/editor context
+- [NEXTJS_REFACTOR_REVIEW_FOR_NICK.md](NEXTJS_REFACTOR_REVIEW_FOR_NICK.md) — reviewer / QA guide for the Next.js stack
+- [docs/next-migration/PARITY_MATRIX.md](docs/next-migration/PARITY_MATRIX.md) — enum/route parity vs the legacy app
+- [docs/archive/next-migration/](docs/archive/next-migration/) — archived cutover, auth, Lockbox, observability notes
+- [docs/archive/plans/](docs/archive/plans/) — archived plans (Rails-era product doc + Cursor `*.plan.md` notes)
+- [LOCAL_SETUP.md](LOCAL_SETUP.md) — environment notes
+- [db/README.md](db/README.md) — database setup pointers (Drizzle lives under `packages/db`)
 
-## License
+## Environment variables
 
-MIT
+See [.env.example](.env.example), [apps/web/.env.example](apps/web/.env.example), and [apps/worker/.env.example](apps/worker/.env.example).

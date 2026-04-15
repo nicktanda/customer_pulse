@@ -1,3 +1,6 @@
+# Render Blueprint — Next.js (apps/web) + BullMQ worker (apps/worker), Yarn monorepo root.
+# After first deploy, set NEXTAUTH_URL to your public web URL (e.g. https://customer-pulse.onrender.com).
+
 databases:
   - name: customer-pulse-db
     databaseName: customer_pulse_production
@@ -5,15 +8,16 @@ databases:
     plan: starter
 
 services:
-  # Web service
   - type: web
     name: customer-pulse
-    runtime: ruby
+    runtime: node
     plan: starter
     buildCommand: ./bin/render-build.sh
-    startCommand: bundle exec puma -C config/puma.rb
-    healthCheckPath: /up
+    startCommand: yarn workspace web start
+    healthCheckPath: /api/health
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: DATABASE_URL
         fromDatabase:
           name: customer-pulse-db
@@ -23,14 +27,13 @@ services:
           name: customer-pulse-redis
           type: redis
           property: connectionString
-      - key: RAILS_ENV
+      - key: NODE_ENV
         value: production
-      - key: RAILS_LOG_TO_STDOUT
-        value: "true"
-      - key: RAILS_SERVE_STATIC_FILES
-        value: "true"
-      - key: SECRET_KEY_BASE
+      - key: AUTH_SECRET
         generateValue: true
+      # Must match the public URL of this web service (Auth.js / OAuth callbacks).
+      - key: NEXTAUTH_URL
+        sync: false
       - key: LOCKBOX_MASTER_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
@@ -40,14 +43,15 @@ services:
       - key: APP_HOST
         sync: false
 
-  # Background worker
   - type: worker
     name: customer-pulse-worker
-    runtime: ruby
+    runtime: node
     plan: starter
-    buildCommand: ./bin/render-build.sh
-    startCommand: bundle exec sidekiq -C config/sidekiq.yml
+    buildCommand: yarn install --frozen-lockfile && yarn workspace worker build
+    startCommand: yarn workspace worker start
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: DATABASE_URL
         fromDatabase:
           name: customer-pulse-db
@@ -57,18 +61,22 @@ services:
           name: customer-pulse-redis
           type: redis
           property: connectionString
-      - key: RAILS_ENV
+      - key: NODE_ENV
         value: production
-      - key: SECRET_KEY_BASE
-        sync: false
       - key: LOCKBOX_MASTER_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: SLACK_SIGNING_SECRET
         sync: false
+      # Optional: Bull Board admin UI (do not expose publicly without auth).
+      - key: BULL_BOARD_PORT
+        value: "3002"
+      - key: BULL_BOARD_USER
+        sync: false
+      - key: BULL_BOARD_PASS
+        sync: false
 
-  # Redis
   - type: redis
     name: customer-pulse-redis
     plan: starter

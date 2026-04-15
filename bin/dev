@@ -1,37 +1,4 @@
 #!/usr/bin/env sh
-
-set -e
-
-# Default to port 3000 if not specified
-export PORT="${PORT:-3000}"
-
-# Run setup automatically if it looks like a fresh clone
-needs_setup=false
-
-if [ ! -f .env ]; then
-  needs_setup=true
-fi
-
-if ! bundle check > /dev/null 2>&1; then
-  needs_setup=true
-fi
-
-if [ ! -d node_modules ]; then
-  needs_setup=true
-fi
-
-if [ "$needs_setup" = true ]; then
-  echo "==> First run detected — running bin/setup..."
-
-  # Copy .env from example if missing so setup and foreman have env vars
-  if [ ! -f .env ]; then
-    cp .env.example .env
-    echo "    Created .env from .env.example — edit it to add your API keys"
-  fi
-
-  bin/setup --skip-server
-  echo ""
-fi
-
-# Load .env so ANTHROPIC_API_KEY etc. are available to the web/worker processes
-exec bundle exec foreman start -f Procfile.dev --env .env "$@"
+# Start Next.js (port 3001) + BullMQ worker together (same idea as the old Foreman setup).
+cd "$(dirname "$0")/.." || exit 1
+exec yarn dev "$@"

@@ -1,28 +1,28 @@
 ---
 name: ai-feedback-pipeline
 description: >-
-  Change AI-powered feedback classification and processing using Anthropic in-app,
-  prompts, batch jobs, and cost/failure behavior. Use when editing app/services/ai,
-  feedback processing jobs, or anything that calls the Claude API for triage.
+  Change AI-powered feedback classification and processing using Anthropic: prompts,
+  worker job behavior, and cost/failure handling. Use when editing apps/worker
+  Anthropic HTTP calls, reporting helpers, or enqueue paths from the web app.
 ---
 
 # AI feedback pipeline
 
-The product uses the **Anthropic API** inside the Rails app to categorize, prioritize, and summarize feedback. Logic tends to live under **`app/services/ai/`** (e.g. **`feedback_processor`**) and is invoked from jobs such as batch processing.
+The product calls the **Anthropic Messages API** from **`apps/worker`** (see **`apps/worker/src/job-handlers.ts`** for **`process_feedback`** and **`reporting_nl`**; **`reporting-nl.ts`** and **`reporting-structured.ts`** hold reporting helpers). **Next.js** enqueues jobs with **BullMQ** from **`apps/web`** (e.g. feedback actions and **`api/app/reporting/ask`**) using queue names defined in **`apps/web/src/lib/queue-names.ts`** — they must stay in sync with **`apps/worker/src/queue-names.ts`**. Use the same **`REDIS_URL`** as the worker.
 
 ## When to use
 
-- Editing prompts, model parameters, or parsing of model output.
-- Changing **`ProcessFeedbackJob`** / **`ProcessFeedbackBatchJob`** behavior related to AI.
+- Editing prompts, model parameters, or parsing of model output in the worker.
+- Changing **`process_feedback`** or batch/reporting behavior.
 - Investigating incorrect labels, timeouts, or API errors in development.
 
 ## Steps
 
-1. Inspect **`app/services/ai/`** and existing specs under **`spec/services/ai/`**.
-2. Treat the API as **fallible**: handle timeouts, rate limits, and malformed responses; align with job retry policies.
-3. Consider **cost and latency**: batch where the codebase already does; avoid redundant calls per row when unnecessary.
-4. Do **not** embed API keys in code; configuration uses **`ANTHROPIC_API_KEY`** (see README / **`.env.example`** for the name only).
-5. After changes, run relevant **`bundle exec rspec`** paths and a local smoke test with **`bin/dev`** if you need end-to-end behavior.
+1. Inspect **`apps/worker/src/job-handlers.ts`** and reporting modules under **`apps/worker/src/`**.
+2. Treat the API as **fallible**: handle non-OK responses, timeouts, and malformed JSON; align with BullMQ retry settings.
+3. Consider **cost and latency**: avoid redundant calls per row; batch or summarize where the codebase already does.
+4. Do **not** embed API keys in code; use **`ANTHROPIC_API_KEY`** (see README / **`.env.example`** for the name only).
+5. After changes, run **`yarn test`** and smoke-test with **`yarn dev`** if you need end-to-end behavior.
 
 ## Notes
 

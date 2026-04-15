@@ -9,7 +9,7 @@ description: >-
 
 # Backfill data migrations
 
-**Schema** migrations live in **`db/migrate/`**; **data** backfills often need a **separate** script or a **reversible** job pattern so deploys do not time out or lock tables.
+**Schema** changes use **Drizzle** in **`packages/db`**; **data** backfills often need a **separate** script or **worker job** so deploys do not time out or lock tables.
 
 ## When to use
 
@@ -20,13 +20,13 @@ description: >-
 ## Steps
 
 1. **Estimate volume** — rows affected; whether a single transaction is safe.
-2. **Idempotency** — Running the backfill twice should be safe (check `WHERE` or marker column).
-3. **Batching** — Use `in_batches` or `find_each` with `batch_size`; avoid long locks on hot tables.
-4. **Throttle** — Sleep between batches if external APIs or rate limits apply.
+2. **Idempotency** — Running the backfill twice should be safe (narrow `WHERE` or use a marker column).
+3. **Batching** — Process rows in chunks with `LIMIT`/`OFFSET` or key-range iteration; avoid loading entire tables into memory.
+4. **Throttle** — Pause between batches if external APIs or rate limits apply.
 5. **Deploy order** — Often: deploy code that **reads** new column → backfill → deploy code that **requires** new column (or use defaults).
 6. **Rollback story** — Know how to restore or re-run if the job fails mid-way.
 
 ## Notes
 
-- Prefer **`rails runner`** scripts or rake tasks in **`lib/tasks/`** with clear names; document in `README` or internal runbook if operators run them.
-- Heavy work belongs in **Sidekiq** or a maintenance window, not a request (**`sidekiq-jobs-and-schedules`**).
+- Prefer **one-off Node scripts** under **`scripts/*.mjs`** (with **`node --env-file=.env`**) or a **dedicated worker job**; document in README or a runbook if operators run them.
+- Heavy work belongs in **BullMQ** or a maintenance window, not an HTTP request (**`bullmq-jobs-and-schedules`**).

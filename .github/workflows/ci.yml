@@ -3,100 +3,48 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  scan_ruby:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-
-      - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bin/brakeman --no-pager
-
-  lint:
+  lint_web:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
-
-  test:
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: customer_pulse_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      RAILS_ENV: test
-      # GitHub Actions maps the postgres service to localhost for the job container.
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/customer_pulse_test
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: yarn
           cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn workspace web lint
 
-      - name: Install JavaScript dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Prepare test database
-        run: bin/rails db:test:prepare
-
-      - name: Run RSpec
-        run: bundle exec rspec
+  test_typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn test:db
+      - run: yarn test:web
+      - run: yarn test:worker
+      - run: yarn workspace worker build
+      - run: yarn build:web
+        env:
+          AUTH_SECRET: ci-test-secret-at-least-32-chars-long!!
+          NEXTAUTH_URL: http://localhost:3001
 
   docs_inventory:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          ruby-version: .ruby-version
-
-      - name: Verify docs/skills-and-agents.md matches .claude/skills and config
-        run: bin/document-skills-and-agents --check
-
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: node scripts/document-skills-and-agents.mjs --check

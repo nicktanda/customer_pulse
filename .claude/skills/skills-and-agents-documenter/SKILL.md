@@ -2,7 +2,7 @@
 name: skills-and-agents-documenter
 description: >-
   Regenerates the inventory at docs/skills-and-agents.md from .claude/skills and
-  GitHub config (CI jobs, Dependabot, Sentry in Gemfile). Use after adding, renaming,
+  GitHub config (CI jobs, Dependabot, Sentry in apps/web). Use after adding, renaming,
   or removing skills; after changing ci.yml or dependabot.yml; or when CI fails the
   docs_inventory job.
 ---
@@ -15,14 +15,14 @@ The repo keeps a **machine-generated** snapshot so everyone can see **which Clau
 
 | Output | Generator |
 |--------|-----------|
-| **[`docs/skills-and-agents.md`](../../docs/skills-and-agents.md)** | **[`bin/document-skills-and-agents`](../../../bin/document-skills-and-agents)** (Ruby, stdlib only) |
+| **[`docs/skills-and-agents.md`](../../docs/skills-and-agents.md)** | **`yarn document-skills`** → **`node scripts/document-skills-and-agents.mjs`** |
 
 **Do not edit `docs/skills-and-agents.md` by hand** — it has HTML comments at the top saying it is auto-generated.
 
 ## When to use
 
 - You added, renamed, or removed a folder under **`.claude/skills/`**.
-- You changed **`.github/workflows/ci.yml`** or **`.github/dependabot.yml`**, or added/removed **`sentry-rails`** in the **`Gemfile`**.
+- You changed **`.github/workflows/ci.yml`** or **`.github/dependabot.yml`**, or added/removed **`@sentry/*`** packages in **`apps/web`**.
 - CI failed on the **`docs_inventory`** job (out-of-date inventory).
 
 ## Steps
@@ -30,7 +30,7 @@ The repo keeps a **machine-generated** snapshot so everyone can see **which Clau
 1. From the repo root, run:
 
    ```bash
-   bin/document-skills-and-agents
+   yarn document-skills
    ```
 
 2. Review **`git diff docs/skills-and-agents.md`**, then **commit** the updated file with your skill or workflow changes.
@@ -38,7 +38,7 @@ The repo keeps a **machine-generated** snapshot so everyone can see **which Clau
 3. Optional **`--check`** (what CI runs): regenerates and exits with code **1** if the file would change — use locally to verify before push:
 
    ```bash
-   bin/document-skills-and-agents --check
+   node scripts/document-skills-and-agents.mjs --check
    ```
 
 ## Notes
