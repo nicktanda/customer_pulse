@@ -51,8 +51,28 @@
     color: #111827;
   }
   
+  .highlight-green {
+    background-color: #059669;
+    color: #FFFFFF;
+  }
+  
+  .highlight-blue {
+    background-color: #2563EB;
+    color: #FFFFFF;
+  }
+  
+  .highlight-purple {
+    background-color: #7C3AED;
+    color: #FFFFFF;
+  }
+  
   .highlight-orange {
     background-color: #EA580C;
+    color: #FFFFFF;
+  }
+  
+  .highlight-red {
+    background-color: #DC2626;
     color: #FFFFFF;
   }
   
@@ -66,6 +86,36 @@
 @media (prefers-contrast: high) {
   .highlight-yellow {
     background-color: #FBBF24;
+    color: #000000;
+    border: 1px solid #000000;
+  }
+  
+  .highlight-green {
+    background-color: #10B981;
+    color: #000000;
+    border: 1px solid #000000;
+  }
+  
+  .highlight-blue {
+    background-color: #3B82F6;
+    color: #000000;
+    border: 1px solid #000000;
+  }
+  
+  .highlight-purple {
+    background-color: #8B5CF6;
+    color: #000000;
+    border: 1px solid #000000;
+  }
+  
+  .highlight-orange {
+    background-color: #F59E0B;
+    color: #000000;
+    border: 1px solid #000000;
+  }
+  
+  .highlight-red {
+    background-color: #EF4444;
     color: #000000;
     border: 1px solid #000000;
   }
