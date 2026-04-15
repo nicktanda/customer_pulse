@@ -1,0 +1,68 @@
+:root {
+  --highlight-yellow: #FEF3C7;
+  --highlight-green: #D1FAE5;
+  --highlight-blue: #DBEAFE;
+  --highlight-purple: #E9D5FF;
+  --highlight-pink: #FCE7F3;
+  --highlight-orange: #FED7AA;
+  --highlight-red: #FEE2E2;
+  --highlight-hot-pink: #FF69B4;
+}
+
+.highlight-color-picker {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.highlight-color-option {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.highlight-color-option:hover {
+  border-color: var(--color-border-strong);
+  transform: scale(1.1);
+}
+
+.highlight-color-option.selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+}
+
+.highlight-color-option.yellow { background-color: var(--highlight-yellow); }
+.highlight-color-option.green { background-color: var(--highlight-green); }
+.highlight-color-option.blue { background-color: var(--highlight-blue); }
+.highlight-color-option.purple { background-color: var(--highlight-purple); }
+.highlight-color-option.pink { background-color: var(--highlight-pink); }
+.highlight-color-option.orange { background-color: var(--highlight-orange); }
+.highlight-color-option.red { background-color: var(--highlight-red); }
+.highlight-color-option.hot-pink { background-color: var(--highlight-hot-pink); }
+
+.highlight-text.yellow { background-color: var(--highlight-yellow); }
+.highlight-text.green { background-color: var(--highlight-green); }
+.highlight-text.blue { background-color: var(--highlight-blue); }
+.highlight-text.purple { background-color: var(--highlight-purple); }
+.highlight-text.pink { background-color: var(--highlight-pink); }
+.highlight-text.orange { background-color: var(--highlight-orange); }
+.highlight-text.red { background-color: var(--highlight-red); }
+.highlight-text.hot-pink { background-color: var(--highlight-hot-pink); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --highlight-yellow: #78350F;
+    --highlight-green: #064E3B;
+    --highlight-blue: #1E3A8A;
+    --highlight-purple: #581C87;
+    --highlight-pink: #831843;
+    --highlight-orange: #9A3412;
+    --highlight-red: #991B1B;
+    --highlight-hot-pink: #BE185D;
+  }
+}
