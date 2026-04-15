@@ -99,9 +99,8 @@ export async function runJob(job: Job): Promise<void> {
         ? [single]
         : (await db.select({ id: projects.id }).from(projects)).map((r) => r.id);
 
-      const now = new Date();
-      const periodEnd = now;
-      const periodStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const periodEnd = new Date();
+      const periodStart = new Date(periodEnd.getTime() - 24 * 60 * 60 * 1000);
 
       const categoryNames: Record<number, string> = { 0: "uncategorized", 1: "bug", 2: "feature_request", 3: "complaint" };
       const priorityNames: Record<number, string> = { 0: "unset", 1: "p1", 2: "p2", 3: "p3", 4: "p4" };
@@ -111,6 +110,11 @@ export async function runJob(job: Job): Promise<void> {
       const impactNames: Record<number, string> = { 0: "minimal", 1: "low", 2: "moderate", 3: "high", 4: "transformational" };
 
       for (const projectId of projectIds) {
+        // The AI pipeline (ProcessFeedbackBatchJob, GenerateInsightsJob) runs
+        // on its own schedule and keeps insights/ideas up-to-date.  The report
+        // just queries whatever is already in the DB — running the full pipeline
+        // inline would add 40+ Anthropic API calls and delay the report by minutes.
+
         // Fetch feedback in period
         const periodFeedback = await db
           .select()
@@ -220,6 +224,7 @@ export async function runJob(job: Job): Promise<void> {
           if (result.ok) sentCount = recipientEmails.length;
         }
 
+        const finishedAt = new Date();
         await db.insert(pulseReports).values({
           projectId,
           periodStart,
@@ -227,9 +232,9 @@ export async function runJob(job: Job): Promise<void> {
           feedbackCount: count,
           recipientCount: sentCount,
           summary,
-          sentAt: sentCount > 0 ? now : null,
-          createdAt: now,
-          updatedAt: now,
+          sentAt: sentCount > 0 ? finishedAt : null,
+          createdAt: finishedAt,
+          updatedAt: finishedAt,
         });
       }
       console.log(`[worker] SendDailyPulseJob completed for ${projectIds.length} project(s)`);

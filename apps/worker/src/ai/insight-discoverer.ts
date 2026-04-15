@@ -2,7 +2,7 @@
  * AI insight discovery — ports Rails InsightDiscoverer.
  * Analyzes batches of feedback to find patterns, problems, and opportunities.
  */
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, desc, sql } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
 import { feedbacks, insights, feedbackInsights } from "@customer-pulse/db/client";
 import { callClaudeJson, resolveApiKey } from "./call-claude.js";
@@ -20,7 +20,10 @@ interface DiscoveredInsight {
 const TYPE_MAP: Record<string, number> = { problem: 0, opportunity: 1, trend: 2, risk: 3, user_need: 4 };
 const SEVERITY_MAP: Record<string, number> = { informational: 0, minor: 1, moderate: 2, major: 3, critical: 4 };
 
-const SYSTEM_PROMPT = `You are a product insights analyst. Analyze a batch of customer feedback and identify distinct insights — patterns, problems, opportunities, trends, or user needs that emerge from the data.
+const SYSTEM_PROMPT = `You are a product insights analyst. You will receive two sections of customer feedback:
+
+1. **NEW feedback** — items that need analysis. You MUST create insights that cover these.
+2. **CONTEXT (already analyzed)** — recent items shown for context so you can spot cross-batch patterns. You may reference these in evidence but they are optional.
 
 For each insight, return:
 - "title": concise title (< 100 chars)
@@ -65,13 +68,35 @@ export async function discoverInsights(
   const categoryNames: Record<number, string> = { 0: "uncategorized", 1: "bug", 2: "feature_request", 3: "complaint" };
   const priorityNames: Record<number, string> = { 0: "unset", 1: "p1", 2: "p2", 3: "p3", 4: "p4" };
 
-  const feedbackList = batch
-    .map((f) => `[ID:${f.id}] [${categoryNames[f.category]}/${priorityNames[f.priority]}] ${f.title ?? "Untitled"}: ${f.aiSummary ?? f.content.slice(0, 200)}`)
-    .join("\n");
+  const formatItem = (f: typeof batch[number]) =>
+    `[ID:${f.id}] [${categoryNames[f.category]}/${priorityNames[f.priority]}] ${f.title ?? "Untitled"}: ${f.aiSummary ?? f.content.slice(0, 200)}`;
+
+  const newFeedbackList = batch.map(formatItem).join("\n");
+
+  // Include recent already-processed feedback as context so Claude can spot
+  // patterns that span batches (e.g. 5 items about the same topic arriving
+  // across two batches).
+  const batchIds = new Set(batch.map((f) => f.id));
+  const contextRows = await db
+    .select({ id: feedbacks.id, title: feedbacks.title, content: feedbacks.content, category: feedbacks.category, priority: feedbacks.priority, aiSummary: feedbacks.aiSummary })
+    .from(feedbacks)
+    .where(
+      and(
+        eq(feedbacks.projectId, projectId),
+        isNotNull(feedbacks.insightProcessedAt),
+      ),
+    )
+    .orderBy(desc(feedbacks.createdAt))
+    .limit(50);
+
+  const contextItems = contextRows.filter((f) => !batchIds.has(f.id));
+  const contextSection = contextItems.length > 0
+    ? `\n\n--- CONTEXT (already analyzed, for pattern-spotting only) ---\n${contextItems.map(formatItem).join("\n")}`
+    : "";
 
   const result = await callClaudeJson<DiscoveredInsight[]>({
     system: SYSTEM_PROMPT,
-    user: `Analyze these ${batch.length} feedback items and identify insights:\n\n${feedbackList}`,
+    user: `--- NEW feedback (${batch.length} items to analyze) ---\n${newFeedbackList}${contextSection}`,
     maxTokens: 4096,
   });
 
@@ -118,7 +143,6 @@ export async function discoverInsights(
   }
 
   // Mark batch as insight-processed
-  const batchIds = batch.map((f) => f.id);
   for (const id of batchIds) {
     await db.update(feedbacks).set({ insightProcessedAt: now, updatedAt: now }).where(eq(feedbacks.id, id));
   }

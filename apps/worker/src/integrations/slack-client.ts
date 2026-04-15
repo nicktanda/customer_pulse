@@ -19,7 +19,8 @@ export class SlackClient extends BaseIntegrationClient {
 
   async fetchItems(): Promise<FeedbackItem[]> {
     const token = this.str("bot_token");
-    const channel = this.str("channel_id");
+    const channel = this.str("channel_id") || this.str("channels");
+    console.log(`[slack-sync] creds keys=${Object.keys(this.credentials).join(",")} token=${token ? "set" : "MISSING"} channel=${channel || "MISSING"} raw_channels=${this.str("channels")}`);
     if (!token || !channel) return [];
 
     const keywords = (this.str("keywords") || "feedback,bug,issue,feature,request,problem").split(",").map((k) => k.trim().toLowerCase());
@@ -29,7 +30,8 @@ export class SlackClient extends BaseIntegrationClient {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    const json = (await res.json()) as { ok: boolean; messages?: SlackMessage[] };
+    const json = (await res.json()) as { ok: boolean; messages?: SlackMessage[]; error?: string };
+    console.log(`[slack-sync] channel=${channel} ok=${json.ok} error=${json.error ?? "none"} messages=${json.messages?.length ?? 0}`);
     if (!json.ok || !json.messages) return [];
 
     const items: FeedbackItem[] = [];

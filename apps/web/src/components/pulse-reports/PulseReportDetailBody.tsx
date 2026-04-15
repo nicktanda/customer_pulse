@@ -4,6 +4,8 @@ import { resendPulseReportAction, generatePrForIdeaAction } from "@/app/app/puls
 import { feedbackListHref } from "@/lib/feedback-list-query";
 import { insightsListHref } from "@/lib/insights-list-query";
 import type { PulseReportPageData } from "@/lib/pulse-report-page-data";
+import { PrJobPoller } from "./PrJobPoller";
+import { PrSubmitButton } from "./PrSubmitButton";
 /**
  * Report content below the page header: alerts, feedback in period, insights, ideas + PR controls.
  * Used on `/app/pulse-reports/[id]` and on the list page’s `?detail=` panel (`variant="panel"` trims heavy actions).
@@ -51,11 +53,7 @@ export function PulseReportDetailBody({
         </form>
       ) : null}
 
-      {hasPendingPrs ? (
-        <p className="mt-3 small text-body-secondary mb-0">
-          Some ideas have PR jobs in progress — refresh to update status.
-        </p>
-      ) : null}
+      <PrJobPoller hasPendingPrs={hasPendingPrs} />
 
       <section className="mt-5">
         <h2 className="h5 text-body-emphasis">Feedback in period</h2>
@@ -135,7 +133,7 @@ function IdeaSection({
   reportId: number;
   list: { id: number; title: string; description: string }[];
   canEdit: boolean;
-  prByIdea: Map<number, { status: number; progressMessage: string | null }[]>;
+  prByIdea: Map<number, { status: number; progressMessage: string | null; prNumber: number | null; prUrl: string | null }[]>;
   variant: "page" | "panel";
   fullReportHref: string;
 }) {
@@ -148,21 +146,53 @@ function IdeaSection({
         ) : (
           list.map((idea) => {
             const prs = prByIdea.get(idea.id) ?? [];
-            const pending = prs.find((p) => p.status === 0 || p.status === 1);
+            const generating = prs.find((p) => p.status === 0);
+            const openPr = prs.find((p) => p.status === 1);
+            const mergedPr = prs.find((p) => p.status === 2);
+            const closedPr = prs.find((p) => p.status === 3);
+            const showGenerateButton = !generating && !openPr && canEdit;
             return (
               <li key={idea.id} className="card border-secondary-subtle">
                 <div className="card-body py-3 small">
                   <p className="fw-medium text-body-emphasis mb-1">{idea.title}</p>
                   <p className="text-body-secondary mb-0">{idea.description}</p>
-                  {pending ? (
-                    <p className="mt-2 mb-0 text-body-secondary" style={{ fontSize: "0.75rem" }}>
-                      PR: {pending.progressMessage ?? "in progress"} (status {pending.status})
+                  {generating ? (
+                    <p className="mt-2 mb-0 text-body-secondary d-flex align-items-center gap-1" style={{ fontSize: "0.75rem" }}>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" style={{ width: "0.75rem", height: "0.75rem" }} />
+                      {generating.progressMessage ?? "Generating PR\u2026"}
                     </p>
-                  ) : canEdit && variant === "page" ? (
+                  ) : openPr?.prUrl ? (
+                    <p className="mt-2 mb-0" style={{ fontSize: "0.75rem" }}>
+                      <a href={openPr.prUrl} target="_blank" rel="noopener noreferrer" className="link-primary">
+                        PR #{openPr.prNumber} opened
+                      </a>
+                    </p>
+                  ) : mergedPr?.prUrl ? (
+                    <p className="mt-2 mb-0 text-success" style={{ fontSize: "0.75rem" }}>
+                      <a href={mergedPr.prUrl} target="_blank" rel="noopener noreferrer" className="link-success">
+                        PR #{mergedPr.prNumber} merged
+                      </a>
+                    </p>
+                  ) : closedPr?.prUrl ? (
+                    <div className="mt-2 mb-0 d-flex align-items-center gap-2" style={{ fontSize: "0.75rem" }}>
+                      <span className="text-body-secondary">
+                        <a href={closedPr.prUrl} target="_blank" rel="noopener noreferrer" className="text-body-secondary">
+                          PR #{closedPr.prNumber} closed
+                        </a>
+                      </span>
+                      {showGenerateButton && variant === "page" ? (
+                        <form action={generatePrForIdeaAction.bind(null, idea.id)} className="d-inline">
+                          <PrSubmitButton label="Regenerate" style={{ fontSize: "0.75rem" }} />
+                        </form>
+                      ) : showGenerateButton && variant === "panel" ? (
+                        <Link href={fullReportHref} className="link-primary" style={{ fontSize: "0.75rem" }}>
+                          Regenerate
+                        </Link>
+                      ) : null}
+                    </div>
+                  ) : showGenerateButton && variant === "page" ? (
                     <form action={generatePrForIdeaAction.bind(null, idea.id)} className="mt-2 mb-0">
-                      <button type="submit" className="btn btn-link btn-sm p-0">
-                        Generate GitHub PR
-                      </button>
+                      <PrSubmitButton label="Generate GitHub PR" />
                     </form>
                   ) : canEdit && variant === "panel" ? (
                     <p className="mt-2 mb-0 small">

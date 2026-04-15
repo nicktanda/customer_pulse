@@ -2,7 +2,7 @@
  * AI feedback classification — ports Rails FeedbackProcessor.
  * Categorizes, prioritizes, and summarizes feedback items.
  */
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
 import { feedbacks, projects } from "@customer-pulse/db/client";
 import { callClaudeJson, resolveApiKey } from "./call-claude.js";
@@ -108,7 +108,7 @@ export async function processFeedbackBatch(
   const unprocessed = await db
     .select({ id: feedbacks.id })
     .from(feedbacks)
-    .where(eq(feedbacks.aiProcessedAt, null as unknown as Date))
+    .where(isNull(feedbacks.aiProcessedAt))
     .limit(batchSize);
 
   let processed = 0;
@@ -119,9 +119,9 @@ export async function processFeedbackBatch(
 
   // Check if there are more
   const [remaining] = await db
-    .select({ n: eq(feedbacks.aiProcessedAt, null as unknown as Date) })
+    .select({ id: feedbacks.id })
     .from(feedbacks)
-    .where(eq(feedbacks.aiProcessedAt, null as unknown as Date))
+    .where(isNull(feedbacks.aiProcessedAt))
     .limit(1);
 
   return { processed, remaining: !!remaining };

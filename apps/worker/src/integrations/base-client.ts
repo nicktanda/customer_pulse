@@ -6,6 +6,9 @@ import { and, eq, sql } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
 import { feedbacks, integrations } from "@customer-pulse/db/client";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
+import { Queue } from "bullmq";
+import { getRedisConnection } from "../redis.js";
+import { QUEUE_DEFAULT } from "../queue-names.js";
 
 export interface SyncResult {
   created: number;
@@ -84,7 +87,7 @@ export abstract class BaseIntegrationClient {
         }
 
         const now = new Date();
-        await this.db.insert(feedbacks).values({
+        const [created] = await this.db.insert(feedbacks).values({
           projectId: this.projectId,
           source: this.sourceType,
           sourceExternalId: item.sourceExternalId,
@@ -98,8 +101,14 @@ export abstract class BaseIntegrationClient {
           rawData: item.rawData ?? {},
           createdAt: now,
           updatedAt: now,
-        });
+        }).returning({ id: feedbacks.id });
         result.created++;
+
+        // Enqueue AI classification immediately
+        if (created) {
+          const q = new Queue(QUEUE_DEFAULT, { connection: getRedisConnection() });
+          await q.add("process_feedback", { feedbackId: created.id }, { removeOnComplete: 200, removeOnFail: 500 });
+        }
       } catch (err) {
         // Unique constraint on source + external ID — skip
         if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505") {

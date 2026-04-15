@@ -36,9 +36,14 @@ export async function resolveApiKey(): Promise<string | null> {
     return cachedDbKey;
   }
 
+  const masterKey = process.env.LOCKBOX_MASTER_KEY?.trim();
+  if (!masterKey) {
+    console.error("[ai] resolveApiKey: LOCKBOX_MASTER_KEY is not set — cannot decrypt Anthropic key from DB. Set ANTHROPIC_API_KEY or LOCKBOX_MASTER_KEY in the worker environment.");
+    return null;
+  }
+
   try {
     const db = getWorkerDb();
-    const masterKey = process.env.LOCKBOX_MASTER_KEY ?? "";
     // source_type 13 = anthropic
     const rows = await db
       .select({ ciphertext: integrations.credentialsCiphertext })
@@ -50,11 +55,16 @@ export async function resolveApiKey(): Promise<string | null> {
       const decrypted = decryptCredentialsColumn(rows[0].ciphertext, masterKey);
       const creds = JSON.parse(decrypted) as { api_key?: string };
       cachedDbKey = creds.api_key?.trim() ?? null;
+      if (!cachedDbKey) {
+        console.warn("[ai] resolveApiKey: Anthropic integration found in DB but api_key is empty");
+      }
     } else {
+      console.warn("[ai] resolveApiKey: No Anthropic integration (source_type=13) found in DB. Configure it via Settings or Onboarding.");
       cachedDbKey = null;
     }
     dbKeyCheckedAt = Date.now();
-  } catch {
+  } catch (err) {
+    console.error(`[ai] resolveApiKey: failed to load Anthropic key from DB: ${err instanceof Error ? err.message : String(err)}`);
     cachedDbKey = null;
   }
 

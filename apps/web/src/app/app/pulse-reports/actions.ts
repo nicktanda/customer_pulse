@@ -44,8 +44,9 @@ export async function enqueueSendDailyPulseAction(_formData?: FormData): Promise
   try {
     const q = new Queue(QUEUE_MAILERS, { connection: getRedis() });
     await q.add("SendDailyPulseJob", { projectId }, { removeOnComplete: 200, removeOnFail: 500 });
-  } catch {
-    // Redis optional
+    console.log("[pulse-reports] SendDailyPulseJob enqueued for project", projectId);
+  } catch (err) {
+    console.error("[pulse-reports] Failed to enqueue SendDailyPulseJob:", err);
   }
   revalidatePath("/app/pulse-reports");
   redirect("/app/pulse-reports?notice=pulse");
@@ -134,6 +135,8 @@ export async function generatePrForIdeaAction(ideaId: number, _formData?: FormDa
     // optional
   }
 
-  revalidatePath("/app/pulse-reports");
-  redirect("/app/pulse-reports?notice=pr");
+  // Don't redirect — revalidate so the current page re-renders with the new
+  // pending PR row.  PrJobPoller will pick up hasPendingPrs and show a spinner
+  // until the job completes.
+  revalidatePath("/app/pulse-reports", "layout");
 }

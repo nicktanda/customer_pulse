@@ -21,6 +21,7 @@ import { pulseReportsListHref } from "@/lib/pulse-reports-list-query";
 import { fetchPulseReportPageData } from "@/lib/pulse-report-page-data";
 import { PulseReportDetailBody } from "@/components/pulse-reports/PulseReportDetailBody";
 import { PulseReportListRows } from "@/components/pulse-reports/PulseReportListRows";
+import { PulseJobPoller } from "@/components/pulse-reports/PulseJobPoller";
 
 const PAGE_SIZE = 20;
 
@@ -126,14 +127,7 @@ export default async function PulseReportsPage({
       />
 
       {notice === "pulse" ? (
-        <InlineAlert variant="success" className="mt-3">
-          Mailer job queued (worker + SMTP/API required).
-        </InlineAlert>
-      ) : null}
-      {notice === "pr" ? (
-        <InlineAlert variant="success" className="mt-3">
-          PR generation queued.
-        </InlineAlert>
+        <PulseJobPoller initialReportCount={total} />
       ) : null}
       {err === "nogithub" ? (
         <InlineAlert variant="danger" className="mt-3">
