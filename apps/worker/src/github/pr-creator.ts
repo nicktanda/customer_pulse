@@ -151,7 +151,7 @@ export async function createPullRequest(
   }
 }
 
-async function commitFile(
+export async function commitFile(
   headers: Record<string, string>,
   owner: string,
   repo: string,

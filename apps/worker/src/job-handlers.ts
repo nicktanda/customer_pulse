@@ -22,6 +22,7 @@ import { identifyThemes } from "./ai/theme-identifier.js";
 import { buildAttackGroups } from "./ai/attack-group-builder.js";
 import { createClient, SYNC_JOB_SOURCE_MAP } from "./integrations/index.js";
 import { createPullRequest } from "./github/pr-creator.js";
+import { reviewPullRequest } from "./github/pr-reviewers.js";
 import { resolveApiKey } from "./ai/call-claude.js";
 
 /**
@@ -323,6 +324,13 @@ export async function runJob(job: Job): Promise<void> {
       try {
         await createPullRequest(db, pullRequestId);
         console.log(`[worker] GenerateGithubPrJob completed pullRequestId=${pullRequestId}`);
+
+        // Post-creation: run code review + PM validation as PR comments
+        try {
+          await reviewPullRequest(db, pullRequestId);
+        } catch (reviewErr) {
+          console.error(`[worker] PR review failed (non-fatal):`, reviewErr instanceof Error ? reviewErr.message : reviewErr);
+        }
       } catch (err) {
         console.error(`[worker] GenerateGithubPrJob failed:`, err instanceof Error ? err.message : err);
         // Error state is already set by createPullRequest
