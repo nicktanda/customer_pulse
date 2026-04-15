@@ -1,0 +1,52 @@
+.color-picker {
+  .color-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .color-option {
+    width: 32px;
+    height: 32px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    &.selected {
+      border-color: var(--color-border-strong);
+      box-shadow: 0 0 0 2px var(--color-bg-primary);
+    }
+
+    &:focus {
+      outline: 2px solid var(--color-accent-primary);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// Ensure hot pink meets contrast requirements
+.highlight-hot-pink {
+  background-color: #FF69B4;
+  color: #000000; // Black text for optimal contrast
+  
+  // Dark theme override
+  @media (prefers-color-scheme: dark) {
+    background-color: #FF69B4;
+    color: #000000;
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .highlight-hot-pink {
+    background-color: #FF1493; // Darker hot pink for better contrast
+    color: #000000;
+  }
+}
