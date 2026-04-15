@@ -1,0 +1,62 @@
+:root {
+  --highlight-yellow: #FFF3CD;
+  --highlight-blue: #CCE5FF;
+  --highlight-green: #D4EDDA;
+  --highlight-pink: #FF69B4;
+  --highlight-orange: #FFE4B3;
+  --highlight-purple: #E2D5F1;
+  --highlight-red: #F8D7DA;
+}
+
+.color-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-option {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+  border-color: #333;
+}
+
+.color-option.selected {
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.color-option.yellow {
+  background-color: var(--highlight-yellow);
+}
+
+.color-option.blue {
+  background-color: var(--highlight-blue);
+}
+
+.color-option.green {
+  background-color: var(--highlight-green);
+}
+
+.color-option.pink {
+  background-color: var(--highlight-pink);
+}
+
+.color-option.orange {
+  background-color: var(--highlight-orange);
+}
+
+.color-option.purple {
+  background-color: var(--highlight-purple);
+}
+
+.color-option.red {
+  background-color: var(--highlight-red);
+}
