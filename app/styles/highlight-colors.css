@@ -1,0 +1,78 @@
+:root {
+  --highlight-yellow: #FBBF24;
+  --highlight-green: #10B981;
+  --highlight-blue: #3B82F6;
+  --highlight-purple: #8B5CF6;
+  --highlight-orange: #F59E0B;
+  --highlight-red: #EF4444;
+  --highlight-hot-pink: #FF69B4;
+}
+
+/* Light theme highlight styles */
+.highlight-yellow {
+  background-color: var(--highlight-yellow);
+  color: #1F2937;
+}
+
+.highlight-green {
+  background-color: var(--highlight-green);
+  color: #FFFFFF;
+}
+
+.highlight-blue {
+  background-color: var(--highlight-blue);
+  color: #FFFFFF;
+}
+
+.highlight-purple {
+  background-color: var(--highlight-purple);
+  color: #FFFFFF;
+}
+
+.highlight-orange {
+  background-color: var(--highlight-orange);
+  color: #1F2937;
+}
+
+.highlight-red {
+  background-color: var(--highlight-red);
+  color: #FFFFFF;
+}
+
+.highlight-hot-pink {
+  background-color: var(--highlight-hot-pink);
+  color: #FFFFFF;
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .highlight-yellow {
+    background-color: #F59E0B;
+    color: #111827;
+  }
+  
+  .highlight-orange {
+    background-color: #EA580C;
+    color: #FFFFFF;
+  }
+  
+  .highlight-hot-pink {
+    background-color: #EC4899;
+    color: #FFFFFF;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .highlight-yellow {
+    background-color: #FBBF24;
+    color: #000000;
+    border: 1px solid #000000;
+  }
+  
+  .highlight-hot-pink {
+    background-color: #FF69B4;
+    color: #000000;
+    border: 1px solid #000000;
+  }
+}
