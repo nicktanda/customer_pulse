@@ -133,7 +133,7 @@ function IdeaSection({
   reportId: number;
   list: { id: number; title: string; description: string }[];
   canEdit: boolean;
-  prByIdea: Map<number, { status: number; progressMessage: string | null; prNumber: number | null; prUrl: string | null }[]>;
+  prByIdea: Map<number, { status: number; progressMessage: string | null; prNumber: number | null; prUrl: string | null; errorMessage: string | null }[]>;
   variant: "page" | "panel";
   fullReportHref: string;
 }) {
@@ -150,6 +150,7 @@ function IdeaSection({
             const openPr = prs.find((p) => p.status === 1);
             const mergedPr = prs.find((p) => p.status === 2);
             const closedPr = prs.find((p) => p.status === 3);
+            const failedPr = prs.find((p) => p.status === 4);
             const showGenerateButton = !generating && !openPr && canEdit;
             return (
               <li key={idea.id} className="card border-secondary-subtle">
@@ -187,6 +188,21 @@ function IdeaSection({
                       ) : showGenerateButton && variant === "panel" ? (
                         <Link href={fullReportHref} className="link-primary" style={{ fontSize: "0.75rem" }}>
                           Regenerate
+                        </Link>
+                      ) : null}
+                    </div>
+                  ) : failedPr ? (
+                    <div className="mt-2 mb-0 d-flex align-items-center gap-2" style={{ fontSize: "0.75rem" }}>
+                      <span className="text-danger">
+                        Failed: {failedPr.errorMessage ?? failedPr.progressMessage ?? "unknown error"}
+                      </span>
+                      {showGenerateButton && variant === "page" ? (
+                        <form action={generatePrForIdeaAction.bind(null, idea.id)} className="d-inline">
+                          <PrSubmitButton label="Retry" style={{ fontSize: "0.75rem" }} />
+                        </form>
+                      ) : showGenerateButton && variant === "panel" ? (
+                        <Link href={fullReportHref} className="link-primary" style={{ fontSize: "0.75rem" }}>
+                          Retry
                         </Link>
                       ) : null}
                     </div>

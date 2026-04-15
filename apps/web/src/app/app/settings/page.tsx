@@ -13,6 +13,7 @@ import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { projectHasDemoSeedData } from "@/lib/demo-project-seed";
 import { saveGithubSettingsAction, saveGeneralSettingsAction, saveAnthropicSettingsAction } from "./actions";
 import { DemoModeSwitch } from "./DemoModeSwitch";
+import { GithubTestButton } from "./GithubTestButton";
 import {
   FormActions,
   InlineAlert,
@@ -344,6 +345,9 @@ export default async function SettingsPage({
                   Save GitHub
                 </button>
               </FormActions>
+              <div className="mt-2">
+                <GithubTestButton />
+              </div>
             </form>
           ) : (
             <p className="small text-body-secondary mt-3 mb-0">You do not have permission to change GitHub settings.</p>

@@ -28,7 +28,7 @@ export type PulseReportPageData = {
   insightRows: { id: number; title: string; description: string }[];
   quickWins: (typeof ideas.$inferSelect)[];
   highImpact: (typeof ideas.$inferSelect)[];
-  prByIdea: Map<number, { status: number; progressMessage: string | null; prNumber: number | null; prUrl: string | null }[]>;
+  prByIdea: Map<number, { status: number; progressMessage: string | null; prNumber: number | null; prUrl: string | null; errorMessage: string | null }[]>;
   hasPendingPrs: boolean;
 };
 

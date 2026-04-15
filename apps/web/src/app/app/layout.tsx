@@ -22,8 +22,9 @@ function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
   workspaceItems.push(
     { href: "/app/integrations", label: "Integrations" },
     { href: "/app/recipients", label: "Email recipients" },
-  { href: "/app/settings", label: "Settings" },
-  { href: "/app/projects", label: "Projects" },
+    { href: "/app/skills", label: "Skills" },
+    { href: "/app/settings", label: "Settings" },
+    { href: "/app/projects", label: "Projects" },
   );
 
   return [
