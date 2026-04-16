@@ -18,6 +18,15 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+/**
+ * User table in the tenant database.
+ *
+ * In **multi-tenant mode**, this is a read-only mirror synced from the control
+ * plane.  Auth fields (password, reset token) exist for schema compatibility but
+ * are empty — all auth queries go through the control-plane `cpUsers` table.
+ *
+ * In **single-tenant mode**, this is the authoritative user table (same as before).
+ */
 export const users = pgTable(
   "users",
   {

@@ -59,3 +59,36 @@ export function encryptCredentialsColumn(plaintextUtf8: string, masterKeyHex: st
   const tag = cipher.getAuthTag();
   return Buffer.concat([nonce, enc, tag]).toString("base64");
 }
+
+/* ------------------------------------------------------------------ */
+/*  Tenant connection-string encryption (table=tenants, attr=connection_string) */
+/* ------------------------------------------------------------------ */
+
+/** Decrypt a tenant's connection string stored in `tenants.connection_string_ciphertext`. */
+export function decryptTenantConnectionString(ciphertextB64: string | null | undefined, masterKeyHex: string): string {
+  if (ciphertextB64 == null || ciphertextB64 === "") {
+    return "";
+  }
+  const key = deriveAttributeKey(masterKeyHex, "tenants", "connection_string");
+  const raw = Buffer.from(ciphertextB64, "base64");
+  if (raw.length < NONCE_LEN + TAG_LEN) {
+    throw new Error("Invalid Lockbox ciphertext (too short)");
+  }
+  const nonce = raw.subarray(0, NONCE_LEN);
+  const body = raw.subarray(NONCE_LEN);
+  const tag = body.subarray(body.length - TAG_LEN);
+  const enc = body.subarray(0, body.length - TAG_LEN);
+  const decipher = createDecipheriv("aes-256-gcm", key, nonce);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
+}
+
+/** Encrypt a tenant's connection string for storage in `tenants.connection_string_ciphertext`. */
+export function encryptTenantConnectionString(plaintextUtf8: string, masterKeyHex: string): string {
+  const key = deriveAttributeKey(masterKeyHex, "tenants", "connection_string");
+  const nonce = randomBytes(NONCE_LEN);
+  const cipher = createCipheriv("aes-256-gcm", key, nonce);
+  const enc = Buffer.concat([cipher.update(plaintextUtf8, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([nonce, enc, tag]).toString("base64");
+}

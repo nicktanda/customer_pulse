@@ -6,6 +6,7 @@
  * back to the Anthropic integration stored in the DB (encrypted via Lockbox).
  */
 import { eq } from "drizzle-orm";
+import type { Database } from "@customer-pulse/db/client";
 import { integrations } from "@customer-pulse/db/client";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { getWorkerDb } from "../db.js";
@@ -26,7 +27,13 @@ async function rateLimitSleep(): Promise<void> {
   lastCallTime = Date.now();
 }
 
-export async function resolveApiKey(): Promise<string | null> {
+/**
+ * Resolve the Anthropic API key.
+ *
+ * In multi-tenant mode, pass the tenant `db` so the DB fallback queries the
+ * correct tenant. Without `db`, falls back to `getWorkerDb()` (single-tenant).
+ */
+export async function resolveApiKey(db?: Database): Promise<string | null> {
   // Prefer env var
   const envKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (envKey) return envKey;
@@ -43,9 +50,9 @@ export async function resolveApiKey(): Promise<string | null> {
   }
 
   try {
-    const db = getWorkerDb();
+    const effectiveDb = db ?? getWorkerDb();
     // source_type 13 = anthropic
-    const rows = await db
+    const rows = await effectiveDb
       .select({ ciphertext: integrations.credentialsCiphertext })
       .from(integrations)
       .where(eq(integrations.sourceType, 13))

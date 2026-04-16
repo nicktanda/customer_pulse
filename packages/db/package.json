@@ -8,12 +8,18 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
-    "./lockbox": "./src/lockbox.ts"
+    "./lockbox": "./src/lockbox.ts",
+    "./control-plane": "./src/control-plane-client.ts",
+    "./control-plane-schema": "./src/control-plane-schema.ts",
+    "./tenant-connection-manager": "./src/tenant-connection-manager.ts",
+    "./neon-provisioner": "./src/neon-provisioner.ts"
   },
   "scripts": {
     "build": "tsc",
     "generate": "drizzle-kit generate",
+    "generate:cp": "drizzle-kit generate --config=drizzle-control-plane.config.ts",
     "push": "drizzle-kit push",
+    "push:cp": "drizzle-kit push --config=drizzle-control-plane.config.ts",
     "studio": "drizzle-kit studio",
     "test": "vitest run"
   },

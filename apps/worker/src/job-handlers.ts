@@ -1,6 +1,7 @@
 import type { Job } from "bullmq";
 import { and, eq, gte, lte, isNull, sql, desc } from "drizzle-orm";
-import { getWorkerDb } from "./db.js";
+import type { Database } from "@customer-pulse/db/client";
+import { getWorkerDb, getWorkerTenantDb, getWorkerControlPlaneDb, isMultiTenant } from "./db.js";
 import {
   feedbacks,
   integrations,
@@ -12,6 +13,8 @@ import {
   ideas,
   users,
 } from "@customer-pulse/db/client";
+import { tenants, TenantStatus } from "@customer-pulse/db/control-plane";
+import { decryptTenantConnectionString } from "@customer-pulse/db/lockbox";
 import { processReportingNlJob } from "./reporting-nl.js";
 import { sendEmail } from "./mail/send.js";
 import { renderPulseReportHtml, renderPulseReportText } from "./mail/templates/pulse-report.js";
@@ -24,6 +27,38 @@ import { createClient, SYNC_JOB_SOURCE_MAP } from "./integrations/index.js";
 import { createPullRequest } from "./github/pr-creator.js";
 import { reviewPullRequest } from "./github/pr-reviewers.js";
 import { resolveApiKey } from "./ai/call-claude.js";
+import { fanOut, FAN_OUT_MAP } from "./fan-out.js";
+
+/**
+ * Resolve the correct DB for a job.
+ *
+ * In multi-tenant mode, reads tenantId/tenantSlug from job.data, looks up the
+ * connection string in the control plane, and returns a tenant-specific pool.
+ * In single-tenant mode, returns the shared getWorkerDb() singleton.
+ */
+async function resolveJobDb(job: Job): Promise<Database> {
+  if (!isMultiTenant()) return getWorkerDb();
+
+  const { tenantId, tenantSlug } = job.data as { tenantId?: number; tenantSlug?: string };
+  if (!tenantId || !tenantSlug) {
+    throw new Error(`[worker] Multi-tenant job ${job.name} missing tenantId/tenantSlug in job.data`);
+  }
+
+  const cpDb = getWorkerControlPlaneDb();
+  const [row] = await cpDb
+    .select({ connectionStringCiphertext: tenants.connectionStringCiphertext, status: tenants.status })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+
+  if (!row || row.status !== TenantStatus.active) {
+    throw new Error(`[worker] Tenant ${tenantSlug} (id=${tenantId}) not found or not active`);
+  }
+
+  const masterKey = process.env.LOCKBOX_MASTER_KEY ?? "";
+  const connectionString = decryptTenantConnectionString(row.connectionStringCiphertext, masterKey);
+  return getWorkerTenantDb(tenantSlug, connectionString);
+}
 
 /**
  * BullMQ job processors (syncs, mail, AI, etc.) — keep handlers idempotent when possible.
@@ -31,7 +66,15 @@ import { resolveApiKey } from "./ai/call-claude.js";
  */
 export async function runJob(job: Job): Promise<void> {
   console.log(`[worker] job start name=${job.name} id=${job.id}`);
-  const db = getWorkerDb();
+
+  // Handle fan-out jobs (multi-tenant only)
+  const fanOutEntry = FAN_OUT_MAP[job.name];
+  if (fanOutEntry) {
+    await fanOut(fanOutEntry.childJob, fanOutEntry.queue);
+    return;
+  }
+
+  const db = await resolveJobDb(job);
 
   switch (job.name) {
     case "process_feedback": {
@@ -46,7 +89,7 @@ export async function runJob(job: Job): Promise<void> {
       }
       const now = new Date();
       let summary = "AI processing — configure Anthropic API key in Settings or onboarding for live summaries.";
-      const apiKey = await resolveApiKey();
+      const apiKey = await resolveApiKey(db);
       if (apiKey) {
         try {
           const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -173,7 +216,7 @@ export async function runJob(job: Job): Promise<void> {
 
         // Generate summary with Anthropic if available
         let summary = `${count} feedback items received in the last 24 hours.`;
-        const apiKey = await resolveApiKey();
+        const apiKey = await resolveApiKey(db);
         if (apiKey && count > 0) {
           try {
             const top20 = periodFeedback.slice(0, 20).map((f) => `- [${categoryNames[f.category]}/${priorityNames[f.priority]}] ${f.title ?? f.content.slice(0, 100)}`).join("\n");
