@@ -19,12 +19,33 @@
 
 :root,
 [data-bs-theme="light"] {
+  /*
+   * Surfaces: Bootstrap’s default light theme is very bright (#fff / gray-100 / gray-200).
+   * We pull the whole stack down a few steps so borders and accent badges read with more punch.
+   */
+  --bs-body-color: #141414;
+  --bs-body-color-rgb: 20, 20, 20;
+  --bs-body-bg: #e8e8e8;
+  --bs-body-bg-rgb: 232, 232, 232;
+  --bs-secondary-color: rgba(20, 20, 20, 0.78);
+  --bs-secondary-color-rgb: 20, 20, 20;
+  --bs-secondary-bg: #d4d4d4;
+  --bs-secondary-bg-rgb: 212, 212, 212;
+  --bs-tertiary-color: rgba(20, 20, 20, 0.55);
+  --bs-tertiary-color-rgb: 20, 20, 20;
+  --bs-tertiary-bg: #dedede;
+  --bs-tertiary-bg-rgb: 222, 222, 222;
+  --bs-emphasis-color: #0a0a0a;
+  --bs-emphasis-color-rgb: 10, 10, 10;
+  --bs-border-color: #c4c4c4;
+  --bs-border-color-translucent: rgba(0, 0, 0, 0.14);
+
   /* Main actions (was blue) */
   --bs-primary: #181818;
   --bs-primary-rgb: 24, 24, 24;
   --bs-primary-text-emphasis: #0f0f0f;
-  --bs-primary-bg-subtle: #ebebeb;
-  --bs-primary-border-subtle: #c8c8c8;
+  --bs-primary-bg-subtle: #d8d8d8;
+  --bs-primary-border-subtle: #b0b0b0;
 
   /* Default hyperlinks (was blue) — still clearly clickable via hover underline below */
   --bs-link-color: #2a2a2a;
@@ -40,33 +61,54 @@
   --bs-success: #383838;
   --bs-success-rgb: 56, 56, 56;
   --bs-success-text-emphasis: #1a1a1a;
-  --bs-success-bg-subtle: #eeeeee;
-  --bs-success-border-subtle: #d0d0d0;
+  --bs-success-bg-subtle: #d6d6d6;
+  --bs-success-border-subtle: #b8b8b8;
 
   /* Warning / info → grey so leftover utility classes don’t reintroduce amber or cyan */
   --bs-warning: #6c757d;
   --bs-warning-rgb: 108, 117, 125;
   --bs-warning-text-emphasis: #3a3a3a;
-  --bs-warning-bg-subtle: #f3f3f3;
-  --bs-warning-border-subtle: #dddddd;
+  --bs-warning-bg-subtle: #d8d8d8;
+  --bs-warning-border-subtle: #b8b8b8;
 
   --bs-info: #4a4a4a;
   --bs-info-rgb: 74, 74, 74;
   --bs-info-text-emphasis: #252525;
-  --bs-info-bg-subtle: #ededed;
-  --bs-info-border-subtle: #d0d0d0;
+  --bs-info-bg-subtle: #d6d6d6;
+  --bs-info-border-subtle: #b8b8b8;
 
   /* Inline <code> (Bootstrap defaults to pink / teal) */
   --bs-code-color: #3a3a3a;
 }
 
 [data-bs-theme="dark"] {
+  /*
+   * Dark surfaces: default Bootstrap dark greys read a bit “washed”; deepen bases so vivid
+   * badges (danger, priority colours) separate more clearly from chrome.
+   */
+  --bs-body-color: #e8eaed;
+  --bs-body-color-rgb: 232, 234, 237;
+  --bs-body-bg: #121418;
+  --bs-body-bg-rgb: 18, 20, 24;
+  --bs-secondary-color: rgba(232, 234, 237, 0.72);
+  --bs-secondary-color-rgb: 232, 234, 237;
+  --bs-secondary-bg: #252830;
+  --bs-secondary-bg-rgb: 37, 40, 48;
+  --bs-tertiary-color: rgba(232, 234, 237, 0.5);
+  --bs-tertiary-color-rgb: 232, 234, 237;
+  --bs-tertiary-bg: #1a1d24;
+  --bs-tertiary-bg-rgb: 26, 29, 36;
+  --bs-emphasis-color: #f4f5f7;
+  --bs-emphasis-color-rgb: 244, 245, 247;
+  --bs-border-color: #3a404c;
+  --bs-border-color-translucent: rgba(255, 255, 255, 0.12);
+
   /* Mid-grey so white label text on primary buttons stays readable */
   --bs-primary: #9a9a9a;
   --bs-primary-rgb: 154, 154, 154;
   --bs-primary-text-emphasis: #e2e2e2;
-  --bs-primary-bg-subtle: #2d2d2d;
-  --bs-primary-border-subtle: #4f4f4f;
+  --bs-primary-bg-subtle: #22252c;
+  --bs-primary-border-subtle: #454a56;
 
   --bs-link-color: #d0d0d0;
   --bs-link-color-rgb: 208, 208, 208;
@@ -79,48 +121,55 @@
   --bs-success: #8a8a8a;
   --bs-success-rgb: 138, 138, 138;
   --bs-success-text-emphasis: #dedede;
-  --bs-success-bg-subtle: #2a2a2a;
-  --bs-success-border-subtle: #4a4a4a;
+  --bs-success-bg-subtle: #1f2229;
+  --bs-success-border-subtle: #3d424d;
 
   --bs-warning: #8a8a8a;
   --bs-warning-rgb: 138, 138, 138;
   --bs-warning-text-emphasis: #e0e0e0;
-  --bs-warning-bg-subtle: #2c2c2c;
-  --bs-warning-border-subtle: #4a4a4a;
+  --bs-warning-bg-subtle: #21242b;
+  --bs-warning-border-subtle: #3d424d;
 
   --bs-info: #8a8a8a;
   --bs-info-rgb: 138, 138, 138;
   --bs-info-text-emphasis: #dedede;
-  --bs-info-bg-subtle: #2a2a2a;
-  --bs-info-border-subtle: #4a4a4a;
+  --bs-info-bg-subtle: #1f2229;
+  --bs-info-border-subtle: #3d424d;
 
   --bs-code-color: #c8c8c8;
 }
 
 /*
- * Sidebar nav pills: Bootstrap hard-codes the active pill background to blue.
- * Point those variables at our primary token so active state stays on-brand.
+ * Sidebar nav: soft tint for the current page (scoped so global `nav-pills` stays default).
+ * Bootstrap still applies `.active` via `--bs-nav-pills-link-active-*`; we repoint those to a tint + body text.
  */
-.nav-pills {
-  --bs-nav-pills-link-active-bg: var(--bs-primary);
-  --bs-nav-pills-link-active-color: #fff;
+.app-sidebar .nav-pills {
+  --bs-nav-pills-link-active-bg: rgba(var(--bs-primary-rgb), 0.12);
+  --bs-nav-pills-link-active-color: var(--bs-body-color);
 }
 
-[data-bs-theme="dark"] .nav-pills {
-  /* Light pill + dark type reads better here than mid-grey + white */
-  --bs-nav-pills-link-active-bg: #eaeaea;
-  --bs-nav-pills-link-active-color: #121212;
+[data-bs-theme="dark"] .app-sidebar .nav-pills {
+  /* Slightly stronger lift on dark chrome (primary RGB is mid-grey and reads too flat here). */
+  --bs-nav-pills-link-active-bg: rgba(255, 255, 255, 0.09);
+  --bs-nav-pills-link-active-color: var(--bs-emphasis-color);
 }
 
-/* Inactive routes: quiet grey; hover darkens without flashing blue */
-.nav-pills .nav-link {
+.app-sidebar .nav-pills .nav-link {
   color: var(--bs-body-secondary);
 }
 
-/* Only non-active pills: hover text color. Including .active here overwrote the active
-   pill’s foreground on hover (e.g. dark mode: near-white body text on light pill). */
-.nav-pills .nav-link:not(.active):hover {
+.app-sidebar .nav-pills .nav-link.active {
+  font-weight: 600;
+}
+
+/* Hover: light wash on inactive only; do not fight the active row’s tint. */
+.app-sidebar .nav-pills .nav-link:not(.active):hover {
   color: var(--bs-body-color);
+  background-color: rgba(var(--bs-primary-rgb), 0.06);
+}
+
+[data-bs-theme="dark"] .app-sidebar .nav-pills .nav-link:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* “Sign out” / ghost actions: muted text, not a loud link color */

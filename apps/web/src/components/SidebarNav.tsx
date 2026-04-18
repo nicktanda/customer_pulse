@@ -33,6 +33,7 @@ export function SidebarNav({ groups, children }: { groups: SidebarNavGroup[]; ch
           <h2 id={`sidebar-nav-${groupIndex}`} className="small fw-semibold text-uppercase text-body-secondary mb-2">
             {group.label}
           </h2>
+          {/* `nav-pills` gives Bootstrap’s `.active` hooks; look is overridden in globals.css (soft tint). */}
           <nav className="nav nav-pills flex-column gap-1" aria-label={group.label}>
             {group.items.map((item) => {
               const active = isNavActive(pathname, item.href);
