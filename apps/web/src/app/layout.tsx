@@ -1,27 +1,40 @@
 import type { Metadata } from "next";
+import { Orbitron } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { THEME_STORAGE_KEY } from "@/components/theme-storage";
 
+/** Wide geometric display type — aligns with the Kairos brand kit wordmark. */
+const kairosDisplay = Orbitron({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-kairos-display",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Customer Pulse",
-  description: "Customer feedback intelligence (Next.js stack)",
+  title: "Kairos",
+  description:
+    "Kairos (kairos.ai) — customer feedback intelligence: decide, act, accelerate. Integrations, AI triage, and daily digests.",
 };
 
 /**
  * Bootstrap reads `data-bs-theme` on the root element (`<html>`) to swap light/dark palettes.
- * This tiny script runs immediately (in <head>) so the correct theme is applied before the page paints.
- * It must stay in sync with `ThemeToggle` + `theme-storage.ts` (same localStorage key and rules).
+ * This tiny script runs immediately (in `<head>`) so the first paint already matches the user’s choice.
+ *
+ * Kairos is **dark-first**: if there is no saved preference yet, we default to dark (brand kit).
+ * Saved values from `ThemeToggle` use the same localStorage key as `theme-storage.ts` — keep them aligned.
  */
 const themeBootstrapInline = `
 (function(){
   try {
     var k = ${JSON.stringify(THEME_STORAGE_KEY)};
     var v = localStorage.getItem(k);
-    var dark = false;
-    if (v === 'dark') dark = true;
-    else if (v === 'light') dark = false;
-    else dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var dark = true;
+    if (v === 'light') dark = false;
+    else if (v === 'dark') dark = true;
+    else if (v === 'auto') dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    else dark = true;
     document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
   } catch (e) {}
 })();
@@ -34,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     // suppressHydrationWarning: the inline theme script sets `data-bs-theme` before React runs; the value still matches after hydration.
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={kairosDisplay.variable} suppressHydrationWarning>
       <head>
         {/*
           suppressHydrationWarning: some browser extensions inject or rewrite <head> scripts

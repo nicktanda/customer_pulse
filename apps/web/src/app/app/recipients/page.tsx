@@ -37,7 +37,7 @@ export default async function RecipientsPage() {
     <PageShell width="full">
       <PageHeader
         title="Email recipients"
-        description="Who receives the Customer Pulse digest for this project."
+        description="Who receives the Kairos daily digest for this project."
         actions={
           canEdit ? (
             <Link href="/app/recipients/new" className="btn btn-primary btn-sm">

@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, Button, Card, Form } from "react-bootstrap";
+import { KairosWordmark } from "@/components/KairosWordmark";
 
 /**
  * Turn whatever signIn / fetch rejected with into text for the UI.
@@ -72,7 +73,7 @@ export function LoginForm({ showGoogle }: { showGoogle: boolean }) {
   return (
     <div className="w-100" style={{ maxWidth: "28rem" }}>
       <div className="text-center text-sm-start mb-4">
-        <p className="small fw-semibold text-uppercase text-body-secondary mb-1">Customer Pulse</p>
+        <KairosWordmark className="mb-3" />
         <h1 className="h3 mb-2">Sign in</h1>
         <p className="text-body-secondary small mb-0">
           Use your workspace email and password{showGoogle ? ", or continue with Google" : ""}.

@@ -20,7 +20,7 @@ export interface SendEmailOptions {
   text?: string;
 }
 
-const DEFAULT_FROM = process.env.EMAIL_FROM ?? "Customer Pulse <pulse@updates.customerpulse.app>";
+const DEFAULT_FROM = process.env.EMAIL_FROM ?? "Kairos <pulse@updates.kairos.ai>";
 
 export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolean; error?: string }> {
   const resend = getResend();

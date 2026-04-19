@@ -6,121 +6,192 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
-   Monochrome theme (sleek black / grey)
-   ---------------------------------------------------------------------------
-   Bootstrap’s default “primary” color and default link color are blue (#0d6efd).
-   This app overrides CSS *custom properties* so every `btn-primary`, `link-primary`,
-   plain `<a href>`, focus rings, and most accents stay in a neutral palette.
-
-   These rules are loaded *after* Bootstrap, so they win over the library defaults.
-   Light vs dark mode: the root `<html>` sets `data-bs-theme` (see `layout.tsx` +
-   `ThemeToggle`), and we mirror Bootstrap by defining tokens for both themes.
+   Kairos brand theme (kairos.ai)
+   Electric cyan primary on charcoal / midnight (dark-first). Warm copper reserved
+   for accents (e.g. priority badges). Loaded after Bootstrap; `data-bs-theme` on `<html>`.
    --------------------------------------------------------------------------- */
 
-:root,
+:root {
+  /* Brand accent (RGB triples are used inside `rgba(var(--bs-primary-rgb), …)` — keep numeric). */
+  --kairos-accent: #0e7490;
+  --kairos-copper: #c2410c;
+  --kairos-copper-rgb: 194, 65, 12;
+}
+
 [data-bs-theme="light"] {
-  /* Main actions (was blue) */
-  --bs-primary: #181818;
-  --bs-primary-rgb: 24, 24, 24;
-  --bs-primary-text-emphasis: #0f0f0f;
-  --bs-primary-bg-subtle: #ebebeb;
-  --bs-primary-border-subtle: #c8c8c8;
-
-  /* Default hyperlinks (was blue) — still clearly clickable via hover underline below */
-  --bs-link-color: #2a2a2a;
-  --bs-link-color-rgb: 42, 42, 42;
-  --bs-link-hover-color: #000000;
-  --bs-link-hover-color-rgb: 0, 0, 0;
-  --bs-link-decoration: none;
-
-  /* Keyboard focus ring (was a blue glow tied to primary) */
-  --bs-focus-ring-color: rgba(24, 24, 24, 0.25);
-
-  /* Success flash messages → neutral grey banner (keeps role="status" semantics) */
-  --bs-success: #383838;
-  --bs-success-rgb: 56, 56, 56;
-  --bs-success-text-emphasis: #1a1a1a;
-  --bs-success-bg-subtle: #eeeeee;
-  --bs-success-border-subtle: #d0d0d0;
-
-  /* Warning / info → grey so leftover utility classes don’t reintroduce amber or cyan */
-  --bs-warning: #6c757d;
-  --bs-warning-rgb: 108, 117, 125;
-  --bs-warning-text-emphasis: #3a3a3a;
-  --bs-warning-bg-subtle: #f3f3f3;
-  --bs-warning-border-subtle: #dddddd;
-
-  --bs-info: #4a4a4a;
-  --bs-info-rgb: 74, 74, 74;
-  --bs-info-text-emphasis: #252525;
-  --bs-info-bg-subtle: #ededed;
-  --bs-info-border-subtle: #d0d0d0;
-
-  /* Inline <code> (Bootstrap defaults to pink / teal) */
-  --bs-code-color: #3a3a3a;
+  --kairos-accent: #0891b2;
 }
 
 [data-bs-theme="dark"] {
-  /* Mid-grey so white label text on primary buttons stays readable */
-  --bs-primary: #9a9a9a;
-  --bs-primary-rgb: 154, 154, 154;
-  --bs-primary-text-emphasis: #e2e2e2;
-  --bs-primary-bg-subtle: #2d2d2d;
-  --bs-primary-border-subtle: #4f4f4f;
+  --kairos-accent: #22d3ee;
+}
 
-  --bs-link-color: #d0d0d0;
-  --bs-link-color-rgb: 208, 208, 208;
-  --bs-link-hover-color: #ffffff;
-  --bs-link-hover-color-rgb: 255, 255, 255;
+.kairos-wordmark {
+  font-family: var(--font-kairos-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  color: var(--bs-emphasis-color);
+}
+
+.kairos-tagline {
+  color: var(--kairos-accent);
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+/* Auth pages: subtle brand atmosphere behind the card (see `login/page.tsx`). */
+.kairos-auth-stage__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 85% 65% at 85% 12%, rgba(34, 211, 238, 0.14), transparent 55%),
+    radial-gradient(ellipse 70% 55% at 8% 88%, rgba(194, 65, 12, 0.09), transparent 52%);
+}
+
+[data-bs-theme="light"] .kairos-auth-stage__glow {
+  background:
+    radial-gradient(ellipse 85% 65% at 85% 12%, rgba(8, 145, 178, 0.12), transparent 55%),
+    radial-gradient(ellipse 70% 55% at 8% 88%, rgba(194, 65, 12, 0.06), transparent 52%);
+}
+
+:root,
+[data-bs-theme="light"] {
+  --bs-body-color: #0c1118;
+  --bs-body-color-rgb: 12, 17, 24;
+  --bs-body-bg: #e8eef2;
+  --bs-body-bg-rgb: 232, 238, 242;
+  --bs-secondary-color: rgba(12, 17, 24, 0.75);
+  --bs-secondary-color-rgb: 12, 17, 24;
+  --bs-secondary-bg: #d8e1e8;
+  --bs-secondary-bg-rgb: 216, 225, 232;
+  --bs-tertiary-color: rgba(12, 17, 24, 0.52);
+  --bs-tertiary-color-rgb: 12, 17, 24;
+  --bs-tertiary-bg: #dce6ed;
+  --bs-tertiary-bg-rgb: 220, 230, 237;
+  --bs-emphasis-color: #05080c;
+  --bs-emphasis-color-rgb: 5, 8, 12;
+  --bs-border-color: #b8c5ce;
+  --bs-border-color-translucent: rgba(8, 20, 32, 0.12);
+
+  --bs-primary: #0891b2;
+  --bs-primary-rgb: 8, 145, 178;
+  --bs-primary-text-emphasis: #064e5a;
+  --bs-primary-bg-subtle: #cffafe;
+  --bs-primary-border-subtle: #67e8f9;
+
+  --bs-link-color: #0e7490;
+  --bs-link-color-rgb: 14, 116, 144;
+  --bs-link-hover-color: #155e75;
+  --bs-link-hover-color-rgb: 21, 94, 117;
   --bs-link-decoration: none;
 
-  --bs-focus-ring-color: rgba(255, 255, 255, 0.2);
+  --bs-focus-ring-color: rgba(8, 145, 178, 0.35);
 
-  --bs-success: #8a8a8a;
-  --bs-success-rgb: 138, 138, 138;
-  --bs-success-text-emphasis: #dedede;
-  --bs-success-bg-subtle: #2a2a2a;
-  --bs-success-border-subtle: #4a4a4a;
+  --bs-success: #0f766e;
+  --bs-success-rgb: 15, 118, 110;
+  --bs-success-text-emphasis: #0b4f49;
+  --bs-success-bg-subtle: #ccfbf1;
+  --bs-success-border-subtle: #5eead4;
 
-  --bs-warning: #8a8a8a;
-  --bs-warning-rgb: 138, 138, 138;
-  --bs-warning-text-emphasis: #e0e0e0;
-  --bs-warning-bg-subtle: #2c2c2c;
-  --bs-warning-border-subtle: #4a4a4a;
+  --bs-warning: #9a3412;
+  --bs-warning-rgb: 154, 52, 18;
+  --bs-warning-text-emphasis: #6c2710;
+  --bs-warning-bg-subtle: #ffedd5;
+  --bs-warning-border-subtle: #fdba74;
 
-  --bs-info: #8a8a8a;
-  --bs-info-rgb: 138, 138, 138;
-  --bs-info-text-emphasis: #dedede;
-  --bs-info-bg-subtle: #2a2a2a;
-  --bs-info-border-subtle: #4a4a4a;
+  --bs-info: #0369a1;
+  --bs-info-rgb: 3, 105, 161;
+  --bs-info-text-emphasis: #0c4a6e;
+  --bs-info-bg-subtle: #e0f2fe;
+  --bs-info-border-subtle: #7dd3fc;
 
-  --bs-code-color: #c8c8c8;
+  --bs-code-color: #134e4a;
+}
+
+[data-bs-theme="dark"] {
+  --bs-body-color: #e2e8f0;
+  --bs-body-color-rgb: 226, 232, 240;
+  --bs-body-bg: #070b10;
+  --bs-body-bg-rgb: 7, 11, 16;
+  --bs-secondary-color: rgba(226, 232, 240, 0.72);
+  --bs-secondary-color-rgb: 226, 232, 240;
+  --bs-secondary-bg: #121a24;
+  --bs-secondary-bg-rgb: 18, 26, 36;
+  --bs-tertiary-color: rgba(226, 232, 240, 0.48);
+  --bs-tertiary-color-rgb: 226, 232, 240;
+  --bs-tertiary-bg: #0e141c;
+  --bs-tertiary-bg-rgb: 14, 20, 28;
+  --bs-emphasis-color: #f8fafc;
+  --bs-emphasis-color-rgb: 248, 250, 252;
+  --bs-border-color: #2a3544;
+  --bs-border-color-translucent: rgba(148, 163, 184, 0.18);
+
+  --bs-primary: #22d3ee;
+  --bs-primary-rgb: 34, 211, 238;
+  --bs-primary-text-emphasis: #ecfeff;
+  --bs-primary-bg-subtle: #083344;
+  --bs-primary-border-subtle: #06b6d4;
+
+  --bs-link-color: #67e8f9;
+  --bs-link-color-rgb: 103, 232, 249;
+  --bs-link-hover-color: #a5f3fc;
+  --bs-link-hover-color-rgb: 165, 243, 252;
+  --bs-link-decoration: none;
+
+  --bs-focus-ring-color: rgba(34, 211, 238, 0.45);
+
+  --bs-success: #2dd4bf;
+  --bs-success-rgb: 45, 212, 191;
+  --bs-success-text-emphasis: #ccfbf1;
+  --bs-success-bg-subtle: #042f2e;
+  --bs-success-border-subtle: #0d9488;
+
+  --bs-warning: #fb923c;
+  --bs-warning-rgb: 251, 146, 60;
+  --bs-warning-text-emphasis: #ffedd5;
+  --bs-warning-bg-subtle: #431407;
+  --bs-warning-border-subtle: #ea580c;
+
+  --bs-info: #38bdf8;
+  --bs-info-rgb: 56, 189, 248;
+  --bs-info-text-emphasis: #e0f2fe;
+  --bs-info-bg-subtle: #0c4a6e;
+  --bs-info-border-subtle: #0284c7;
+
+  --bs-code-color: #a5f3fc;
 }
 
 /*
- * Sidebar nav pills: Bootstrap hard-codes the active pill background to blue.
- * Point those variables at our primary token so active state stays on-brand.
+ * Sidebar nav: soft tint for the current page (scoped so global `nav-pills` stays default).
+ * Bootstrap still applies `.active` via `--bs-nav-pills-link-active-*`; we repoint those to a tint + body text.
  */
-.nav-pills {
-  --bs-nav-pills-link-active-bg: var(--bs-primary);
-  --bs-nav-pills-link-active-color: #fff;
+.app-sidebar .nav-pills {
+  --bs-nav-pills-link-active-bg: rgba(var(--bs-primary-rgb), 0.12);
+  --bs-nav-pills-link-active-color: var(--bs-body-color);
 }
 
-[data-bs-theme="dark"] .nav-pills {
-  /* Light pill + dark type reads better here than mid-grey + white */
-  --bs-nav-pills-link-active-bg: #eaeaea;
-  --bs-nav-pills-link-active-color: #121212;
+[data-bs-theme="dark"] .app-sidebar .nav-pills {
+  /* Cyan-tinted “you are here” row — matches Kairos accent without overpowering nav text. */
+  --bs-nav-pills-link-active-bg: rgba(34, 211, 238, 0.12);
+  --bs-nav-pills-link-active-color: var(--bs-emphasis-color);
 }
 
-/* Inactive routes: quiet grey; hover darkens without flashing blue */
-.nav-pills .nav-link {
+.app-sidebar .nav-pills .nav-link {
   color: var(--bs-body-secondary);
 }
 
-/* Only non-active pills: hover text color. Including .active here overwrote the active
-   pill’s foreground on hover (e.g. dark mode: near-white body text on light pill). */
-.nav-pills .nav-link:not(.active):hover {
+.app-sidebar .nav-pills .nav-link.active {
+  font-weight: 600;
+}
+
+/* Hover: light wash on inactive only; do not fight the active row’s tint. */
+.app-sidebar .nav-pills .nav-link:not(.active):hover {
   color: var(--bs-body-color);
+  background-color: rgba(var(--bs-primary-rgb), 0.06);
+}
+
+[data-bs-theme="dark"] .app-sidebar .nav-pills .nav-link:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* “Sign out” / ghost actions: muted text, not a loud link color */

@@ -71,7 +71,7 @@ try {
     await sql.unsafe(ddl);
   }
   console.log(
-    "OK: membership, project_id columns, teams, and reporting_requests match the Next.js schema (or were already).",
+    "OK: ran idempotent DDL (projects/membership, project_id columns, teams, reporting_requests, project_invitations, project_settings). Your DB matches the Next.js schema or was already up to date.",
   );
 } finally {
   await sql.end({ timeout: 5 });

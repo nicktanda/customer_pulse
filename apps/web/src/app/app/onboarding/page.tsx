@@ -104,7 +104,7 @@ export default async function OnboardingPage({
   return (
     <PageShell width="medium">
       <PageHeader
-        title="Welcome to Customer Pulse"
+        title="Welcome to Kairos"
         description={
           <>
             Step {stepIndex + 1} of {ONBOARDING_STEPS.length}:{" "}
@@ -310,7 +310,7 @@ function StepBody({ step, savedProject, savedIntegrations, savedRecipient }: Ste
       return (
         <form className="d-flex flex-column gap-3">
           <input type="hidden" name="_onboarding_step" value="complete" />
-          <p className="text-body-secondary mb-0">You are ready to use Customer Pulse.</p>
+          <p className="text-body-secondary mb-0">You are ready to use Kairos.</p>
           <FormActions>
             <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
               Back

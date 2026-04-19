@@ -263,7 +263,7 @@ export async function runJob(job: Job): Promise<void> {
 
         let sentCount = 0;
         if (recipientEmails.length > 0) {
-          const subject = `Customer Pulse - ${periodStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+          const subject = `Kairos digest — ${periodStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
           const result = await sendEmail({ to: recipientEmails, subject, html, text });
           if (result.ok) sentCount = recipientEmails.length;
         }
@@ -302,7 +302,7 @@ export async function runJob(job: Job): Promise<void> {
         return;
       }
 
-      const subject = `Customer Pulse - ${report.periodStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} (resent)`;
+      const subject = `Kairos digest — ${report.periodStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} (resent)`;
       // Simplified resend using stored summary
       const html = renderPulseReportHtml({
         periodStart: report.periodStart,
@@ -354,7 +354,7 @@ export async function runJob(job: Job): Promise<void> {
 
       const html = renderPasswordResetHtml(resetUrl);
       const text = renderPasswordResetText(resetUrl);
-      await sendEmail({ to: email, subject: "Reset your Customer Pulse password", html, text });
+      await sendEmail({ to: email, subject: "Reset your Kairos password", html, text });
       console.log(`[worker] SendPasswordResetJob sent to ${email}`);
       return;
     }

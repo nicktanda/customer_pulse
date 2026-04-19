@@ -21,6 +21,7 @@ import {
   PageShell,
   ProjectAccessDenied,
 } from "@/components/ui";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DEFAULT_SETTINGS = {
   pulseSendTime: "09:00",
@@ -41,9 +42,10 @@ export default async function SettingsPage({
   const userProjects = await listUserProjects(userId);
   const projectId = await getCurrentProjectIdForUser(userId);
   const projectSummary = await getCurrentProjectSummaryForUser(userId);
-  const sp = await searchParams;
-  const notice = typeof sp.notice === "string" ? sp.notice : null;
-  const err = typeof sp.error === "string" ? sp.error : null;
+  // Next may pass `searchParams` as a Promise (or, during migration, a plain object). `Promise.resolve` accepts both.
+  const spRaw = await Promise.resolve(searchParams);
+  const notice = typeof spRaw.notice === "string" ? spRaw.notice : null;
+  const err = typeof spRaw.error === "string" ? spRaw.error : null;
 
   if (projectId == null) {
     return (
@@ -52,6 +54,16 @@ export default async function SettingsPage({
           title="Settings"
           description="Create a project under Projects, then choose which workspace is active below."
         />
+        {/* Theme is personal to the browser (localStorage), not stored in the DB — same control as the rest of the app used to show in the sidebar. */}
+        <section className="card shadow-sm border-secondary-subtle">
+          <div className="card-body">
+            <h2 className="h5 text-body-emphasis">Appearance</h2>
+            <p className="small text-body-secondary mt-1 mb-3">
+              Light, dark, or follow your system setting. This applies to every page in the app for this browser only.
+            </p>
+            <ThemeToggle />
+          </div>
+        </section>
         <section className="card shadow-sm border-secondary-subtle">
           <div className="card-body">
             <h2 className="h5 text-body-emphasis">Active project</h2>
@@ -123,6 +135,17 @@ export default async function SettingsPage({
           </>
         }
       />
+
+      <section className="card shadow-sm border-secondary-subtle">
+        <div className="card-body">
+          <h2 className="h5 text-body-emphasis">Appearance</h2>
+          <p className="small text-body-secondary mt-1 mb-3">
+            Choose light, dark, or &quot;System&quot; to follow your OS. Stored in this browser only (not tied to the
+            project).
+          </p>
+          <ThemeToggle />
+        </div>
+      </section>
 
       <section className="card shadow-sm border-secondary-subtle">
         <div className="card-body">

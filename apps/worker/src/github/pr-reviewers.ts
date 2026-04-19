@@ -183,7 +183,7 @@ async function requestHumanReview(
 
   await postPrComment(
     headers, owner, repo, prNumber,
-    `## ✅ Ready for human review\n\nBoth the code reviewer and PM reviewer have approved this PR. @${owner} — please review and merge when you're satisfied.\n\n---\n_Automated review by Customer Pulse_`,
+    `## ✅ Ready for human review\n\nBoth the code reviewer and PM reviewer have approved this PR. @${owner} — please review and merge when you're satisfied.\n\n---\n_Automated review by Kairos_`,
   );
 }
 
@@ -318,11 +318,11 @@ export async function reviewPullRequest(
     const iterLabel = MAX_ITERATIONS > 1 ? ` (round ${iteration})` : "";
     await postPrComment(
       headers, creds.owner, creds.repo, pr.prNumber,
-      `## 🔍 Code Review${iterLabel}\n\n${codeReview.text}\n\n---\n_Automated review by Customer Pulse_`,
+      `## 🔍 Code Review${iterLabel}\n\n${codeReview.text}\n\n---\n_Automated review by Kairos_`,
     );
     await postPrComment(
       headers, creds.owner, creds.repo, pr.prNumber,
-      `## 📋 PM Review${iterLabel}\n\n${pmReview.text}\n\n---\n_Automated review by Customer Pulse_`,
+      `## 📋 PM Review${iterLabel}\n\n${pmReview.text}\n\n---\n_Automated review by Kairos_`,
     );
 
     console.log(`${tag} — code: ${codeReview.verdict}, pm: ${pmReview.verdict}`);
@@ -374,7 +374,7 @@ export async function reviewPullRequest(
 
     await postPrComment(
       headers, creds.owner, creds.repo, pr.prNumber,
-      `## 🔧 Auto-fix${iterLabel}\n\n${fixes.summary}\n\nFiles updated:\n${fixes.files.map((f) => `- \`${f.path}\` (${f.action})`).join("\n")}\n\n---\n_Automated fix by Customer Pulse_`,
+      `## 🔧 Auto-fix${iterLabel}\n\n${fixes.summary}\n\nFiles updated:\n${fixes.files.map((f) => `- \`${f.path}\` (${f.action})`).join("\n")}\n\n---\n_Automated fix by Kairos_`,
     );
 
     console.log(`${tag} — pushed ${fixes.files.length} fix file(s), re-reviewing...`);

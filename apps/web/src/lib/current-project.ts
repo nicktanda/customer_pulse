@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
@@ -11,6 +11,24 @@ import type { UserProjectRow } from "@/lib/project-types";
 export const CURRENT_PROJECT_COOKIE = "current_project_id";
 
 export type { UserProjectRow };
+
+/**
+ * Validates the `next` query on `/app/set-project` so we only redirect to same-site app paths
+ * (never an open redirect to another domain).
+ */
+export function safeReturnPathAfterSetProject(nextParam: string | null): string {
+  if (nextParam == null || nextParam === "") return "/app";
+  let path: string;
+  try {
+    path = decodeURIComponent(nextParam);
+  } catch {
+    return "/app";
+  }
+  if (!path.startsWith("/") || path.startsWith("//")) return "/app";
+  if (path !== "/app" && !path.startsWith("/app/")) return "/app";
+  if (path.includes("\0") || path.includes("..")) return "/app";
+  return path;
+}
 
 /**
  * All projects the user belongs to (via membership join table in Postgres).
@@ -55,7 +73,14 @@ export async function ensureCurrentProjectCookie(userId: number): Promise<void> 
   if (fromCookie != null && allowed.has(fromCookie)) {
     return;
   }
-  redirect(`/app/set-project?id=${rows[0]!.projectId}`);
+  // Remember which URL they wanted (e.g. /app/settings). `set-project` used to always send everyone to `/app`,
+  // which felt like "Settings never opens" when the project cookie was missing or stale.
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  let returnTo = "/app";
+  if (pathname === "/app" || (pathname.startsWith("/app/") && !pathname.startsWith("/app/set-project"))) {
+    returnTo = pathname;
+  }
+  redirect(`/app/set-project?id=${rows[0]!.projectId}&next=${encodeURIComponent(returnTo)}`);
 }
 
 /**

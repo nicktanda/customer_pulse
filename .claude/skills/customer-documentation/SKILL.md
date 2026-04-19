@@ -25,7 +25,7 @@ description: >-
 2. **Match the product** — Steps must reflect real URLs (**`/app/onboarding`**, **`/app/settings`**, etc.) and the matching files under **`apps/web/src/app/app/`**. Wrong paths erode trust.
 3. **Safety** — Never document “disable webhook verification” as a fix. Prefer secure defaults and troubleshooting that doesn’t expose secrets.
 4. **Examples** — Use placeholder domains and fake API keys in examples; say “your-domain.com” and “your-api-key” explicitly.
-5. **Consistency** — Terminology (e.g. “Customer Pulse”, “integration”, “feedback”) should match the rest of the app and emails.
+5. **Consistency** — Terminology (e.g. “Kairos”, “integration”, “feedback”) should match the rest of the app and emails.
 
 ## Notes
 

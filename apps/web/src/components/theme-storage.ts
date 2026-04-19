@@ -2,7 +2,7 @@
  * Key used in localStorage for light / dark / system (auto) appearance.
  * The inline script in the root layout reads the same key so the first paint matches the user's choice.
  */
-export const THEME_STORAGE_KEY = "customer-pulse-theme";
+export const THEME_STORAGE_KEY = "kairos-theme";
 
 export type ThemePreference = "light" | "dark" | "auto";
 

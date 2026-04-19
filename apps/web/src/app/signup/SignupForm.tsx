@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, Button, Card, Form } from "react-bootstrap";
+import { KairosWordmark } from "@/components/KairosWordmark";
 
 export function SignupForm() {
   const router = useRouter();
@@ -60,7 +61,7 @@ export function SignupForm() {
   return (
     <div className="w-100" style={{ maxWidth: "28rem" }}>
       <div className="text-center text-sm-start mb-4">
-        <p className="small fw-semibold text-uppercase text-body-secondary mb-1">Customer Pulse</p>
+        <KairosWordmark className="mb-3" />
         <h1 className="h3 mb-2">Create an account</h1>
         <p className="text-body-secondary small mb-0">
           Sign up to start collecting and analyzing customer feedback.
