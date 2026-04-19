@@ -8,6 +8,9 @@
 # Local overrides in any workspace (never commit real secrets)
 .env*.local
 
+# macOS Finder metadata (per-folder view settings — not app source)
+.DS_Store
+
 # Logs and temp
 /log/*
 /tmp/*
