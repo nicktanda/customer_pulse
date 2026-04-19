@@ -3,10 +3,10 @@
 FROM node:20-bookworm-slim
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
 
 COPY package.json yarn.lock ./
 COPY apps/web/package.json apps/web/package.json
+COPY apps/worker/package.json apps/worker/package.json
 COPY packages/db/package.json packages/db/package.json
 RUN yarn install --frozen-lockfile
 
@@ -19,5 +19,6 @@ ENV AUTH_SECRET=${AUTH_SECRET}
 ENV NEXTAUTH_URL=http://localhost:3000
 RUN yarn build:web
 
+ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["sh", "-c", "yarn workspace web start"]

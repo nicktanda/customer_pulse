@@ -2,9 +2,8 @@
 # Used by Railway worker service. Web app runs separately via Dockerfile.web.
 FROM node:20-bookworm-slim
 WORKDIR /app
-ENV NODE_ENV=production
 
-# Install dependencies
+# Install dependencies (needs devDependencies like typescript for the tsc build)
 COPY package.json yarn.lock ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/worker/package.json apps/worker/package.json
@@ -18,5 +17,6 @@ COPY packages/db packages/db
 # Build worker TypeScript
 RUN yarn workspace worker build
 
+ENV NODE_ENV=production
 EXPOSE 3002
 CMD ["yarn", "workspace", "worker", "start"]
