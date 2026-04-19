@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
   // --- Multi-tenant subdomain extraction ---
   if (process.env.MULTI_TENANT === "true") {
     const host = request.headers.get("host") ?? "";
-    const baseDomain = process.env.APP_BASE_DOMAIN ?? "customerpulse.app";
+    const baseDomain = process.env.APP_BASE_DOMAIN ?? "kairos.ai";
 
     if (host.endsWith(`.${baseDomain}`)) {
       const subdomain = host.replace(`.${baseDomain}`, "");

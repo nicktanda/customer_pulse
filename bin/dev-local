@@ -30,7 +30,7 @@ if [ ! -f storage/development_cache.sqlite3 ]; then
 fi
 
 echo ""
-echo "Starting Customer Pulse in Solid Stack mode..."
+echo "Starting Kairos (legacy Rails stack) in Solid Stack mode..."
 echo "  - Database: SQLite (storage/*.sqlite3)"
 echo "  - Jobs: Solid Queue (running in Puma)"
 echo "  - Cache: Solid Cache"

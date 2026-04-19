@@ -8,7 +8,7 @@ description: >-
 
 # Security and PII review
 
-Customer Pulse handles **customer feedback**, **integrations**, and **email** — high risk for **PII** (emails, names, message bodies) and **secrets** (API keys, webhook signing secrets).
+Kairos handles **customer feedback**, **integrations**, and **email** — high risk for **PII** (emails, names, message bodies) and **secrets** (API keys, webhook signing secrets).
 
 ## When to use
 

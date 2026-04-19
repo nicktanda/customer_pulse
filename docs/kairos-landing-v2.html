@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kairos.ai — Decide. Act. Accelerate.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --k-ember:        #C4501A;
+    --k-ember-bright: #E8793A;
+    --k-ember-deep:   #8B2A0F;
+    --k-crimson:      #9B2335;
+    --k-crimson-dim:  #6B1522;
+    --k-gold:         #D4882A;
+
+    --k-white:    #F5EDE4;
+    --k-warm:     #C4A882;
+    --k-muted:    rgba(196, 168, 130, 0.45);
+    --k-border:   rgba(196, 80, 26, 0.18);
+    --k-glow:     rgba(196, 80, 26, 0.12);
+
+    --k-bg:       #0A0503;
+    --k-surface:  #110805;
+    --k-surface2: #180C07;
+    --k-overlay:  rgba(16, 7, 3, 0.72);
+
+    --fd: 'Cormorant Garamond', Georgia, serif;
+    --fb: 'Jost', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--k-bg);
+    color: var(--k-white);
+    font-family: var(--fb);
+    font-weight: 300;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Cursor */
+  #cur-dot {
+    position: fixed; z-index: 9999; pointer-events: none;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--k-ember-bright);
+    transform: translate(-50%,-50%);
+    box-shadow: 0 0 10px var(--k-ember-bright);
+    transition: background 0.2s;
+  }
+  #cur-ring {
+    position: fixed; z-index: 9998; pointer-events: none;
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid rgba(232,121,58,0.45);
+    transform: translate(-50%,-50%);
+    transition: width 0.2s, height 0.2s, border-color 0.2s;
+  }
+
+  /* Stars */
+  #canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+  /* Nav */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 26px 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: background 0.4s, backdrop-filter 0.4s;
+  }
+  nav.scrolled {
+    background: rgba(10, 5, 3, 0.94);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--k-border);
+  }
+
+  .nav-logo {
+    display: flex; align-items: center; gap: 11px;
+    font-family: var(--fd); font-size: 24px; font-weight: 700;
+    color: var(--k-white); text-decoration: none;
+    letter-spacing: 0.12em;
+  }
+  .nav-links { display: flex; gap: 40px; list-style: none; }
+  .nav-links a {
+    font-family: var(--fb); font-size: 12px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--k-warm);
+    text-decoration: none; transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--k-ember-bright); }
+
+  .nav-cta {
+    padding: 10px 26px; border-radius: 2px;
+    background: transparent; border: 1px solid var(--k-ember);
+    color: var(--k-ember-bright); font-family: var(--fb);
+    font-size: 12px; font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; cursor: none;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .nav-cta:hover {
+    background: rgba(196, 80, 26, 0.1);
+    box-shadow: 0 0 18px rgba(196, 80, 26, 0.3);
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 140px 48px 100px;
+    position: relative; z-index: 2; overflow: hidden;
+  }
+
+  .hero-orb {
+    position: absolute; top: -5%; right: -8%; z-index: 1;
+    width: 640px; height: 640px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(155,35,53,0.1) 0%, transparent 65%);
+    animation: breathe 8s ease-in-out infinite; pointer-events: none;
+  }
+  .hero-orb2 {
+    position: absolute; bottom: -12%; left: -6%; z-index: 1;
+    width: 480px; height: 480px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(196,80,26,0.08) 0%, transparent 65%);
+    animation: breathe 11s ease-in-out infinite reverse; pointer-events: none;
+  }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-family: var(--fb); font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--k-ember);
+    margin-bottom: 28px;
+    opacity: 0; animation: up 0.7s 0.15s both;
+  }
+  .eyebrow::before { content:''; width:28px; height:1px; background: var(--k-ember); }
+
+  .hero h1 {
+    font-family: var(--fd);
+    font-size: clamp(58px, 9vw, 128px);
+    font-weight: 600; line-height: 0.88;
+    letter-spacing: -0.02em;
+    max-width: 980px;
+    opacity: 0; animation: up 0.8s 0.3s both;
+  }
+  .hero h1 em {
+    font-style: italic;
+    background: linear-gradient(110deg, var(--k-ember-bright) 0%, var(--k-gold) 60%, var(--k-crimson) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  .hero-sub {
+    margin-top: 28px; font-size: 17px; line-height: 1.75; font-weight: 300;
+    color: var(--k-warm); max-width: 500px;
+    opacity: 0; animation: up 0.8s 0.48s both;
+  }
+
+  .hero-actions {
+    margin-top: 52px; display: flex; gap: 16px; flex-wrap: wrap;
+    opacity: 0; animation: up 0.8s 0.64s both;
+  }
+
+  .btn-primary {
+    padding: 16px 40px; border-radius: 2px;
+    background: var(--k-ember); border: none;
+    color: #fff; font-family: var(--fb);
+    font-size: 13px; font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; cursor: none; text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 0 36px rgba(196, 80, 26, 0.45);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .btn-primary::after {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 55%);
+    pointer-events:none;
+  }
+  .btn-primary:hover {
+    background: var(--k-ember-bright);
+    box-shadow: 0 0 56px rgba(232, 121, 58, 0.6);
+    transform: translateY(-2px);
+  }
+
+  .btn-ghost {
+    padding: 16px 40px; border-radius: 2px;
+    background: transparent; border: 1px solid rgba(196,168,130,0.25);
+    color: var(--k-warm); font-family: var(--fb);
+    font-size: 13px; font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; cursor: none; text-decoration: none;
+    display: inline-block;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--k-ember); color: var(--k-ember-bright); }
+
+  /* Tagline strip */
+  .strip {
+    position: absolute; bottom: 56px; left: 48px; right: 48px;
+    display: flex; align-items: center; border-top: 1px solid var(--k-border);
+    padding-top: 24px;
+    opacity: 0; animation: up 0.8s 0.9s both;
+  }
+  .strip-word {
+    flex: 1; text-align: center;
+    font-family: var(--fd); font-size: clamp(15px, 2.5vw, 24px);
+    font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+    color: transparent; -webkit-text-stroke: 1px rgba(196,168,130,0.3);
+    transition: -webkit-text-stroke 0.3s, color 0.3s;
+  }
+  .strip-word:hover { color: var(--k-ember-bright); -webkit-text-stroke: 0px; }
+  .strip-dot {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--k-crimson);
+  }
+
+  /* Stats */
+  .stats {
+    position: relative; z-index: 2;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--k-border);
+    border-bottom: 1px solid var(--k-border);
+    background: linear-gradient(180deg, rgba(196,80,26,0.03) 0%, transparent 100%);
+  }
+  .stat {
+    padding: 44px 40px; border-right: 1px solid var(--k-border);
+    text-align: center;
+  }
+  .stat:last-child { border-right: none; }
+  .stat-n {
+    font-family: var(--fd);
+    font-size: clamp(40px, 5vw, 68px);
+    font-weight: 600; letter-spacing: -0.02em; line-height: 1;
+    background: linear-gradient(140deg, var(--k-white) 30%, var(--k-ember) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .stat-l {
+    margin-top: 8px; font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--k-warm); font-family: var(--fb);
+  }
+
+  /* Shared */
+  section { position: relative; z-index: 2; }
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 48px; }
+
+  .sec-label {
+    font-family: var(--fb); font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--k-ember);
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  }
+  .sec-label::after { content:''; width:20px; height:1px; background: var(--k-ember); }
+
+  .sec-title {
+    font-family: var(--fd);
+    font-size: clamp(36px, 5.5vw, 72px);
+    font-weight: 600; line-height: 0.95; letter-spacing: -0.02em;
+  }
+
+  /* Features */
+  .features { padding: 120px 0; }
+  .feat-hdr { margin-bottom: 72px; max-width: 600px; }
+  .feat-hdr p { margin-top: 20px; color: var(--k-warm); font-size: 16px; line-height: 1.8; }
+
+  .feat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: var(--k-border); border: 1px solid var(--k-border); border-radius: 1px;
+  }
+  .feat-card {
+    background: var(--k-overlay); backdrop-filter: blur(18px);
+    padding: 48px 40px; position: relative; overflow: hidden;
+    transition: background 0.3s;
+  }
+  .feat-card:hover { background: rgba(18, 9, 4, 0.95); }
+  .feat-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(to right, transparent, var(--k-ember), transparent);
+    opacity:0; transition: opacity 0.3s;
+  }
+  .feat-card:hover::before { opacity: 1; }
+
+  .feat-icon {
+    width: 44px; height: 44px; margin-bottom: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    background: rgba(196, 80, 26, 0.1);
+    border: 1px solid rgba(196, 80, 26, 0.2);
+  }
+  .feat-icon svg { width: 22px; height: 22px; stroke: var(--k-ember-bright); fill: none; stroke-width: 1.5; }
+
+  .feat-title {
+    font-family: var(--fd); font-size: 22px; font-weight: 600;
+    letter-spacing: 0.01em; margin-bottom: 12px;
+  }
+  .feat-body { font-size: 14px; line-height: 1.75; color: var(--k-warm); font-weight: 300; }
+  .feat-n {
+    position: absolute; bottom: 20px; right: 24px;
+    font-family: var(--fd); font-size: 72px; font-weight: 700;
+    color: transparent; -webkit-text-stroke: 1px rgba(196,80,26,0.08);
+    letter-spacing: -0.04em; line-height: 1; pointer-events: none;
+  }
+
+  /* How */
+  .how { padding: 120px 0; }
+  .how-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 88px; align-items: center; }
+  .how-hdr p { margin-top: 20px; color: var(--k-warm); font-size: 15px; line-height: 1.85; margin-bottom: 44px; }
+
+  .steps { display: flex; flex-direction: column; }
+  .step {
+    display: flex; gap: 24px; padding: 24px 0;
+    border-bottom: 1px solid var(--k-border);
+  }
+  .step:last-child { border-bottom: none; }
+  .step-n {
+    font-family: var(--fd); font-size: 13px; font-weight: 700;
+    color: var(--k-ember); letter-spacing: 0.06em; min-width: 28px; padding-top: 4px;
+  }
+  .step h4 {
+    font-family: var(--fd); font-size: 20px; font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .step p { font-size: 14px; color: var(--k-warm); line-height: 1.7; font-weight: 300; }
+
+  /* Dashboard mockup */
+  .dash {
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--k-border);
+    box-shadow: 0 48px 80px rgba(0,0,0,0.65), 0 0 50px rgba(155,35,53,0.08);
+    background: #0D0604;
+  }
+  .dash-bar {
+    padding: 12px 16px; background: #160A05;
+    border-bottom: 1px solid var(--k-border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dash-bar span { font-family: var(--fd); font-size: 13px; font-weight: 600; color: var(--k-warm); margin-left: 6px; }
+  .dash-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .drow {
+    background: rgba(196,80,26,0.04); border: 1px solid rgba(196,80,26,0.1);
+    border-radius: 5px; padding: 14px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .drow-l { display: flex; align-items: center; gap: 11px; }
+  .dicon {
+    width: 28px; height: 28px; border-radius: 5px;
+    background: rgba(196,80,26,0.14);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dicon svg { width: 13px; height: 13px; stroke: var(--k-ember-bright); fill: none; stroke-width: 2; }
+  .dtext { font-size: 12px; font-weight: 500; color: #E8D8C8; }
+  .dsub { font-size: 10px; color: var(--k-warm); margin-top: 2px; font-weight: 300; }
+  .dbadge {
+    font-family: var(--fb); font-size: 9px; font-weight: 600;
+    padding: 4px 10px; border-radius: 2px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .b-urg  { background: rgba(196,80,26,0.15);  color: #E8793A; border: 1px solid rgba(196,80,26,0.3); }
+  .b-act  { background: rgba(155,35,53,0.15);  color: #D4607A; border: 1px solid rgba(155,35,53,0.3); }
+  .b-rev  { background: rgba(212,136,42,0.12); color: #D4882A; border: 1px solid rgba(212,136,42,0.28); }
+  .b-neu  { background: rgba(196,168,130,0.1); color: #C4A882; border: 1px solid rgba(196,168,130,0.2); }
+
+  /* Pricing */
+  .pricing { padding: 120px 0; }
+  .pricing-hdr { text-align: center; margin-bottom: 72px; }
+  .pricing-hdr p { margin-top: 16px; color: var(--k-warm); font-size: 16px; }
+
+  .p-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: var(--k-border); border: 1px solid var(--k-border); border-radius: 1px;
+  }
+  .p-card { background: var(--k-overlay); padding: 52px 44px; position: relative; overflow: hidden; }
+  .p-card.featured { background: rgba(196, 80, 26, 0.07); }
+  .p-card.featured::after {
+    content: 'MOST POPULAR'; position: absolute; top: 20px; right: 20px;
+    font-family: var(--fb); font-size: 9px; font-weight: 600; letter-spacing: 0.14em;
+    color: var(--k-ember-bright); background: rgba(196,80,26,0.14);
+    border: 1px solid rgba(196,80,26,0.28); padding: 4px 10px; border-radius: 2px;
+  }
+  .p-tier {
+    font-family: var(--fb); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--k-warm); margin-bottom: 24px;
+  }
+  .p-price {
+    font-family: var(--fd); font-size: 60px; font-weight: 600;
+    letter-spacing: -0.03em; line-height: 1;
+  }
+  .p-price span { font-size: 20px; font-weight: 400; color: var(--k-warm); }
+  .p-desc { margin-top: 12px; font-size: 14px; color: var(--k-warm); line-height: 1.7; font-weight: 300; }
+  .p-feats { margin: 32px 0; display: flex; flex-direction: column; gap: 12px; }
+  .p-feat { display: flex; gap: 12px; font-size: 14px; color: #D4C4B4; font-weight: 300; }
+  .p-feat::before { content:'→'; color: var(--k-ember); min-width: 16px; font-family: var(--fd); }
+
+  /* CTA */
+  .cta {
+    padding: 130px 0; text-align: center; position: relative;
+    border-top: 1px solid var(--k-border); overflow: hidden;
+  }
+  .cta-glow {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 600px; height: 320px;
+    background: radial-gradient(ellipse, rgba(196,80,26,0.09) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta h2 {
+    font-family: var(--fd);
+    font-size: clamp(44px, 7vw, 96px);
+    font-weight: 600; letter-spacing: -0.03em; line-height: 0.92;
+    margin: 20px 0 28px;
+  }
+  .cta h2 em {
+    font-style: italic;
+    background: linear-gradient(110deg, var(--k-ember-bright), var(--k-gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .cta p { font-size: 17px; color: var(--k-warm); max-width: 440px; margin: 0 auto 52px; line-height: 1.75; font-weight: 300; }
+
+  /* Footer */
+  footer {
+    padding: 56px 48px; position: relative; z-index: 2;
+    border-top: 1px solid var(--k-border);
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px;
+  }
+  .foot-logo { font-family: var(--fd); font-size: 20px; font-weight: 600; letter-spacing: 0.1em; }
+  .foot-links { display: flex; gap: 32px; flex-wrap: wrap; }
+  .foot-links a { font-size: 12px; color: var(--k-warm); text-decoration: none; letter-spacing: 0.06em; transition: color 0.2s; }
+  .foot-links a:hover { color: var(--k-ember-bright); }
+  .foot-copy { font-size: 11px; color: var(--k-muted); letter-spacing: 0.08em; }
+
+  /* Animations */
+  @keyframes up {
+    from { opacity: 0; transform: translateY(22px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes breathe {
+    0%,100% { transform: scale(1); opacity: 0.8; }
+    50%      { transform: scale(1.07); opacity: 1; }
+  }
+
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.on { opacity: 1; transform: none; }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: var(--k-bg); }
+  ::-webkit-scrollbar-thumb { background: var(--k-ember-deep); border-radius: 2px; }
+
+  @media (max-width: 860px) {
+    .stats { grid-template-columns: repeat(2,1fr); }
+    .feat-grid { grid-template-columns: 1fr; }
+    .how-inner { grid-template-columns: 1fr; }
+    .p-grid { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="cur-dot"></div>
+<div id="cur-ring"></div>
+<canvas id="canvas"></canvas>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="nav-logo">
+    <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+      <path d="M6 4L18 16L6 28" stroke="#C4501A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M14 4L26 16L14 28" stroke="rgba(196,80,26,0.4)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    KAIROS
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it Works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#">Docs</a></li>
+  </ul>
+  <button class="nav-cta">Get Early Access</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-orb"></div>
+  <div class="hero-orb2"></div>
+  <div class="container">
+    <div class="eyebrow">Decision Intelligence Platform</div>
+    <h1>The right move.<br>At the <em>right time.</em></h1>
+    <p class="hero-sub">Kairos turns complex decisions into clear action. AI-powered clarity for teams that can't afford to hesitate.</p>
+    <div class="hero-actions">
+      <a href="#" class="btn-primary">Start for Free</a>
+      <a href="#how" class="btn-ghost">See How It Works</a>
+    </div>
+  </div>
+  <div class="strip" style="left:48px;right:48px;">
+    <span class="strip-word">Decide</span>
+    <span class="strip-dot"></span>
+    <span class="strip-word">Act</span>
+    <span class="strip-dot"></span>
+    <span class="strip-word">Accelerate</span>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats reveal">
+  <div class="stat"><div class="stat-n">3×</div><div class="stat-l">Faster Decisions</div></div>
+  <div class="stat"><div class="stat-n">94%</div><div class="stat-l">Accuracy Rate</div></div>
+  <div class="stat"><div class="stat-n">12k+</div><div class="stat-l">Teams Onboard</div></div>
+  <div class="stat"><div class="stat-n">∞</div><div class="stat-l">Possibilities</div></div>
+</div>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="feat-hdr reveal">
+      <div class="sec-label">Core Capabilities</div>
+      <h2 class="sec-title">Every second<br>counts.</h2>
+      <p>Kairos surfaces the signal from the noise — giving your team the intelligence to act decisively, every single time.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card reveal">
+        <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+        <div class="feat-title">Decision Hub</div>
+        <div class="feat-body">A living command center for every open decision across your org. Prioritized, contextualized, always current.</div>
+        <div class="feat-n">01</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+        <div class="feat-title">Time-Critical Alerts</div>
+        <div class="feat-body">Kairos knows when a window is closing. Real-time signals trigger precise alerts before the moment passes.</div>
+        <div class="feat-n">02</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+        <div class="feat-title">Outcome Forecasting</div>
+        <div class="feat-body">Model the downstream impact of every choice. Kairos runs scenarios so you act with conviction, not guesswork.</div>
+        <div class="feat-n">03</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+        <div class="feat-title">Team Alignment</div>
+        <div class="feat-body">Eliminate misalignment before it costs you. Shared context, clear ownership, and full audit trails built in.</div>
+        <div class="feat-n">04</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <div class="feat-title">AI-Powered Reasoning</div>
+        <div class="feat-body">Battle-tested LLM architecture analyses your data and constraints — then gives you the clearest path forward.</div>
+        <div class="feat-n">05</div>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+        <div class="feat-title">Deep Integrations</div>
+        <div class="feat-body">Plug into Slack, Linear, Notion, Salesforce and more. Zero friction, full context from day one.</div>
+        <div class="feat-n">06</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section class="how" id="how">
+  <div class="container">
+    <div class="how-inner">
+      <div class="how-hdr reveal">
+        <div class="sec-label">The Process</div>
+        <h2 class="sec-title">Built for<br>momentum.</h2>
+        <p>Kairos integrates into your workflow in minutes. From the moment you connect your tools, decisions become faster, smarter, and more traceable.</p>
+        <div class="steps">
+          <div class="step"><div class="step-n">01</div><div><h4>Connect Your Stack</h4><p>Link your tools in one click. Kairos ingests signals from every system your team already uses.</p></div></div>
+          <div class="step"><div class="step-n">02</div><div><h4>Kairos Surfaces the Moment</h4><p>AI identifies time-sensitive decision points, ranks them by urgency, and presents them clearly.</p></div></div>
+          <div class="step"><div class="step-n">03</div><div><h4>Act with Conviction</h4><p>Decide with full context, log your reasoning, and let Kairos track what happens next.</p></div></div>
+          <div class="step"><div class="step-n">04</div><div><h4>Learn & Accelerate</h4><p>Outcomes feed back into the model. Your team gets sharper with every decision made.</p></div></div>
+        </div>
+      </div>
+      <div class="dash reveal">
+        <div class="dash-bar">
+          <div class="dot" style="background:#FF5F57"></div>
+          <div class="dot" style="background:#FFBD2E"></div>
+          <div class="dot" style="background:#28CA41"></div>
+          <span>Kairos Decision Hub</span>
+        </div>
+        <div class="dash-body">
+          <div class="drow">
+            <div class="drow-l">
+              <div class="dicon"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <div><div class="dtext">Launch Pricing Update</div><div class="dsub">Window closes in 4h · 3 stakeholders</div></div>
+            </div>
+            <div class="dbadge b-urg">Urgent</div>
+          </div>
+          <div class="drow">
+            <div class="drow-l">
+              <div class="dicon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+              <div><div class="dtext">Q3 Hiring Approvals</div><div class="dsub">Awaiting · Budget confirmed</div></div>
+            </div>
+            <div class="dbadge b-act">In Progress</div>
+          </div>
+          <div class="drow">
+            <div class="drow-l">
+              <div class="dicon"><svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5"/><path d="M21 12h-8"/></svg></div>
+              <div><div class="dtext">Switch Partners</div><div class="dsub">Forecast: +18% efficiency · Low risk</div></div>
+            </div>
+            <div class="dbadge b-rev">Review</div>
+          </div>
+          <div class="drow">
+            <div class="drow-l">
+              <div class="dicon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+              <div><div class="dtext">Feature Roadmap Vote</div><div class="dsub">8/12 responded · Closes tomorrow</div></div>
+            </div>
+            <div class="dbadge b-act">Active</div>
+          </div>
+          <div class="drow" style="opacity:0.38">
+            <div class="drow-l">
+              <div class="dicon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+              <div><div class="dtext">Infrastructure Migration</div><div class="dsub">Scheduled · No action needed</div></div>
+            </div>
+            <div class="dbadge b-neu">Scheduled</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="pricing-hdr reveal">
+      <div class="sec-label" style="justify-content:center">Pricing</div>
+      <h2 class="sec-title">Start free.<br>Scale fast.</h2>
+      <p>No contracts. Cancel anytime. Always the right plan.</p>
+    </div>
+    <div class="p-grid reveal">
+      <div class="p-card">
+        <div class="p-tier">Starter</div>
+        <div class="p-price">$0<span>/mo</span></div>
+        <div class="p-desc">For individuals and small teams exploring decision intelligence.</div>
+        <div class="p-feats">
+          <div class="p-feat">Up to 5 team members</div>
+          <div class="p-feat">50 decisions/month</div>
+          <div class="p-feat">Core integrations</div>
+          <div class="p-feat">7-day history</div>
+        </div>
+        <a href="#" class="btn-ghost" style="display:block;text-align:center">Get Started Free</a>
+      </div>
+      <div class="p-card featured">
+        <div class="p-tier">Pro</div>
+        <div class="p-price">$49<span>/mo</span></div>
+        <div class="p-desc">For fast-moving teams that need full intelligence and unlimited decisions.</div>
+        <div class="p-feats">
+          <div class="p-feat">Unlimited members</div>
+          <div class="p-feat">Unlimited decisions</div>
+          <div class="p-feat">All integrations + API</div>
+          <div class="p-feat">Full outcome forecasting</div>
+          <div class="p-feat">Priority support</div>
+        </div>
+        <a href="#" class="btn-primary" style="display:block;text-align:center">Start Pro Trial</a>
+      </div>
+      <div class="p-card">
+        <div class="p-tier">Enterprise</div>
+        <div class="p-price">Custom</div>
+        <div class="p-desc">For organisations that need security, compliance, and dedicated AI tuning.</div>
+        <div class="p-feats">
+          <div class="p-feat">SSO & advanced security</div>
+          <div class="p-feat">Custom AI models</div>
+          <div class="p-feat">Dedicated CSM</div>
+          <div class="p-feat">SLA guarantees</div>
+          <div class="p-feat">On-premise option</div>
+        </div>
+        <a href="#" class="btn-ghost" style="display:block;text-align:center">Talk to Sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="cta-glow"></div>
+  <div class="container reveal">
+    <div class="sec-label" style="justify-content:center">Get Started</div>
+    <h2>The moment<br>is <em>now.</em></h2>
+    <p>Join thousands of teams making better decisions, faster. Your window is open.</p>
+    <a href="#" class="btn-primary">Create Free Account →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-logo"><span style="color:var(--k-ember)">K</span>AIROS<span style="color:var(--k-ember)">.</span>AI</div>
+  <div class="foot-links">
+    <a href="#">Product</a><a href="#">Pricing</a><a href="#">Docs</a>
+    <a href="#">Blog</a><a href="#">Careers</a><a href="#">Privacy</a><a href="#">Terms</a>
+  </div>
+  <div class="foot-copy">© 2025 Kairos.ai — Decide. Act. Accelerate.</div>
+</footer>
+
+<script>
+  // Cursor
+  const dot = document.getElementById('cur-dot');
+  const ring = document.getElementById('cur-ring');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; });
+  (function tick(){
+    dot.style.cssText += `left:${mx}px;top:${my}px;`;
+    rx += (mx-rx)*0.12; ry += (my-ry)*0.12;
+    ring.style.cssText += `left:${rx}px;top:${ry}px;`;
+    requestAnimationFrame(tick);
+  })();
+
+  // Interactive cursor resize
+  document.querySelectorAll('a,button').forEach(el => {
+    el.addEventListener('mouseenter', () => { ring.style.width='52px'; ring.style.height='52px'; ring.style.borderColor='rgba(232,121,58,0.7)'; });
+    el.addEventListener('mouseleave', () => { ring.style.width='34px'; ring.style.height='34px'; ring.style.borderColor='rgba(232,121,58,0.45)'; });
+  });
+
+  // Warm star field
+  const cv = document.getElementById('canvas');
+  const cx = cv.getContext('2d');
+  let stars = [];
+  function resize() {
+    cv.width = window.innerWidth;
+    cv.height = document.body.scrollHeight;
+    stars = Array.from({length:180}, () => ({
+      x: Math.random()*cv.width, y: Math.random()*cv.height,
+      r: Math.random()*1.1+0.15,
+      o: Math.random()*0.5+0.15,
+      sp: Math.random()*0.25+0.04,
+      ph: Math.random()*Math.PI*2,
+      warm: Math.random() > 0.7
+    }));
+  }
+  let t=0;
+  (function draw(){
+    cx.clearRect(0,0,cv.width,cv.height); t+=0.007;
+    stars.forEach(s => {
+      const op = s.o*(0.55+0.45*Math.sin(t*s.sp+s.ph));
+      cx.beginPath(); cx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      cx.fillStyle = s.warm
+        ? `rgba(220,180,140,${op})`
+        : `rgba(200,210,230,${op*0.6})`;
+      cx.fill();
+    });
+    requestAnimationFrame(draw);
+  })();
+  window.addEventListener('resize', resize); resize();
+
+  // Nav scroll
+  window.addEventListener('scroll', () => {
+    document.getElementById('nav').classList.toggle('scrolled', scrollY>50);
+  });
+
+  // Reveal
+  const io = new IntersectionObserver(entries => {
+    entries.forEach((e,i) => {
+      if(e.isIntersecting) setTimeout(()=>e.target.classList.add('on'), i*70);
+    });
+  }, {threshold:0.1});
+  document.querySelectorAll('.reveal').forEach(r => io.observe(r));
+</script>
+</body>
+</html>

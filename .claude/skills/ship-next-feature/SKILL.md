@@ -7,9 +7,9 @@ description: >-
   integrations, settings, onboarding, or pulse report UI under apps/web.
 ---
 
-# Ship a Next.js feature (Customer Pulse)
+# Ship a Next.js feature (Kairos)
 
-Customer Pulse’s UI lives in **`apps/web`** (**Next.js 15**, **App Router**), with authenticated product pages under **`apps/web/src/app/app/`** (user-facing URLs under **`/app/...`**). Auth is **Auth.js** (see **`apps/web/src/auth.ts`**). Styling uses **Bootstrap / react-bootstrap** plus **Tailwind** where configured. Dev server defaults to port **3001** (see **`apps/web/package.json`**).
+Kairos’s UI lives in **`apps/web`** (**Next.js 15**, **App Router**), with authenticated product pages under **`apps/web/src/app/app/`** (user-facing URLs under **`/app/...`**). Auth is **Auth.js** (see **`apps/web/src/auth.ts`**). Styling uses **Bootstrap / react-bootstrap** plus **Tailwind** where configured. Dev server defaults to port **3001** (see **`apps/web/package.json`**).
 
 ## When to use
 

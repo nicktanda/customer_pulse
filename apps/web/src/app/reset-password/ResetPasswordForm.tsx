@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
 import { Alert, Button, Card, Form } from "react-bootstrap";
+import { KairosWordmark } from "@/components/KairosWordmark";
 
 function ResetPasswordFormInner() {
   const searchParams = useSearchParams();
@@ -55,7 +56,7 @@ function ResetPasswordFormInner() {
   return (
     <div className="w-100" style={{ maxWidth: "28rem" }}>
       <div className="text-center text-sm-start mb-4">
-        <p className="small fw-semibold text-uppercase text-body-secondary mb-1">Customer Pulse</p>
+        <KairosWordmark className="mb-3" />
         <h1 className="h3 mb-2">Set a new password</h1>
         <p className="text-body-secondary small mb-0">Enter your new password below.</p>
       </div>

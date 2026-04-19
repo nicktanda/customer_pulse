@@ -76,7 +76,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-/** Cookie domain for cross-subdomain sessions (e.g. `.customerpulse.app`). */
+/** Cookie domain for cross-subdomain sessions (e.g. `.kairos.ai`). */
 const cookieDomain = process.env.AUTH_COOKIE_DOMAIN || undefined;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({

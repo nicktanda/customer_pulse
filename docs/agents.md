@@ -1,4 +1,4 @@
-# Automation (“agents”) for Customer Pulse
+# Automation (“agents”) for Kairos
 
 This doc describes **automated workflows** that run **outside** Claude Code sessions: CI, bots, and optional error tracking. **Skills** (`.claude/skills/*/SKILL.md`) are *instructions* for Claude; this file is about *what runs on GitHub and in production*.
 

@@ -1,13 +1,13 @@
 ---
 name: email-pulse-and-recipients
 description: >-
-  Change the Customer Pulse email digest, recipients, mail flows, and resend actions.
+  Change the Kairos email digest, recipients, mail flows, and resend actions.
   Use when editing worker mail jobs, pulse report UI, or email_recipients data paths.
 ---
 
 # Email pulse and recipients
 
-The product sends a **daily “Customer Pulse”** digest and exposes **pulse reports** in the app with actions like resend. Delivery is handled from **`apps/worker`** via the **`cp-mailers`** BullMQ queue (see **`apps/worker/src/queue-names.ts`** and **`job-handlers.ts`** for **`SendDailyPulseJob`** / **`ResendPulseReportJob`**). UI and server actions live under **`apps/web/src/app/app/pulse-reports/`** and **`apps/web/src/app/app/recipients/`** (email recipient CRUD).
+The product sends a **daily Kairos digest** and exposes **pulse reports** in the app with actions like resend. Delivery is handled from **`apps/worker`** via the **`cp-mailers`** BullMQ queue (see **`apps/worker/src/queue-names.ts`** and **`job-handlers.ts`** for **`SendDailyPulseJob`** / **`ResendPulseReportJob`**). UI and server actions live under **`apps/web/src/app/app/pulse-reports/`** and **`apps/web/src/app/app/recipients/`** (email recipient CRUD).
 
 ## When to use
 

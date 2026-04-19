@@ -7,8 +7,8 @@ import { users } from "@customer-pulse/db/client";
 import { signOutAction } from "./actions";
 import { ensureCurrentProjectCookie } from "@/lib/current-project";
 import { ResponsiveSidebar } from "./ResponsiveSidebar";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "@/components/SidebarNav";
+import { KairosWordmark } from "@/components/KairosWordmark";
 
 /**
  * Build inbox-first nav groups. Onboarding is only shown while the wizard is incomplete — once finished,
@@ -99,9 +99,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     return (
       <div className="min-vh-100 bg-body-tertiary">
         <header className="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-secondary-subtle bg-body">
-          <p className="small fw-semibold text-uppercase text-body-secondary mb-0">Customer Pulse</p>
+          <KairosWordmark compact className="mb-0" />
           <div className="d-flex align-items-center gap-3">
-            <ThemeToggle />
             <span className="small text-body-secondary">{session.user.email}</span>
             <form action={signOutAction}>
               <button type="submit" className="btn btn-link btn-sm p-0 text-decoration-none">
@@ -122,7 +121,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // `position: sticky; top: 0` against the main pane (Notion-style side peek), not the browser chrome.
     <div className="d-flex min-vh-100 app-layout-shell">
       <ResponsiveSidebar>
-        <p className="small fw-semibold text-uppercase text-body-secondary mb-0">Customer Pulse</p>
+        <KairosWordmark compact className="mb-0" />
         <SidebarNav groups={sidebarNavGroups(true)}>
           {isAdmin && bullBoardUrl ? (
             <a
@@ -136,7 +135,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ) : null}
         </SidebarNav>
         <div className="mt-auto pt-4 border-top border-secondary-subtle">
-          <ThemeToggle />
           <p className="small text-truncate text-body-secondary mb-1">
             <span className="fw-medium text-body">{session.user.email}</span>
           </p>

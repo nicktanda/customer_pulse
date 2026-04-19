@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { userHasProjectAccess } from "@/lib/project-access";
-import { CURRENT_PROJECT_COOKIE } from "@/lib/current-project";
+import { CURRENT_PROJECT_COOKIE, safeReturnPathAfterSetProject } from "@/lib/current-project";
 
 export const runtime = "nodejs";
 
@@ -27,7 +27,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const res = NextResponse.redirect(new URL("/app", request.url));
+  const nextParam = new URL(request.url).searchParams.get("next");
+  const destination = safeReturnPathAfterSetProject(nextParam);
+  const res = NextResponse.redirect(new URL(destination, request.url));
   res.cookies.set(CURRENT_PROJECT_COOKIE, String(projectId), {
     httpOnly: true,
     sameSite: "lax",

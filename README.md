@@ -1,6 +1,8 @@
-# Customer Pulse
+# Kairos
 
-Customer feedback from Linear, Slack, Jira, Google Forms, and a custom API lands in **PostgreSQL**. Workers process feedback with the **Anthropic** API and send a daily **Customer Pulse** email digest.
+**Kairos** (kairos.ai) turns customer feedback from Linear, Slack, Jira, Google Forms, and a custom API into structured insight in **PostgreSQL**. Workers process feedback with the **Anthropic** API and send a daily **Kairos** digest email.
+
+Brand reference: `docs/kairos_brand_kit.png` (full identity kit for marketing / design handoff).
 
 ## Stack
 

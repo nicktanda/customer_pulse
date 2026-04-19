@@ -414,7 +414,7 @@ export async function seedDemoDataForProject(
       {
         source: FeedbackSource.custom,
         title: "Webhook signature docs example uses wrong header",
-        content: "Docs show X-Signature but API expects X-Customer-Pulse-Signature — caused a failed test.",
+        content: "Docs show X-Signature but API expects X-Kairos-Signature — caused a failed test.",
         category: FeedbackCategory.complaint,
         priority: FeedbackPriority.p4,
         status: FeedbackStatus.resolved,

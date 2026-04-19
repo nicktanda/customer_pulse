@@ -7,7 +7,7 @@ description: >-
   pages under apps/web, especially with ship-next-feature work.
 ---
 
-# Reusable UI components (Customer Pulse)
+# Reusable UI components (Kairos)
 
 This skill steers UI work toward **small, composable components** so the app stays consistent and easier to change. It applies to **`apps/web`** (Next.js 15, App Router), alongside **`ship-next-feature`**.
 
