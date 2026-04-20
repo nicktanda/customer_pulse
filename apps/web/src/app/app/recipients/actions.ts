@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { emailRecipients } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
@@ -35,7 +35,7 @@ export async function createRecipientAction(formData: FormData): Promise<void> {
     redirect("/app/recipients/new?error=email");
   }
   const now = new Date();
-  const db = getDb();
+  const db = await getRequestDb();
   try {
     await db.insert(emailRecipients).values({
       projectId,
@@ -58,7 +58,7 @@ export async function createRecipientAction(formData: FormData): Promise<void> {
 
 export async function updateRecipientAction(recipientId: number, formData: FormData): Promise<void> {
   const { projectId } = await requireEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(emailRecipients)
@@ -88,7 +88,7 @@ export async function updateRecipientAction(recipientId: number, formData: FormD
 
 export async function deleteRecipientAction(recipientId: number, _formData?: FormData): Promise<void> {
   const { projectId } = await requireEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(emailRecipients)

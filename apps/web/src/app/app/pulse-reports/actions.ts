@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import {
   integrations,
   ideaPullRequests,
@@ -55,7 +55,7 @@ export async function enqueueSendDailyPulseAction(_formData?: FormData): Promise
 /** Re-sends an already-sent report. */
 export async function resendPulseReportAction(reportId: number, _formData?: FormData): Promise<void> {
   const { projectId } = await requireEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(pulseReports)
@@ -79,7 +79,7 @@ const IDEA_PR_STATUS_PENDING = 0;
 /** Creates a pending PR row and enqueues GitHub generation. */
 export async function generatePrForIdeaAction(ideaId: number, _formData?: FormData): Promise<void> {
   const { projectId } = await requireEditor();
-  const db = getDb();
+  const db = await getRequestDb();
 
   const [gh] = await db
     .select()

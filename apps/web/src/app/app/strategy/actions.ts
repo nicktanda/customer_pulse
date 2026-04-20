@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { projects, teams } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
@@ -52,7 +52,7 @@ export async function updateBusinessStrategyAction(formData: FormData): Promise<
     redirect("/app/strategy?error=invalid");
   }
   const now = new Date();
-  const db = getDb();
+  const db = await getRequestDb();
   await db
     .update(projects)
     .set({
@@ -82,7 +82,7 @@ export async function createTeamAction(formData: FormData): Promise<void> {
     redirect("/app/strategy?error=team_invalid");
   }
   const now = new Date();
-  const db = getDb();
+  const db = await getRequestDb();
   await db.insert(teams).values({
     projectId,
     name: parsed.data.name,
@@ -111,7 +111,7 @@ export async function updateTeamAction(formData: FormData): Promise<void> {
     redirect("/app/strategy?error=team_invalid");
   }
   const now = new Date();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select({ id: teams.id })
     .from(teams)
@@ -139,7 +139,7 @@ export async function deleteTeamAction(formData: FormData): Promise<void> {
   if (!Number.isFinite(id)) {
     redirect("/app/strategy?error=team_invalid");
   }
-  const db = getDb();
+  const db = await getRequestDb();
   await db.delete(teams).where(and(eq(teams.id, id), eq(teams.projectId, projectId)));
   revalidatePath("/app/strategy");
   redirect("/app/strategy?notice=team_deleted");

@@ -11,7 +11,7 @@ import {
   StickyDetailAside,
 } from "@/components/ui";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { pulseReports } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser, getCurrentProjectSummaryForUser } from "@/lib/current-project";
 import { formatAppDate, formatAppDateTime } from "@/lib/format-app-date";
@@ -54,7 +54,7 @@ export default async function PulseReportsPage({
   }
 
   const canEdit = await userCanEditProject(userId, projectId);
-  const db = getDb();
+  const db = await getRequestDb();
   const offset = (page - 1) * PAGE_SIZE;
 
   const [countRow] = await db

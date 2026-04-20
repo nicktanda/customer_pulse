@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { PageHeader, PageShell } from "@/components/ui";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
 import { formatAppDate, formatAppDateTime } from "@/lib/format-app-date";
@@ -29,7 +29,7 @@ export default async function PulseReportShowPage({
   }
 
   const canEdit = await userCanEditProject(userId, projectId);
-  const db = getDb();
+  const db = await getRequestDb();
   const data = await fetchPulseReportPageData(db, projectId, id);
   if (!data) {
     notFound();

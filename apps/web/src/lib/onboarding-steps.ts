@@ -21,6 +21,10 @@ export const ONBOARDING_STEPS = [
 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
+/** In multi-tenant mode we only need to collect an org name and provision the tenant —
+ *  everything else can happen post-onboarding, inside the tenant's workspace. */
+export const ONBOARDING_STEPS_MT: readonly OnboardingStep[] = ["welcome", "project", "complete"] as const;
+
 /** Short titles for progress UI (header + step pills) — not internal step ids. */
 const STEP_LABELS: Record<OnboardingStep, string> = {
   welcome: "Welcome",
@@ -42,7 +46,8 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
   complete: "Finish",
 };
 
-export function humanOnboardingStepTitle(step: string): string {
+export function humanOnboardingStepTitle(step: string, mt = false): string {
+  if (mt && step === "project") return "Create workspace";
   const key = step as OnboardingStep;
   return ONBOARDING_STEPS.includes(key) ? STEP_LABELS[key] : step.replace(/_/g, " ");
 }

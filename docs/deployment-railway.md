@@ -142,28 +142,19 @@ railway run -s web -- npx drizzle-kit push --config=packages/db/drizzle-control-
 
 ## Step 5: Create your first tenant
 
-Once the app is deployed, you need to create an initial tenant. You can do this by running a script against the control plane DB, or through the signup flow once it's wired up.
+Visit `https://customerpulse.app/signup`, create an account, and finish the onboarding wizard.
 
-**Quick bootstrap via Railway shell:**
+What happens under the hood:
 
-```bash
-railway run -s web -- node -e "
-const { createControlPlaneDb } = require('@customer-pulse/db/control-plane');
-// ... or use the tenant provisioning flow
-"
-```
+1. `POST /api/auth/register` writes the user into the **control plane** `users` table (not a tenant DB).
+2. Onboarding's "Create workspace" step calls `provisionTenant()` which:
+   - `CREATE DATABASE tenant_<slug>` on Neon using your `CONTROL_PLANE_DATABASE_URL`
+   - Applies the tenant schema via `npx drizzle-kit push` (blocks ~5–10s on a cold Neon compute)
+   - Inserts a `tenants` row + `tenant_memberships` row, mirrors the user into the tenant DB
+   - Sets the `current_project_id` cookie on `.<APP_BASE_DOMAIN>` so the cookie follows the user across subdomains
+3. The browser is redirected to `https://<slug>.customerpulse.app/app`.
 
-Or connect to the Neon control plane database directly and insert:
-
-```sql
--- 1. Create a user
-INSERT INTO users (email, encrypted_password, name, role, created_at, updated_at)
-VALUES ('you@example.com', '<bcrypt-hash>', 'Your Name', 1, NOW(), NOW());
-
--- 2. The app's signup/onboarding flow handles tenant provisioning from here
-```
-
-The easiest path: deploy the app, visit `https://customerpulse.app/signup`, and the onboarding flow will provision a tenant database for you.
+Because the schema push runs from the web container, the image must include `drizzle-kit` (already installed via `yarn install --frozen-lockfile` — don't switch to `--production`).
 
 ## Step 6: Deploy
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { integrations } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
@@ -46,7 +46,7 @@ export default async function IntegrationsPage({
   }
 
   const canEdit = await userCanEditProject(userId, projectId);
-  const db = getDb();
+  const db = await getRequestDb();
   const rows = await db
     .select()
     .from(integrations)

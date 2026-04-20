@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
 import { Queue } from "bullmq";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { feedbacks } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
@@ -60,7 +60,7 @@ async function requireEditorAndProject(): Promise<{ userId: number; projectId: n
 }
 
 async function loadFeedbackInProject(projectId: number, feedbackId: number) {
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(feedbacks)
@@ -82,7 +82,7 @@ export async function updateFeedbackAction(feedbackId: number, formData: FormDat
   const manuallyReviewed =
     formData.get("manually_reviewed") === "true" || formData.get("manually_reviewed") === "on";
 
-  const db = getDb();
+  const db = await getRequestDb();
   const now = new Date();
   await db
     .update(feedbacks)
@@ -152,7 +152,7 @@ export async function bulkUpdateFeedbackAction(formData: FormData): Promise<void
     redirect("/app/feedback?error=bulk");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   await db
     .update(feedbacks)
     .set(patch)

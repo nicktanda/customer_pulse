@@ -8,7 +8,8 @@ import {
   FeedbackStatus,
 } from "@customer-pulse/db/client";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
-import { getDb } from "@/lib/db";
+import { getRequestDb, isMultiTenant, getDb } from "@/lib/db";
+import { resolveTenantBySlug } from "@/lib/resolve-tenant";
 import { publicFeedbackIngestBodySchema } from "@/lib/feedback-public-api-body";
 import { secureCompare } from "@/lib/secure-compare";
 import { coerceCategory, coercePriority } from "@/lib/feedback-fields";
@@ -33,7 +34,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server misconfigured (LOCKBOX_MASTER_KEY)" }, { status: 500 });
   }
 
-  const db = getDb();
+  // Multi-tenant: clients must name the workspace explicitly via header or `?tenant=`.
+  // Without it, an API key alone can't target one tenant DB out of many.
+  let db: Awaited<ReturnType<typeof getRequestDb>>;
+  if (isMultiTenant()) {
+    const tenantSlug =
+      request.headers.get("x-tenant-slug") ?? new URL(request.url).searchParams.get("tenant");
+    if (!tenantSlug) {
+      return NextResponse.json(
+        { error: "Multi-tenant mode requires an X-Tenant-Slug header or ?tenant= query parameter." },
+        { status: 400 },
+      );
+    }
+    const tenant = await resolveTenantBySlug(tenantSlug);
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    }
+    db = getDb({ slug: tenant.slug, connectionString: tenant.connectionString });
+  } else {
+    db = await getRequestDb();
+  }
   const candidates = await db
     .select()
     .from(integrations)

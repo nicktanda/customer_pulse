@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { PageHeader, PageShell } from "@/components/ui";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { feedbackInsights, feedbacks, insights } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userHasProjectAccess } from "@/lib/project-access";
@@ -28,7 +28,7 @@ export default async function InsightShowPage({ params }: { params: Promise<{ id
     redirect("/app/insights");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(insights)

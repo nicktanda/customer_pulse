@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { reportingRequests, ReportingOutputMode, ReportingRequestStatus } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userHasProjectAccess } from "@/lib/project-access";
@@ -45,7 +45,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(reportingRequests)

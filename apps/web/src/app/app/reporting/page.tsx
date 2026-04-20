@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { desc, eq, and, gte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import {
   feedbacks,
   insights,
@@ -95,7 +95,7 @@ export default async function ReportingPage({
     return <ProjectAccessDenied pageTitle="Reporting" />;
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const now = new Date();
   const start = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
   const dayTrunc = sql`date_trunc('day', ${feedbacks.createdAt})`;

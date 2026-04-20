@@ -8,7 +8,7 @@ import {
   FeedbackCategory,
   FeedbackPriority,
 } from "@customer-pulse/db/client";
-import { getDb } from "@/lib/db";
+import { getRequestDb, isMultiTenant } from "@/lib/db";
 import { verifyLinearSignature } from "@/lib/webhook-crypto";
 
 export const runtime = "nodejs";
@@ -30,8 +30,14 @@ function linearPriorityToEnum(p: unknown): number {
 }
 
 export async function POST(request: Request) {
+  if (isMultiTenant()) {
+    return NextResponse.json(
+      { error: "This workspace uses per-tenant webhooks. POST to /api/webhooks/linear/<tenant-slug> instead." },
+      { status: 410 },
+    );
+  }
   const rawBody = await request.text();
-  const db = getDb();
+  const db = await getRequestDb();
 
   const [integration] = await db
     .select()
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ status: "ok" });
 }
 
-async function processIssue(db: ReturnType<typeof getDb>, projectId: number, data: Record<string, unknown> | undefined) {
+async function processIssue(db: Awaited<ReturnType<typeof getRequestDb>>, projectId: number, data: Record<string, unknown> | undefined) {
   if (!data?.id) {
     return;
   }

@@ -2,18 +2,20 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
-import { users } from "@customer-pulse/db/client";
+import {
+  getUserAuthDb,
+  getRequestDb,
+  isMultiTenant,
+  resolveTenantForRequest,
+  listUserTenants,
+  userIsMemberOfCurrentTenant,
+} from "@/lib/db";
 import { signOutAction } from "./actions";
 import { ensureCurrentProjectCookie } from "@/lib/current-project";
 import { ResponsiveSidebar } from "./ResponsiveSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "@/components/SidebarNav";
 
-/**
- * Build inbox-first nav groups. Onboarding is only shown while the wizard is incomplete — once finished,
- * `/app/onboarding` redirects to the dashboard, so hiding the link avoids a confusing no-op.
- */
 function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
   const workspaceItems: SidebarNavItem[] = [];
   if (!onboardingComplete) {
@@ -51,10 +53,18 @@ function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
   ];
 }
 
-/**
- * Authenticated shell: sidebar IA is task-based (work → insights → workspace).
- * Current project is stored in an httpOnly cookie (server-side only; not readable by browser JS).
- */
+function tenantAppUrl(slug: string, path = "/app"): string {
+  const baseDomain = process.env.APP_BASE_DOMAIN ?? "customerpulse.app";
+  // Local dev doesn't resolve subdomains — fall back to the `?tenant=` shortcut.
+  if (process.env.NODE_ENV === "development" || baseDomain.startsWith("localhost")) {
+    const proto = process.env.NEXTAUTH_URL?.split("://")[0] ?? "http";
+    const separator = path.includes("?") ? "&" : "?";
+    return `${proto}://${baseDomain}${path}${separator}tenant=${encodeURIComponent(slug)}`;
+  }
+  const proto = baseDomain.includes(":") ? "http" : "https";
+  return `${proto}://${slug}.${baseDomain}${path}`;
+}
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) {
@@ -62,39 +72,76 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const userId = Number(session.user.id);
-
-  // Load the user row from Postgres so we can enforce onboarding completion like a before_filter would.
-  const db = getDb();
-  const [userRow] = await db
-    .select({ onboardingCompletedAt: users.onboardingCompletedAt })
-    .from(users)
-    .where(eq(users.id, userId))
+  const { db: authDb, usersTable } = getUserAuthDb();
+  const [userRow] = await authDb
+    .select({ onboardingCompletedAt: usersTable.onboardingCompletedAt })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
     .limit(1);
 
-  // JWT is valid but user was deleted from DB — force sign out
   if (!userRow) {
     redirect("/api/auth/signout");
   }
 
-  // `middleware.ts` attaches this header so we can tell we are on the wizard (no cookie redirect loop).
   const pathname = (await headers()).get("x-pathname") ?? "";
   const isOnboardingPath = pathname.startsWith("/app/onboarding");
-
-  // Incomplete onboarding → send users to the wizard only.
-  if (!userRow?.onboardingCompletedAt && !isOnboardingPath) {
-    redirect("/app/onboarding");
-  }
-
-  // After onboarding, ensure a current project is selected — stored in an httpOnly cookie.
-  if (userRow?.onboardingCompletedAt && !isOnboardingPath) {
-    await ensureCurrentProjectCookie(userId);
-  }
-
   const onboardingComplete = Boolean(userRow?.onboardingCompletedAt);
+
+  // --- Multi-tenant routing: make sure the request is on the right subdomain ------
+  if (isMultiTenant()) {
+    const tenant = await resolveTenantForRequest();
+
+    if (!tenant) {
+      // On the bare apex domain (no x-tenant-slug).
+      if (!onboardingComplete && isOnboardingPath) {
+        // Onboarding runs on the apex: stay here until the user provisions a tenant.
+      } else if (!onboardingComplete) {
+        redirect("/app/onboarding");
+      } else {
+        // Onboarded users should be on their tenant subdomain — pick one.
+        const memberships = await listUserTenants(userId);
+        if (memberships.length === 0) {
+          redirect("/app/onboarding");
+        } else if (memberships.length === 1) {
+          redirect(tenantAppUrl(memberships[0]!.slug));
+        } else {
+          // Multiple tenants — render a picker in-line.
+          return <TenantPicker memberships={memberships} />;
+        }
+      }
+    } else {
+      // On a tenant subdomain — verify membership before letting any child query the tenant DB.
+      const isMember = await userIsMemberOfCurrentTenant(userId);
+      if (!isMember) {
+        redirect("/app?tenant_denied=1");
+      }
+      if (!onboardingComplete && !isOnboardingPath) {
+        redirect("/app/onboarding");
+      }
+    }
+  } else {
+    if (!onboardingComplete && !isOnboardingPath) {
+      redirect("/app/onboarding");
+    }
+  }
+
+  // Current-project cookie: only meaningful once onboarding is done and the request is
+  // scoped to a tenant (or single-tenant mode).
+  if (onboardingComplete && !isOnboardingPath) {
+    if (isMultiTenant()) {
+      const tenant = await resolveTenantForRequest();
+      if (tenant) {
+        const tenantDb = await getRequestDb();
+        await ensureCurrentProjectCookie(userId, tenantDb);
+      }
+    } else {
+      await ensureCurrentProjectCookie(userId);
+    }
+  }
+
   const bullBoardUrl = process.env.NEXT_PUBLIC_BULL_BOARD_URL;
   const isAdmin = session.user.role === 1;
 
-  // During onboarding, show a minimal shell — no sidebar nav links
   if (!onboardingComplete) {
     return (
       <div className="min-vh-100 bg-body-tertiary">
@@ -118,8 +165,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    // On large screens the shell is viewport-tall and only `main` scrolls — so master–detail panels can
-    // `position: sticky; top: 0` against the main pane (Notion-style side peek), not the browser chrome.
     <div className="d-flex min-vh-100 app-layout-shell">
       <ResponsiveSidebar>
         <p className="small fw-semibold text-uppercase text-body-secondary mb-0">Customer Pulse</p>
@@ -150,6 +195,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-grow-1 min-w-0 bg-body-tertiary px-4 pb-4 pt-5 p-lg-5 app-main-pane">
         {children}
       </main>
+    </div>
+  );
+}
+
+function TenantPicker({ memberships }: { memberships: { id: number; slug: string; name: string }[] }) {
+  return (
+    <div className="min-vh-100 bg-body-tertiary d-flex align-items-center justify-content-center px-3">
+      <div style={{ maxWidth: "26rem" }} className="w-100">
+        <p className="small fw-semibold text-uppercase text-body-secondary mb-1">Customer Pulse</p>
+        <h1 className="h4 mb-3">Pick a workspace</h1>
+        <p className="small text-body-secondary mb-3">
+          You belong to more than one workspace. Choose one to continue.
+        </p>
+        <div className="list-group shadow-sm border-secondary-subtle">
+          {memberships.map((m) => (
+            <a key={m.id} href={tenantAppUrl(m.slug)} className="list-group-item list-group-item-action">
+              <span className="fw-medium text-body">{m.name}</span>
+              <span className="text-body-secondary small"> · {m.slug}</span>
+            </a>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

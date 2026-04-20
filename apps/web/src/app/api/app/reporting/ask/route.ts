@@ -3,7 +3,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { Queue } from "bullmq";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import {
   reportingRequests,
   ReportingOutputMode,
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid body", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const hourAgo = new Date(Date.now() - RATE_WINDOW_MS);
   const [rateRow] = await db
     .select({ c: sql<number>`count(*)::int` })

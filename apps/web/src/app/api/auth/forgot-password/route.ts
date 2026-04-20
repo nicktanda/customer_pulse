@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq, sql } from "drizzle-orm";
-import { getDb } from "@/lib/db";
-import { users } from "@customer-pulse/db/client";
+import { getUserAuthDb } from "@/lib/db";
 
 const schema = z.object({
   email: z.string().email("Invalid email").max(255),
@@ -22,12 +21,12 @@ export async function POST(request: Request) {
   }
 
   const emailNorm = parsed.data.email.trim().toLowerCase();
-  const db = getDb();
+  const { db, usersTable } = getUserAuthDb();
 
   const [user] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(sql`lower(${users.email}) = ${emailNorm}`)
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(sql`lower(${usersTable.email}) = ${emailNorm}`)
     .limit(1);
 
   // Always return success to prevent email enumeration
@@ -35,20 +34,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Generate a secure random token
   const token = globalThis.crypto.randomUUID() + globalThis.crypto.randomUUID();
   const now = new Date();
 
   await db
-    .update(users)
+    .update(usersTable)
     .set({
       resetPasswordToken: token,
       resetPasswordSentAt: now,
       updatedAt: now,
     })
-    .where(eq(users.id, user.id));
+    .where(eq(usersTable.id, user.id));
 
-  // Send password reset email via worker queue if available, otherwise log for dev
   try {
     const { Queue } = await import("bullmq");
     const { getRedis } = await import("@/lib/redis");
@@ -60,7 +57,6 @@ export async function POST(request: Request) {
       { removeOnComplete: 100, removeOnFail: 500 },
     );
   } catch {
-    // Redis not available — log for local dev
     const resetUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3001"}/reset-password?token=${token}`;
     console.log(`[auth] Password reset link for ${emailNorm}: ${resetUrl}`);
   }

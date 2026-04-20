@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { PageHeader, PageShell } from "@/components/ui";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { feedbacks } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userHasProjectAccess, userCanEditProject } from "@/lib/project-access";
@@ -31,7 +31,7 @@ export default async function FeedbackShowPage({
     redirect("/app/feedback");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(feedbacks)

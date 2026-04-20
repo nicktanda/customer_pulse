@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { userHasProjectAccess } from "@/lib/project-access";
 import { DeleteProjectButton } from "../DeleteProjectButton";
 import { PageHeader, PageShell } from "@/components/ui";
@@ -21,7 +21,7 @@ export default async function ProjectShowPage({ params }: { params: Promise<{ id
     redirect("/app/projects");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const data = await fetchProjectPageData(db, userId, projectId);
   if (!data) {
     notFound();

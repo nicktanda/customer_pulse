@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { feedbacks, integrations, IntegrationSourceType, FeedbackSource } from "@customer-pulse/db/client";
-import { getDb } from "@/lib/db";
+import { getRequestDb, isMultiTenant } from "@/lib/db";
 import { verifySlackSignature } from "@/lib/webhook-crypto";
 
 export const runtime = "nodejs";
@@ -14,6 +14,12 @@ function shouldCaptureFeedback(text: string): boolean {
 }
 
 export async function POST(request: Request) {
+  if (isMultiTenant()) {
+    return NextResponse.json(
+      { error: "This workspace uses per-tenant webhooks. POST to /api/webhooks/slack/<tenant-slug> instead." },
+      { status: 410 },
+    );
+  }
   const rawBody = await request.text();
   const signingSecret = process.env.SLACK_SIGNING_SECRET ?? "";
 
@@ -56,7 +62,7 @@ async function processMessage(event: Record<string, unknown>) {
     return;
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [integration] = await db
     .select()
     .from(integrations)

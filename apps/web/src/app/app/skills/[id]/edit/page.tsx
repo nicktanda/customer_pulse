@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { skills } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
@@ -31,7 +31,7 @@ export default async function EditSkillPage({
     redirect("/app/skills");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(skills)

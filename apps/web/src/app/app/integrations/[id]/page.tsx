@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { integrations } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
@@ -30,7 +30,7 @@ export default async function IntegrationShowPage({
   }
 
   const canEdit = await userCanEditProject(userId, projectId);
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db.select().from(integrations).where(eq(integrations.id, id)).limit(1);
   if (!row || row.projectId !== projectId) {
     notFound();

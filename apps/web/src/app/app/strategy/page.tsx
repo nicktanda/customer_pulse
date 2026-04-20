@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { eq, asc } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { projects, teams } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
@@ -59,7 +59,7 @@ export default async function StrategyPage({
   }
 
   const canEdit = await userCanEditProject(userId, projectId);
-  const db = getDb();
+  const db = await getRequestDb();
   const [projectRow] = await db
     .select({
       name: projects.name,

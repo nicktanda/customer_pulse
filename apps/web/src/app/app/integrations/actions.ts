@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { integrations } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
@@ -52,7 +52,7 @@ export async function createIntegrationAction(formData: FormData): Promise<void>
 
 export async function updateIntegrationAction(integrationId: number, formData: FormData): Promise<void> {
   const { projectId } = await requireProjectEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db.select().from(integrations).where(eq(integrations.id, integrationId)).limit(1);
   if (!row || row.projectId !== projectId) {
     redirect("/app/integrations");
@@ -94,7 +94,7 @@ export async function updateIntegrationAction(integrationId: number, formData: F
 
 export async function deleteIntegrationAction(integrationId: number, _formData?: FormData): Promise<void> {
   const { projectId } = await requireProjectEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db.select().from(integrations).where(eq(integrations.id, integrationId)).limit(1);
   if (!row || row.projectId !== projectId) {
     redirect("/app/integrations");
@@ -124,7 +124,7 @@ function syncJobNameForSourceType(sourceType: number): string | null {
 
 export async function syncIntegrationNowAction(integrationId: number, _formData?: FormData): Promise<void> {
   const { projectId } = await requireProjectEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db.select().from(integrations).where(eq(integrations.id, integrationId)).limit(1);
   if (!row || row.projectId !== projectId) {
     redirect("/app/integrations");
@@ -144,7 +144,7 @@ export async function syncIntegrationNowAction(integrationId: number, _formData?
 
 export async function syncAllIntegrationsAction(_formData?: FormData): Promise<void> {
   const { projectId } = await requireProjectEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const rows = await db.select().from(integrations).where(eq(integrations.projectId, projectId));
   try {
     const q = new Queue(QUEUE_DEFAULT, { connection: getRedis() });

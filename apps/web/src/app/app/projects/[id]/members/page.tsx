@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { projects, projectUsers, projectInvitations, users } from "@customer-pulse/db/client";
 import { userHasProjectAccess, userIsProjectOwner } from "@/lib/project-access";
 import { addProjectMemberAction, removeProjectMemberAction, cancelInvitationAction } from "../../actions";
@@ -28,7 +28,7 @@ export default async function ProjectMembersPage({
   }
 
   const isOwner = await userIsProjectOwner(userId, projectId);
-  const db = getDb();
+  const db = await getRequestDb();
   const [proj] = await db.select({ name: projects.name }).from(projects).where(eq(projects.id, projectId)).limit(1);
   if (!proj) {
     notFound();

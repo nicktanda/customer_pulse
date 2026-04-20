@@ -10,7 +10,7 @@ import {
   StickyDetailAside,
 } from "@/components/ui";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { feedbackInsights, feedbacks, insights } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser, getCurrentProjectSummaryForUser } from "@/lib/current-project";
 import { userHasProjectAccess } from "@/lib/project-access";
@@ -54,7 +54,7 @@ export default async function InsightsPage({
     return <ProjectAccessDenied pageTitle="Insights" />;
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const offset = (page - 1) * PAGE_SIZE;
 
   const [countRow] = await db

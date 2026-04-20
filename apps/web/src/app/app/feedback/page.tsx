@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { InlineAlert, PageHeader, PageShell, PaginationNav, PeekPanelNotFound } from "@/components/ui";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { feedbacks } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser, getCurrentProjectSummaryForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
@@ -74,7 +74,7 @@ export default async function FeedbackPage({
   }
 
   const canEdit = await userCanEditProject(userId, projectId);
-  const db = getDb();
+  const db = await getRequestDb();
   const where = buildFeedbackConditions(projectId, sp);
 
   const [countRow] = await db

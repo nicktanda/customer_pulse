@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { feedbacks } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 
@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ feedbacks: [] });
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const rows = await db
     .select()
     .from(feedbacks)

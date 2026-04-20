@@ -1,9 +1,10 @@
 import "server-only";
 
 import { and, eq } from "drizzle-orm";
+import type { Database } from "@customer-pulse/db/client";
 import { encryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { integrations } from "@customer-pulse/db/client";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 
 /**
  * Creates or updates an integration row with Lockbox-compatible encrypted JSON credentials.
@@ -13,7 +14,7 @@ export async function upsertIntegrationCredentials(
   sourceType: number,
   name: string,
   credentialsObject: Record<string, unknown>,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; db?: Database },
 ): Promise<number> {
   const masterKey = process.env.LOCKBOX_MASTER_KEY;
   if (!masterKey) {
@@ -22,7 +23,7 @@ export async function upsertIntegrationCredentials(
 
   const json = JSON.stringify(credentialsObject);
   const ciphertext = encryptCredentialsColumn(json, masterKey);
-  const db = getDb();
+  const db = options?.db ?? (await getRequestDb());
   const now = new Date();
   const enabled = options?.enabled ?? true;
 

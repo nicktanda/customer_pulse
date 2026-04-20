@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { users } from "@customer-pulse/db/client";
 
 async function requireUserId(): Promise<number> {
@@ -24,7 +24,7 @@ export async function updateProfileAction(formData: FormData): Promise<void> {
     redirect("/app/account?error=Name and email are required.");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
 
   // Check if email is taken by another user
   const [conflict] = await db
@@ -61,7 +61,7 @@ export async function changePasswordAction(
     return { error: "New passwords do not match." };
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [user] = await db
     .select({ id: users.id, encryptedPassword: users.encryptedPassword })
     .from(users)

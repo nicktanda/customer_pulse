@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { getDb } from "@/lib/db";
-import { users } from "@customer-pulse/db/client";
+import { getUserAuthDb } from "@/lib/db";
 
 const schema = z.object({
   token: z.string().min(1, "Token is required"),
@@ -25,19 +24,18 @@ export async function POST(request: Request) {
   }
 
   const { token, password } = parsed.data;
-  const db = getDb();
+  const { db, usersTable } = getUserAuthDb();
 
   const [user] = await db
-    .select({ id: users.id, resetPasswordSentAt: users.resetPasswordSentAt })
-    .from(users)
-    .where(eq(users.resetPasswordToken, token))
+    .select({ id: usersTable.id, resetPasswordSentAt: usersTable.resetPasswordSentAt })
+    .from(usersTable)
+    .where(eq(usersTable.resetPasswordToken, token))
     .limit(1);
 
   if (!user) {
     return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 });
   }
 
-  // Check token expiry
   if (user.resetPasswordSentAt) {
     const elapsed = Date.now() - user.resetPasswordSentAt.getTime();
     if (elapsed > TOKEN_EXPIRY_MS) {
@@ -50,14 +48,14 @@ export async function POST(request: Request) {
   const now = new Date();
 
   await db
-    .update(users)
+    .update(usersTable)
     .set({
       encryptedPassword: hashedPassword,
       resetPasswordToken: null,
       resetPasswordSentAt: null,
       updatedAt: now,
     })
-    .where(eq(users.id, user.id));
+    .where(eq(usersTable.id, user.id));
 
   return NextResponse.json({ ok: true });
 }

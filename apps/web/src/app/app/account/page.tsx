@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { users } from "@customer-pulse/db/client";
 import { PageHeader, PageShell, InlineAlert } from "@/components/ui";
 import { AccountForm } from "./AccountForm";
@@ -17,7 +17,7 @@ export default async function AccountPage({
     redirect("/login");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [user] = await db
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)

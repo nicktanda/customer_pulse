@@ -1,5 +1,8 @@
 import "server-only";
 
+import fs from "node:fs";
+import path from "node:path";
+import { execSync } from "node:child_process";
 import { eq } from "drizzle-orm";
 import { getControlPlaneDb } from "@/lib/db";
 import { tenants, tenantMemberships, cpUsers, TenantStatus, TenantMemberRole } from "@customer-pulse/db/control-plane";
@@ -16,24 +19,24 @@ export async function provisionTenant(opts: {
   name: string;
   slug: string;
   ownerUserId: number;
-}): Promise<{ tenantId: number; slug: string }> {
+}): Promise<{ tenantId: number; slug: string; connectionString: string }> {
   const cpDb = getControlPlaneDb();
   const masterKey = process.env.LOCKBOX_MASTER_KEY ?? "";
+  if (!masterKey) {
+    throw new Error("LOCKBOX_MASTER_KEY is required to provision a tenant.");
+  }
   const adminUrl = process.env.CONTROL_PLANE_DATABASE_URL ?? "";
+  if (!adminUrl) {
+    throw new Error("CONTROL_PLANE_DATABASE_URL is required to provision a tenant.");
+  }
 
-  // 1. Create the Neon database
+  // 1. Create the Neon database.
   const { databaseName, connectionString } = await provisionTenantDatabase(opts.slug, adminUrl);
 
-  // 2. Run tenant schema migrations against the new database.
-  //    For now we use Drizzle push via a temporary connection.
-  //    In production, use the migration tooling (scripts/migrate-all-tenants.ts).
-  const tenantSql = createDb(connectionString);
-  // The schema is applied by drizzle-kit push; this connection verifies
-  // connectivity and will be used by the migration script.
-  // TODO: programmatic drizzle-kit push or apply SQL migration files here
-  void tenantSql; // placeholder — migration applied separately
+  // 2. Apply the tenant schema to the fresh database.
+  applyTenantSchema(connectionString);
 
-  // 3. Insert tenant record in control plane
+  // 3. Register the tenant in the control plane.
   const ciphertext = encryptTenantConnectionString(connectionString, masterKey);
   const now = new Date();
 
@@ -52,7 +55,7 @@ export async function provisionTenant(opts: {
 
   if (!tenant) throw new Error("Failed to create tenant record");
 
-  // 4. Create owner membership
+  // 4. Create owner membership.
   await cpDb.insert(tenantMemberships).values({
     tenantId: tenant.id,
     userId: opts.ownerUserId,
@@ -61,7 +64,7 @@ export async function provisionTenant(opts: {
     updatedAt: now,
   });
 
-  // 5. Mirror user record into the tenant database
+  // 5. Mirror the user row into the new tenant DB so joins inside the tenant still work.
   const [owner] = await cpDb
     .select({
       id: cpUsers.id,
@@ -78,20 +81,58 @@ export async function provisionTenant(opts: {
 
   if (owner) {
     const tenantDb = createDb(connectionString);
-    await tenantDb.insert(users).values({
-      id: owner.id,
-      email: owner.email,
-      name: owner.name,
-      role: owner.role,
-      provider: owner.provider,
-      uid: owner.uid,
-      avatarUrl: owner.avatarUrl,
-      createdAt: now,
-      updatedAt: now,
-    }).onConflictDoNothing();
+    await tenantDb
+      .insert(users)
+      .values({
+        id: owner.id,
+        email: owner.email,
+        name: owner.name,
+        role: owner.role,
+        provider: owner.provider,
+        uid: owner.uid,
+        avatarUrl: owner.avatarUrl,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing();
   }
 
-  return { tenantId: tenant.id, slug: opts.slug };
+  return { tenantId: tenant.id, slug: opts.slug, connectionString };
+}
+
+/**
+ * Runs `drizzle-kit push` against a freshly-provisioned tenant database to create the
+ * tenant schema (tables, indexes, enums).  Blocking / synchronous — keeps provisioning
+ * simple; expect 5–10s for a cold Neon compute.
+ *
+ * Matches `scripts/migrate-all-tenants.ts` so re-running migrations later stays idempotent.
+ */
+function applyTenantSchema(connectionString: string): void {
+  // The repo root holds `packages/db/drizzle.config.ts`.  Next.js runs from `apps/web`, so
+  // resolve the repo root by walking up from `process.cwd()` until we find the workspace.
+  const repoRoot = findRepoRoot(process.cwd());
+  execSync(`npx drizzle-kit push --config=packages/db/drizzle.config.ts --force`, {
+    env: {
+      ...process.env,
+      DATABASE_URL: connectionString,
+    },
+    cwd: repoRoot,
+    stdio: "pipe",
+  });
+}
+
+function findRepoRoot(start: string): string {
+  // Walks up directory tree until it finds a directory containing `packages/db/drizzle.config.ts`.
+  // Falls back to `start` if nothing is found (push will error and surface the problem).
+  let dir = start;
+  for (let i = 0; i < 6; i++) {
+    const cfg = path.join(dir, "packages", "db", "drizzle.config.ts");
+    if (fs.existsSync(cfg)) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return start;
 }
 
 /** Generate a URL-safe slug from an organization name. */

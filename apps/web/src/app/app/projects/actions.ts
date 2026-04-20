@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { projects, projectUsers, projectInvitations, users } from "@customer-pulse/db/client";
 import {
   userHasProjectAccess,
@@ -30,7 +30,7 @@ export async function createProjectAction(formData: FormData): Promise<void> {
     redirect("/app/projects/new?error=name");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const now = new Date();
   let slug = slugifyName(name);
   const [existing] = await db.select({ id: projects.id }).from(projects).where(eq(projects.slug, slug)).limit(1);
@@ -86,7 +86,7 @@ export async function updateProjectAction(projectId: number, formData: FormData)
     redirect(`/app/projects/${projectId}/edit?error=name`);
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const now = new Date();
   let slug = slugifyName(name);
   const [conflict] = await db
@@ -114,7 +114,7 @@ export async function deleteProjectAction(projectId: number, _formData?: FormDat
     redirect("/app/projects");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   await db.delete(projects).where(eq(projects.id, projectId));
 
   const cookieStore = await cookies();
@@ -141,7 +141,7 @@ export async function addProjectMemberAction(projectId: number, formData: FormDa
     redirect(`/app/projects/${projectId}/members?error=email`);
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [target] = await db.select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
 
   const now = new Date();
@@ -199,7 +199,7 @@ export async function cancelInvitationAction(
     redirect(`/app/projects/${projectId}/members`);
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   await db
     .delete(projectInvitations)
     .where(and(eq(projectInvitations.id, invitationId), eq(projectInvitations.projectId, projectId)));
@@ -218,7 +218,7 @@ export async function removeProjectMemberAction(
     redirect(`/app/projects/${projectId}/members`);
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(projectUsers)

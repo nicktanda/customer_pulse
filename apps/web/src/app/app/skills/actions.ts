@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { skills } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
@@ -37,7 +37,7 @@ export async function createSkillAction(formData: FormData): Promise<void> {
   }
 
   const now = new Date();
-  const db = getDb();
+  const db = await getRequestDb();
   try {
     await db.insert(skills).values({
       name,
@@ -62,7 +62,7 @@ export async function createSkillAction(formData: FormData): Promise<void> {
 
 export async function updateSkillAction(skillId: number, formData: FormData): Promise<void> {
   const { projectId } = await requireEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(skills)
@@ -100,7 +100,7 @@ export async function updateSkillAction(skillId: number, formData: FormData): Pr
 
 export async function deleteSkillAction(skillId: number, _formData?: FormData): Promise<void> {
   const { projectId } = await requireEditor();
-  const db = getDb();
+  const db = await getRequestDb();
   const [row] = await db
     .select()
     .from(skills)

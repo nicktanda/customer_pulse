@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { integrations, projectSettings, IntegrationSourceType } from "@customer-pulse/db/client";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
@@ -38,7 +38,7 @@ export async function saveGithubSettingsAction(formData: FormData): Promise<void
 
   let accessToken = accessTokenInput;
   if (!accessToken) {
-    const db = getDb();
+    const db = await getRequestDb();
     const masterKey = process.env.LOCKBOX_MASTER_KEY;
     const [existing] = await db
       .select({ credentialsCiphertext: integrations.credentialsCiphertext })
@@ -89,7 +89,7 @@ export async function saveGeneralSettingsAction(formData: FormData): Promise<voi
   const autoArchiveDays = Number(formData.get("auto_archive_days") ?? 30);
   const githubAutoMerge = formData.get("github_auto_merge") === "on" || formData.get("github_auto_merge") === "true";
 
-  const db = getDb();
+  const db = await getRequestDb();
   const now = new Date();
 
   const [existing] = await db

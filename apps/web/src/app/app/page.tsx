@@ -1,6 +1,6 @@
 import { desc, eq, and, or, inArray, isNull, isNotNull, gte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import {
   feedbacks,
   pulseReports,
@@ -29,7 +29,7 @@ export default async function DashboardPage() {
   const userId = Number(session?.user?.id);
   const projectId = await getCurrentProjectIdForUser(userId);
   const projectSummary = await getCurrentProjectSummaryForUser(userId);
-  const db = getDb();
+  const db = await getRequestDb();
 
   if (projectId == null) {
     return (

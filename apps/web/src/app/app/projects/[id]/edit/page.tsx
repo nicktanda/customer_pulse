@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { projects } from "@customer-pulse/db/client";
 import { userIsProjectOwner } from "@/lib/project-access";
 import { ProjectEditForm } from "../../ProjectForm";
@@ -20,7 +20,7 @@ export default async function ProjectEditPage({ params }: { params: Promise<{ id
     redirect(`/app/projects/${projectId}`);
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [proj] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
   if (!proj) {
     notFound();

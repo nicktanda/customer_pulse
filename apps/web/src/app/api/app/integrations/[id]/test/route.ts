@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { integrations } from "@customer-pulse/db/client";
 import { userHasProjectAccess } from "@/lib/project-access";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
@@ -21,7 +21,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid integration ID" }, { status: 400 });
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [integration] = await db.select().from(integrations).where(eq(integrations.id, integrationId)).limit(1);
   if (!integration) {
     return NextResponse.json({ error: "Integration not found" }, { status: 404 });

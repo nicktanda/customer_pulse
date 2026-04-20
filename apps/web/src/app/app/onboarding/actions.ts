@@ -4,13 +4,35 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
-import { users, projects, projectUsers, projectInvitations, emailRecipients, IntegrationSourceType } from "@customer-pulse/db/client";
+import { getUserAuthDb, getRequestDb, isMultiTenant } from "@/lib/db";
+import {
+  projects,
+  projectUsers,
+  projectInvitations,
+  emailRecipients,
+  IntegrationSourceType,
+} from "@customer-pulse/db/client";
 import { nextOnboardingStep, ONBOARDING_STEPS } from "@/lib/onboarding-steps";
 import { slugifyName } from "@/app/app/projects/slug";
 import { upsertIntegrationCredentials } from "@/lib/integrations-upsert";
 import { cookies } from "next/headers";
 import { CURRENT_PROJECT_COOKIE } from "@/lib/current-project";
+import { provisionTenant, slugify } from "@/lib/tenant-provisioning";
+import { createDb } from "@customer-pulse/db/client";
+
+function onboardingDestination(slug?: string): string {
+  // Mirror the logic in app/layout.tsx so MT users land on their tenant subdomain and
+  // dev callers pick up `?tenant=slug` instead.
+  const baseDomain = process.env.APP_BASE_DOMAIN ?? "customerpulse.app";
+  if (!slug) return "/app/onboarding";
+
+  if (process.env.NODE_ENV === "development" || baseDomain.startsWith("localhost")) {
+    const proto = process.env.NEXTAUTH_URL?.split("://")[0] ?? "http";
+    return `${proto}://${baseDomain}/app?tenant=${encodeURIComponent(slug)}`;
+  }
+  const proto = baseDomain.includes(":") ? "http" : "https";
+  return `${proto}://${slug}.${baseDomain}/app`;
+}
 
 /** Single entry: each step form posts here with hidden `_onboarding_step`. */
 export async function onboardingDispatchAction(formData: FormData): Promise<void> {
@@ -22,8 +44,9 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
     redirect("/login");
   }
   const userId = Number(session.user.id);
-  const db = getDb();
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+  const { db: userDb, usersTable } = getUserAuthDb();
+  const [user] = await userDb.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user?.id || user.onboardingCompletedAt) {
     redirect("/app");
   }
@@ -33,6 +56,107 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
     redirect("/app/onboarding");
   }
 
+  async function setStep(next: string) {
+    await userDb
+      .update(usersTable)
+      .set({ onboardingCurrentStep: next, updatedAt: new Date() })
+      .where(eq(usersTable.id, userId));
+    revalidatePath("/app/onboarding");
+    redirect("/app/onboarding");
+  }
+
+  async function markComplete() {
+    const now = new Date();
+    await userDb
+      .update(usersTable)
+      .set({
+        onboardingCompletedAt: now,
+        onboardingCurrentStep: "complete",
+        updatedAt: now,
+      })
+      .where(eq(usersTable.id, userId));
+    revalidatePath("/app");
+  }
+
+  // Multi-tenant: compressed flow that provisions a tenant on the "project" step.
+  if (isMultiTenant()) {
+    switch (step) {
+      case "welcome": {
+        await setStep("project");
+        return;
+      }
+      case "project": {
+        const name = String(formData.get("project_name") ?? "").trim();
+        if (!name) {
+          redirect("/app/onboarding?error=project_name");
+        }
+
+        const baseSlug = slugify(name) || `workspace-${Date.now().toString(36)}`;
+        // Ensure slug uniqueness against existing tenants.
+        const { tenants } = await import("@customer-pulse/db/control-plane");
+        const { getControlPlaneDb } = await import("@/lib/db");
+        const cpDb = getControlPlaneDb();
+        let slug = baseSlug;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const [dup] = await cpDb.select({ id: tenants.id }).from(tenants).where(eq(tenants.slug, slug)).limit(1);
+          if (!dup) break;
+          slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
+        }
+
+        const { tenantId, connectionString } = await provisionTenant({
+          name,
+          slug,
+          ownerUserId: userId,
+        });
+
+        // Seed a default project inside the tenant DB so the rest of the app has
+        // a project context to work against.
+        const tenantDb = createDb(connectionString);
+        const now = new Date();
+        const [proj] = await tenantDb
+          .insert(projects)
+          .values({ name, description: null, slug: slugifyName(name), createdAt: now, updatedAt: now })
+          .returning({ id: projects.id });
+        if (proj) {
+          await tenantDb.insert(projectUsers).values({
+            projectId: proj.id,
+            userId,
+            isOwner: true,
+            createdAt: now,
+            updatedAt: now,
+          });
+
+          const cookieStore = await cookies();
+          cookieStore.set(CURRENT_PROJECT_COOKIE, String(proj.id), {
+            httpOnly: true,
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 400,
+            domain: process.env.AUTH_COOKIE_DOMAIN || undefined,
+          });
+        }
+
+        await markComplete();
+        void tenantId;
+        redirect(onboardingDestination(slug));
+        return;
+      }
+      case "complete": {
+        await markComplete();
+        redirect("/app");
+        return;
+      }
+      default: {
+        // Any other single-tenant step lands in MT mode → skip straight to the tenant step.
+        await setStep("project");
+        return;
+      }
+    }
+  }
+
+  // --- Single-tenant path (original long wizard) -----------------------------------
+  const db = await getRequestDb();
+
   async function firstProjectId(): Promise<number | null> {
     const [row] = await db
       .select({ projectId: projectUsers.projectId })
@@ -40,15 +164,6 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
       .where(eq(projectUsers.userId, userId))
       .limit(1);
     return row?.projectId ?? null;
-  }
-
-  async function setStep(next: string) {
-    await db
-      .update(users)
-      .set({ onboardingCurrentStep: next, updatedAt: new Date() })
-      .where(eq(users.id, userId));
-    revalidatePath("/app/onboarding");
-    redirect("/app/onboarding");
   }
 
   switch (step) {
@@ -111,7 +226,8 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
           .trim()
           .toLowerCase();
         if (pid != null && email) {
-          const [target] = await db.select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
+          const { users: tenantUsers } = await import("@customer-pulse/db/client");
+          const [target] = await db.select().from(tenantUsers).where(sql`lower(${tenantUsers.email}) = ${email}`).limit(1);
           if (target) {
             const [dup] = await db
               .select()
@@ -129,7 +245,6 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
               });
             }
           } else {
-            // User doesn't exist yet — create a pending invitation
             try {
               await db.insert(projectInvitations).values({
                 projectId: pid,
@@ -154,7 +269,7 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
         if (apiKey) {
           const pid = await firstProjectId();
           if (pid != null) {
-            await upsertIntegrationCredentials(pid, 13, "Anthropic", { api_key: apiKey });
+            await upsertIntegrationCredentials(pid, 13, "Anthropic", { api_key: apiKey }, { db });
           }
         }
       }
@@ -201,7 +316,7 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
           };
           const cfg = map[step];
           if (cfg) {
-            await upsertIntegrationCredentials(pid, cfg.type, cfg.name, obj);
+            await upsertIntegrationCredentials(pid, cfg.type, cfg.name, obj, { db });
           }
         }
       }
@@ -236,16 +351,7 @@ export async function onboardingDispatchAction(formData: FormData): Promise<void
     }
 
     case "complete": {
-      const now = new Date();
-      await db
-        .update(users)
-        .set({
-          onboardingCompletedAt: now,
-          onboardingCurrentStep: "complete",
-          updatedAt: now,
-        })
-        .where(eq(users.id, userId));
-      revalidatePath("/app");
+      await markComplete();
       redirect("/app");
       return;
     }
@@ -262,8 +368,8 @@ export async function onboardingGoBackAction(formData: FormData): Promise<void> 
     redirect("/login");
   }
   const userId = Number(session.user.id);
-  const db = getDb();
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const { db: userDb, usersTable } = getUserAuthDb();
+  const [user] = await userDb.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user?.id || user.onboardingCompletedAt) {
     redirect("/app");
   }
@@ -272,10 +378,10 @@ export async function onboardingGoBackAction(formData: FormData): Promise<void> 
     redirect("/app/onboarding");
   }
   const prev = ONBOARDING_STEPS[i - 1]!;
-  await db
-    .update(users)
+  await userDb
+    .update(usersTable)
     .set({ onboardingCurrentStep: prev, updatedAt: new Date() })
-    .where(eq(users.id, userId));
+    .where(eq(usersTable.id, userId));
   revalidatePath("/app/onboarding");
   redirect("/app/onboarding");
 }

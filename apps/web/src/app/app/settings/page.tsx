@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { integrations, projectSettings, IntegrationSourceType, UserRole } from "@customer-pulse/db/client";
 import {
   getCurrentProjectIdForUser,
@@ -76,7 +76,7 @@ export default async function SettingsPage({
   const demoSeedEnabled = process.env.ALLOW_DEMO_DATA_SEED === "true";
   const showDemoModeCard = canEdit && isAdmin;
 
-  const db = getDb();
+  const db = await getRequestDb();
   const [gh] = await db
     .select()
     .from(integrations)

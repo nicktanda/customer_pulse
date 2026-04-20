@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
 import { removeDemoDataForProject, seedDemoDataForProject } from "@/lib/demo-project-seed";
@@ -46,7 +46,7 @@ export async function setDemoModeAction(enabled: boolean): Promise<void> {
     redirect("/app/settings?error=demo_forbidden");
   }
 
-  const db = getDb();
+  const db = await getRequestDb();
   if (enabled) {
     await seedDemoDataForProject(db, { projectId, userId });
     revalidateAfterDemoDataChange();

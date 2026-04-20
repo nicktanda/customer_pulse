@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { getDb } from "@/lib/db";
+import { getRequestDb } from "@/lib/db";
 import { projects, projectUsers } from "@customer-pulse/db/client";
 import {
   PageHeader,
@@ -23,7 +23,7 @@ export default async function ProjectsPage({
 }) {
   const session = await auth();
   const userId = Number(session?.user?.id);
-  const db = getDb();
+  const db = await getRequestDb();
   const sp = await searchParams;
   const detailParsed = Number.parseInt(typeof sp.detail === "string" ? sp.detail : "", 10);
   const detailId = Number.isFinite(detailParsed) && detailParsed > 0 ? detailParsed : null;

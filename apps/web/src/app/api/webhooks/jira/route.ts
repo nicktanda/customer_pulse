@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { feedbacks, integrations, IntegrationSourceType, FeedbackSource } from "@customer-pulse/db/client";
-import { getDb } from "@/lib/db";
+import { getRequestDb, isMultiTenant } from "@/lib/db";
 import { verifyJiraSignature } from "@/lib/webhook-crypto";
 import { jiraPriorityNameToEnum } from "@/lib/jira-priority";
 
@@ -27,8 +27,14 @@ function buildContent(fields: Record<string, unknown>): string {
 }
 
 export async function POST(request: Request) {
+  if (isMultiTenant()) {
+    return NextResponse.json(
+      { error: "This workspace uses per-tenant webhooks. POST to /api/webhooks/jira/<tenant-slug> instead." },
+      { status: 410 },
+    );
+  }
   const rawBody = await request.text();
-  const db = getDb();
+  const db = await getRequestDb();
 
   const [integration] = await db
     .select()
@@ -65,7 +71,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ status: "ok" });
 }
 
-async function syncIssue(db: ReturnType<typeof getDb>, projectId: number, issue: Record<string, unknown> | undefined) {
+async function syncIssue(db: Awaited<ReturnType<typeof getRequestDb>>, projectId: number, issue: Record<string, unknown> | undefined) {
   if (!issue) {
     return;
   }
