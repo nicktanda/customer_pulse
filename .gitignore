@@ -8,14 +8,8 @@
 # Local overrides in any workspace (never commit real secrets)
 .env*.local
 
-# Logs and temp
+# Logs
 /log/*
-/tmp/*
-!/log/.keep
-!/tmp/.keep
-/tmp/pids/*
-!/tmp/pids/
-!/tmp/pids/.keep
 
 # Dependencies in root and all Yarn workspaces (apps/web, apps/worker, packages/*)
 node_modules

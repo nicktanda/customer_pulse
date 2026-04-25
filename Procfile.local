@@ -1,9 +1,0 @@
-# Procfile for Solid Stack mode (SQLite + Solid Queue + Solid Cache)
-# Used by: bin/dev-local
-#
-# Solid Queue runs inside Puma via the :solid_queue plugin
-# No separate worker process needed!
-
-web: env SOLID_STACK=true SOLID_QUEUE_IN_PUMA=true bin/rails server -p 3000
-js: yarn build --watch=forever
-css: yarn build:css --watch
