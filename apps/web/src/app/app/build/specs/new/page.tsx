@@ -13,6 +13,7 @@ import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userHasProjectAccess } from "@/lib/project-access";
 import { insights } from "@customer-pulse/db/client";
 import { createSpecAction } from "../../actions";
+import { SpecSubmitButton } from "./SpecSubmitButton";
 
 /**
  * New spec form — lets a PM manually create a spec with a title, description,
@@ -177,9 +178,11 @@ export default async function NewSpecPage({
         </div>
 
         <FormActions variant="plain">
-          <button type="submit" className="btn btn-primary">
-            Create spec
-          </button>
+          <SpecSubmitButton />
+          <p className="small text-body-secondary mb-0 mt-2">
+            Claude will draft user stories, acceptance criteria, and success
+            metrics automatically.
+          </p>
         </FormActions>
       </NarrowCardForm>
     </PageShell>

@@ -19,20 +19,27 @@ export type LinkedFeedbackItem = {
 
 /**
  * Main insight content: badges, summary, evidence, related feedback.
- * Shared by the full `/app/insights/[id]` page and the list page’s right-hand panel.
+ * Shared by the full `/app/insights/[id]` page and the list page's right-hand panel.
+ *
+ * showSpecCta defaults to true. Pass false on the standalone page (which already
+ * has a "Create spec" button in the page header) to avoid showing it twice.
  */
 export function InsightDetailBody({
   row,
   linkedFeedback,
+  showSpecCta = true,
 }: {
   row: InsightRow;
   linkedFeedback: LinkedFeedbackItem[];
+  /** Whether to render the ember-themed "Create spec" CTA block. Default: true. */
+  showSpecCta?: boolean;
 }) {
   const when = row.discoveredAt ?? row.createdAt;
   const evidence = Array.isArray(row.evidence) ? row.evidence : [];
 
   return (
     <>
+      {/* Badges row */}
       <div className="d-flex flex-wrap gap-2 mt-0">
         <span className="badge rounded-pill text-bg-light border">{insightTypeLabel(row.insightType)}</span>
         <span className="badge rounded-pill text-bg-light border">{insightSeverityLabel(row.severity)}</span>
@@ -41,9 +48,38 @@ export function InsightDetailBody({
           <span className="badge rounded-pill text-bg-secondary">Confidence {row.confidenceScore}%</span>
         ) : null}
         {row.feedbackCount > 0 ? (
-          <span className="badge rounded-pill text-bg-secondary">{row.feedbackCount} feedback (count)</span>
+          <span className="badge rounded-pill text-bg-secondary">{row.feedbackCount} feedback</span>
         ) : null}
       </div>
+
+      {/*
+       * Create spec CTA — ember-themed action block.
+       * Gives the button visual weight separate from the metadata badges,
+       * and signals that this is the primary next step for this insight.
+       * Hidden on the standalone page which already has the CTA in its header.
+       */}
+      {showSpecCta ? (
+        <div
+          className="d-flex align-items-center justify-content-between gap-3 mt-3 px-3 py-2 rounded"
+          style={{
+            background: "rgba(var(--bs-primary-rgb), 0.06)",
+            border: "1px solid rgba(var(--bs-primary-rgb), 0.2)",
+          }}
+        >
+          <div className="min-w-0">
+            <p className="small fw-semibold text-body-emphasis mb-0">Ready to build?</p>
+            <p className="small text-body-secondary mb-0" style={{ lineHeight: 1.4 }}>
+              Turn this insight into a product spec
+            </p>
+          </div>
+          <Link
+            href={`/app/build/specs/new?from_insight=${row.id}`}
+            className="btn btn-primary btn-sm flex-shrink-0"
+          >
+            Create spec →
+          </Link>
+        </div>
+      ) : null}
 
       <section className="mt-4">
         <h2 className="h6 text-body-emphasis">Summary</h2>

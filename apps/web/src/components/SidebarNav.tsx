@@ -19,6 +19,7 @@ import {
   FolderOpen,
   Wand2,
   ShieldCheck,
+  Search,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -45,6 +46,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/app/pulse-reports": Mail,
   "/app/build": Wrench,
   "/app/build/specs": Wrench,
+  "/app/discover": Search,
   "/app/monitor": Monitor,
   "/app/integrations": Plug,
   "/app/recipients": Users,

@@ -10,6 +10,7 @@ export { PaginationNav } from "./PaginationNav";
 export { ProjectAccessDenied } from "./ProjectAccessDenied";
 export { ConfirmSubmitForm } from "./ConfirmSubmitForm";
 export { StickyDetailAside } from "./StickyDetailAside";
+export { PeekDrawerPanel } from "./PeekDrawerPanel";
 export {
   IconPeekChevronDown,
   IconPeekChevronUp,

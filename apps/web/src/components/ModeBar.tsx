@@ -32,6 +32,12 @@ const MODES: Mode[] = [
       p === "/app/",
   },
   {
+    label: "Discover",
+    sublabel: "Is the insight worth building?",
+    href: "/app/discover",
+    activeWhen: (p) => p.startsWith("/app/discover"),
+  },
+  {
     label: "Build",
     sublabel: "What should we build?",
     href: "/app/build",

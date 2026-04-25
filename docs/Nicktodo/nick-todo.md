@@ -1,7 +1,28 @@
 # Nick Todo — Outcome Tracking Thread
 
 > Feature spec for closing the loop between Build and Monitor.
-> Generated: Sat 25 Apr 2026
+> Generated: Sat 25 Apr 2026 — Status reviewed: Sat 25 Apr 2026
+
+---
+
+## Current state (as of Sat 25 Apr 2026)
+
+The branch `adding-learn-build-monitor` has built all the prerequisite infrastructure
+needed to start this work. Nothing in Phases 1–4 below has been implemented yet — all
+checkboxes are still to do — but the following foundations are confirmed in place:
+
+| Prerequisite | Status | Location |
+|--------------|--------|----------|
+| Spec create form | ✅ Built | `apps/web/src/app/app/build/specs/new/page.tsx` |
+| Spec detail page | ✅ Built | `apps/web/src/app/app/build/specs/[id]/page.tsx` |
+| AI spec generation (Claude) | ✅ Built | `apps/web/src/app/app/build/actions.ts` → `createSpecAction` |
+| `specs` table in DB | ✅ Exists | `packages/db/src/schema.ts` — needs `success_hypothesis` + `shipped_at` added |
+| `specInsights` join table | ✅ Exists | Schema + `linkSpecToInsights` query helper — the golden thread is live |
+| `SpecStatus` enum with `shipped = 5` | ✅ Exists | `packages/db/src/enums.ts` |
+| Monitor mode landing page | ✅ Built | `apps/web/src/app/app/monitor/page.tsx` — shows "nothing to monitor yet" empty state |
+| `SidebarNav` Monitor section | ✅ Built | Ready for a "Release Health" link to be added |
+
+**Nothing below has been started.** Start at Phase 1.
 
 ---
 
@@ -140,11 +161,11 @@ spec_outcome_snapshots ← spec_id
 
 ### Phase 1 — Hypothesis field in Build (~1 hour)
 
-- [ ] Add `success_hypothesis` column to `specs` (Drizzle migration)
-- [ ] Add `shipped_at` column to `specs` (same migration)
-- [ ] Add field to new spec form (`/app/build/specs/new`)
-- [ ] Add field to spec detail/edit page
-- [ ] Set `shipped_at` when status is set to `shipped` in the server action (`apps/web/src/app/app/build/actions.ts`)
+- [ ] Add `success_hypothesis` column to `specs` (Drizzle migration) — edit `packages/db/src/schema.ts`
+- [ ] Add `shipped_at` column to `specs` (same migration) — same file
+- [ ] Add hypothesis field to new spec form — edit `apps/web/src/app/app/build/specs/new/page.tsx`
+- [ ] Add hypothesis field to spec detail page — edit `apps/web/src/app/app/build/specs/[id]/page.tsx`
+- [ ] Add a "Update status" server action and set `shipped_at = now()` when status → `shipped` (5) — add to `apps/web/src/app/app/build/actions.ts`
 
 **Unlocks:** PMs can record intent before shipping. Baseline anchor exists in the DB.
 
@@ -168,8 +189,8 @@ spec_outcome_snapshots ← spec_id
 - [ ] Create `/app/monitor/release-health/page.tsx` — shipped spec list + signal badges
 - [ ] Create `/app/monitor/release-health/[specId]/page.tsx` — pre/post comparison detail
 - [ ] Feedback list filtered to linked insight topics (post-ship window)
-- [ ] Remove `ModeLandingPage` as the default Monitor view — use it as the empty state inside release-health instead
-- [ ] Add "Release Health" link to sidebar under Monitor section (`SidebarNav.tsx`)
+- [ ] Update `/app/monitor/page.tsx` to redirect to release-health once shipped specs exist — use it as the empty state when there are none (the `ModeLandingPage` shell is already in place)
+- [ ] Add "Release Health" link to sidebar under Monitor section in `apps/web/src/components/SidebarNav.tsx`
 
 **Unlocks:** PMs can open Monitor on Monday morning and see if their ship worked.
 

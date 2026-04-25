@@ -2,11 +2,31 @@ import { z } from "zod";
 
 /**
  * Keep in sync with apps/web/src/lib/reporting-structured.ts — worker validates model JSON before saving.
+ *
+ * Supported chart types:
+ *   bar           — grouped/single bars, comparing discrete categories
+ *   bar_stacked   — stacked bars (each series is one stack segment)
+ *   bar_horizontal — horizontal bars with layout="vertical" (good for long labels)
+ *   line          — time-series line chart
+ *   area          — time-series area chart (cumulative feel)
+ *   pie           — proportions of a whole (≤ 8 slices); series must have exactly ONE entry
+ *   scatter       — two numeric dimensions (deferred to v2 — no dual-axis context yet)
  */
+export const CHART_TYPES = [
+  "bar",
+  "bar_stacked",
+  "bar_horizontal",
+  "line",
+  "area",
+  "pie",
+  "scatter",
+] as const;
+export type ChartType = (typeof CHART_TYPES)[number];
+
 export const reportChartSchema = z
   .object({
     title: z.string().optional(),
-    type: z.enum(["bar", "line"]),
+    type: z.enum(CHART_TYPES),
     labels: z.array(z.string()),
     series: z.array(
       z.object({

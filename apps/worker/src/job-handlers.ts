@@ -454,6 +454,18 @@ export async function runJob(job: Job): Promise<void> {
       return;
     }
 
+    case "RegenerateThemesForProjectJob": {
+      // Triggered on-demand from the UI — re-runs theme identification for a single project.
+      const projectId = Number((job.data as { projectId?: number }).projectId);
+      if (!Number.isFinite(projectId)) {
+        console.warn("[worker] RegenerateThemesForProjectJob missing projectId");
+        return;
+      }
+      const created = await identifyThemes(db, projectId);
+      console.log(`[worker] RegenerateThemesForProjectJob project=${projectId} themes=${created}`);
+      return;
+    }
+
     case "BuildAttackGroupsJob": {
       const allProjects = await db.select({ id: projects.id }).from(projects);
       for (const proj of allProjects) {

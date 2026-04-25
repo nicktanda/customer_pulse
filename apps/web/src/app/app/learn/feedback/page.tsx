@@ -30,6 +30,7 @@ import { FeedbackTableSortHeader } from "@/components/feedback/FeedbackTableSort
 import { FeedbackListRows, type FeedbackListRowModel } from "@/components/feedback/FeedbackListRows";
 import { FeedbackDetailBody } from "@/components/feedback/FeedbackDetailBody";
 import { FeedbackDetailPanelHeader } from "@/components/feedback/FeedbackDetailPanelHeader";
+import { FeedbackDrawerPanel } from "@/components/feedback/FeedbackDrawerPanel";
 import { bulkUpdateFeedbackAction } from "./actions";
 
 const PAGE_SIZE = 20;
@@ -269,12 +270,12 @@ export default async function FeedbackPage({
            */}
           <Link
             href={closePanelHref}
-            className="feedback-drawer-backdrop"
+            className="peek-drawer-backdrop"
             aria-label="Close detail panel"
           />
 
-          {/* Fixed overlay drawer — slides in from the right, single scroll context */}
-          <aside className="feedback-drawer-panel" aria-label="Feedback detail">
+          {/* Resizable overlay drawer — slides in from the right, single scroll context */}
+          <FeedbackDrawerPanel>
             {detailRow != null ? (
               <>
                 <FeedbackDetailPanelHeader
@@ -307,7 +308,7 @@ export default async function FeedbackPage({
                 closeHref={closePanelHref}
               />
             )}
-          </aside>
+          </FeedbackDrawerPanel>
         </>
       ) : null}
     </PageShell>

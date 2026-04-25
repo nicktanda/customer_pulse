@@ -6,9 +6,9 @@ import { projects, projectUsers } from "@customer-pulse/db/client";
 import {
   PageHeader,
   PageShell,
+  PeekDrawerPanel,
   PeekPanelNotFound,
   SimplePeekPanelHeader,
-  StickyDetailAside,
 } from "@/components/ui";
 import { projectsListHref } from "@/lib/projects-list-query";
 import { fetchProjectPageData } from "@/lib/project-page-data";
@@ -51,9 +51,6 @@ export default async function ProjectsPage({
     detailData = await fetchProjectPageData(db, userId, detailId);
   }
 
-  const listColClass =
-    detailData != null || detailId != null ? "col-12 col-lg-7 col-xl-8" : "col-12";
-
   return (
     <PageShell width="full">
       <PageHeader
@@ -66,25 +63,24 @@ export default async function ProjectsPage({
         }
       />
 
-      <div className="row g-3 align-items-start mt-4">
-        <div className={listColClass}>
-          <ul className="list-unstyled mb-0 d-flex flex-column gap-2">
-            {rows.length === 0 ? (
-              <li className="text-body-secondary small">
-                No projects yet.{" "}
-                <Link href="/app/projects/new" className="link-primary">
-                  Create one
-                </Link>
-                .
-              </li>
-            ) : (
-              <ProjectListCards rows={rowsForCards} selectedId={detailData?.project.id ?? null} />
-            )}
-          </ul>
-        </div>
+      <ul className="list-unstyled mb-0 d-flex flex-column gap-2 mt-4">
+        {rows.length === 0 ? (
+          <li className="text-body-secondary small">
+            No projects yet.{" "}
+            <Link href="/app/projects/new" className="link-primary">
+              Create one
+            </Link>
+            .
+          </li>
+        ) : (
+          <ProjectListCards rows={rowsForCards} selectedId={detailData?.project.id ?? null} />
+        )}
+      </ul>
 
-        {detailId != null ? (
-          <StickyDetailAside aria-label="Project detail">
+      {detailId != null ? (
+        <>
+          <Link href={closePanelHref} className="peek-drawer-backdrop" aria-label="Close detail panel" />
+          <PeekDrawerPanel storageKey="projects-drawer-width">
             {detailData != null ? (
               <>
                 <SimplePeekPanelHeader
@@ -99,13 +95,13 @@ export default async function ProjectsPage({
               </>
             ) : (
               <PeekPanelNotFound
-                message="No project found or you don’t have access."
+                message="No project found or you don't have access."
                 closeHref={closePanelHref}
               />
             )}
-          </StickyDetailAside>
-        ) : null}
-      </div>
+          </PeekDrawerPanel>
+        </>
+      ) : null}
     </PageShell>
   );
 }

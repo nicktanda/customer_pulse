@@ -5,6 +5,7 @@ import { getRequestDb } from "@/lib/db";
 import {
   feedbacks,
   insights,
+  pinnedReportCharts,
   reportingRequests,
   themes,
   ReportingOutputMode,
@@ -15,6 +16,8 @@ import { userHasProjectAccess } from "@/lib/project-access";
 import { PageHeader, PageShell, ProjectAccessDenied } from "@/components/ui";
 import { BreakdownBarChart, FeedbackVolumeLineChart } from "@/components/reporting/ReportingCharts";
 import { ReportingNlAssistant } from "@/components/reporting/ReportingNlAssistant";
+import { PinnedChartGrid } from "@/components/reporting/PinnedChartGrid";
+import { ReportingTabBar } from "@/components/reporting/ReportingTabBar";
 import { formatAppDateTime } from "@/lib/format-app-date";
 import {
   FEEDBACK_CATEGORY_LABELS,
@@ -28,6 +31,15 @@ const RANGE_DAYS = [7, 30, 90] as const;
 function parseRangeDays(raw: string | undefined): number {
   const n = Number.parseInt(raw ?? "30", 10);
   return RANGE_DAYS.includes(n as (typeof RANGE_DAYS)[number]) ? n : 30;
+}
+
+// The two tabs available on the Reporting page.
+const VALID_TABS = ["overview", "ask"] as const;
+type ReportingTab = (typeof VALID_TABS)[number];
+
+// Defaults to "overview" if the param is missing or invalid.
+function parseTab(raw: string | undefined): ReportingTab {
+  return VALID_TABS.includes(raw as ReportingTab) ? (raw as ReportingTab) : "overview";
 }
 
 function statusText(s: number): string {
@@ -71,6 +83,7 @@ export default async function ReportingPage({
   const projectId = await getCurrentProjectIdForUser(userId);
   const sp = await searchParams;
   const rangeDays = parseRangeDays(typeof sp.range === "string" ? sp.range : undefined);
+  const activeTab = parseTab(typeof sp.tab === "string" ? sp.tab : undefined);
 
   if (projectId == null) {
     return (
@@ -188,6 +201,22 @@ export default async function ReportingPage({
     .orderBy(desc(reportingRequests.createdAt))
     .limit(15);
 
+  // Pinned charts are loaded server-side so the grid is present on first render.
+  const pinnedCharts = await db
+    .select({
+      id: pinnedReportCharts.id,
+      title: pinnedReportCharts.title,
+      prompt: pinnedReportCharts.prompt,
+      chartJson: pinnedReportCharts.chartJson,
+      narrative: pinnedReportCharts.narrative,
+      rangeDays: pinnedReportCharts.rangeDays,
+      pinnedAt: pinnedReportCharts.pinnedAt,
+    })
+    .from(pinnedReportCharts)
+    .where(eq(pinnedReportCharts.projectId, projectId))
+    .orderBy(desc(pinnedReportCharts.pinnedAt))
+    .limit(20);
+
   const dailyVolume = dailyRows.map((r) => ({ day: r.day, count: r.c }));
 
   return (
@@ -202,162 +231,195 @@ export default async function ReportingPage({
         }
       />
 
-      <div className="d-flex flex-wrap gap-2 align-items-center">
-        <span className="small text-body-secondary me-1">Time range:</span>
-        {RANGE_DAYS.map((d) => (
-          <Link
-            key={d}
-            href={`/app/reporting?range=${d}`}
-            className={`btn btn-sm ${d === rangeDays ? "btn-primary" : "btn-outline-secondary"}`}
-            title={`Show analytics for the last ${d} days`}
-            aria-label={`Last ${d} days${d === rangeDays ? ", selected" : ""}`}
-            aria-current={d === rangeDays ? "page" : undefined}
-          >
-            <span className="d-none d-sm-inline">Last {d} days</span>
-            <span className="d-sm-none">{d}d</span>
-          </Link>
-        ))}
-      </div>
+      {/* Tab navigation bar */}
+      <ReportingTabBar activeTab={activeTab} rangeDays={rangeDays} />
 
-      <section className="row g-3">
-        <div className="col-sm-6 col-md-4">
-          <div className="card h-100 border-secondary-subtle shadow-sm">
-            <div className="card-body">
-              <p className="small fw-medium text-uppercase text-body-secondary mb-1">Feedback in window</p>
-              <p className="h4 mb-0 text-body-emphasis">{totalRow?.c ?? 0}</p>
-            </div>
+      {/* ── Overview tab ────────────────────────────────────────────── */}
+      {activeTab === "overview" && (
+        <>
+          {/* Time range controls — only relevant to the analytics/charts on this tab */}
+          <div className="d-flex flex-wrap gap-2 align-items-center">
+            <span className="small text-body-secondary me-1">Time range:</span>
+            {RANGE_DAYS.map((d) => (
+              <Link
+                key={d}
+                href={`/app/reporting?range=${d}&tab=overview`}
+                className={`btn btn-sm ${d === rangeDays ? "btn-primary" : "btn-outline-secondary"}`}
+                title={`Show analytics for the last ${d} days`}
+                aria-label={`Last ${d} days${d === rangeDays ? ", selected" : ""}`}
+                aria-current={d === rangeDays ? "page" : undefined}
+              >
+                <span className="d-none d-sm-inline">Last {d} days</span>
+                <span className="d-sm-none">{d}d</span>
+              </Link>
+            ))}
           </div>
-        </div>
-        <div className="col-sm-6 col-md-4">
-          <div className="card h-100 border-secondary-subtle shadow-sm">
-            <div className="card-body">
-              <p className="small fw-medium text-uppercase text-body-secondary mb-1">Themes (created in window)</p>
-              <p className="h4 mb-0 text-body-emphasis">{themeCountRow?.c ?? 0}</p>
+
+          <section className="row g-3">
+            <div className="col-sm-6 col-md-4">
+              <div className="card h-100 border-secondary-subtle shadow-sm">
+                <div className="card-body">
+                  <p className="small fw-medium text-uppercase text-body-secondary mb-1">Feedback in window</p>
+                  <p className="h4 mb-0 text-body-emphasis">{totalRow?.c ?? 0}</p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="col-sm-6 col-md-4">
-          <div className="card h-100 border-secondary-subtle shadow-sm">
-            <div className="card-body">
-              <p className="small fw-medium text-uppercase text-body-secondary mb-1">Insights (created in window)</p>
-              <p className="h4 mb-0 text-body-emphasis">{insightCountRow?.c ?? 0}</p>
+            <div className="col-sm-6 col-md-4">
+              <div className="card h-100 border-secondary-subtle shadow-sm">
+                <div className="card-body">
+                  <p className="small fw-medium text-uppercase text-body-secondary mb-1">Themes (created in window)</p>
+                  <p className="h4 mb-0 text-body-emphasis">{themeCountRow?.c ?? 0}</p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="card border-secondary-subtle shadow-sm">
-        <div className="card-body">
-          <h2 className="h5 text-body-emphasis">Feedback volume by day</h2>
-          <FeedbackVolumeLineChart data={dailyVolume} />
-        </div>
-      </section>
-
-      <section className="row g-4">
-        <div className="col-lg-6">
-          <BreakdownBarChart
-            title="By category"
-            rows={categoryRows.map((r) => ({
-              key: breakdownLabel(FEEDBACK_CATEGORY_LABELS, r.category, "Category"),
-              count: r.c,
-            }))}
-          />
-        </div>
-        <div className="col-lg-6">
-          <BreakdownBarChart
-            title="By priority"
-            rows={priorityRows.map((r) => ({
-              key: breakdownLabel(FEEDBACK_PRIORITY_LABELS, r.priority, "Priority"),
-              count: r.c,
-            }))}
-          />
-        </div>
-        <div className="col-lg-6">
-          <BreakdownBarChart
-            title="By status"
-            rows={statusRows.map((r) => ({
-              key: breakdownLabel(FEEDBACK_STATUS_LABELS, r.status, "Status"),
-              count: r.c,
-            }))}
-          />
-        </div>
-        <div className="col-lg-6">
-          <BreakdownBarChart
-            title="By source"
-            rows={sourceRows.map((r) => ({
-              key: breakdownLabel(FEEDBACK_SOURCE_LABELS, r.source, "Source"),
-              count: r.c,
-            }))}
-          />
-        </div>
-      </section>
-
-      <section className="row g-4">
-        <div className="col-lg-6">
-          <div className="card h-100 border-secondary-subtle shadow-sm">
-            <div className="card-body">
-              <h2 className="h6 text-body-emphasis">Top themes</h2>
-              <ul className="list-group list-group-flush small mt-2">
-                {topThemes.length === 0 ? (
-                  <li className="list-group-item text-body-secondary">None in this window.</li>
-                ) : (
-                  topThemes.map((t) => (
-                    <li key={t.id} className="list-group-item d-flex justify-content-between">
-                      <span>{t.name}</span>
-                      <span className="text-body-secondary">score {t.priorityScore}</span>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
-        <div className="col-lg-6">
-          <div className="card h-100 border-secondary-subtle shadow-sm">
-            <div className="card-body">
-              <h2 className="h6 text-body-emphasis">Recent insights</h2>
-              <ul className="list-group list-group-flush small mt-2">
-                {topInsights.length === 0 ? (
-                  <li className="list-group-item text-body-secondary">None in this window.</li>
-                ) : (
-                  topInsights.map((i) => (
-                    <li key={i.id} className="list-group-item">
-                      {i.title}
-                    </li>
-                  ))
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <ReportingNlAssistant />
-
-      <section className="card border-secondary-subtle shadow-sm">
-        <div className="card-body">
-          <h2 className="h5 text-body-emphasis">Recent questions</h2>
-          <p className="small text-body-secondary">
-            History of natural-language requests for this project (newest first).
-          </p>
-          <ul className="list-group list-group-flush mt-3">
-            {nlHistory.length === 0 ? (
-              <li className="list-group-item text-body-secondary small">No requests yet.</li>
-            ) : (
-              nlHistory.map((h) => (
-                <li key={h.id} className="list-group-item small">
-                  <span className="fw-medium">{outputModeText(h.outputMode)}</span>
-                  <span className="text-body-secondary"> · {statusText(h.status)}</span>
-                  <p className="mb-0 mt-1">{h.prompt}</p>
-                  <p className="text-body-tertiary mb-0 mt-1" style={{ fontSize: "0.75rem" }}>
-                    {formatAppDateTime(h.createdAt)}
+            <div className="col-sm-6 col-md-4">
+              <div className="card h-100 border-secondary-subtle shadow-sm">
+                <div className="card-body">
+                  <p className="small fw-medium text-uppercase text-body-secondary mb-1">
+                    Insights (created in window)
                   </p>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      </section>
+                  <p className="h4 mb-0 text-body-emphasis">{insightCountRow?.c ?? 0}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="card border-secondary-subtle shadow-sm">
+            <div className="card-body">
+              <h2 className="h5 text-body-emphasis">Feedback volume by day</h2>
+              <FeedbackVolumeLineChart data={dailyVolume} />
+            </div>
+          </section>
+
+          <section className="row g-4">
+            <div className="col-lg-6">
+              <BreakdownBarChart
+                title="By category"
+                rows={categoryRows.map((r) => ({
+                  key: breakdownLabel(FEEDBACK_CATEGORY_LABELS, r.category, "Category"),
+                  count: r.c,
+                }))}
+              />
+            </div>
+            <div className="col-lg-6">
+              <BreakdownBarChart
+                title="By priority"
+                rows={priorityRows.map((r) => ({
+                  key: breakdownLabel(FEEDBACK_PRIORITY_LABELS, r.priority, "Priority"),
+                  count: r.c,
+                }))}
+              />
+            </div>
+            <div className="col-lg-6">
+              <BreakdownBarChart
+                title="By status"
+                rows={statusRows.map((r) => ({
+                  key: breakdownLabel(FEEDBACK_STATUS_LABELS, r.status, "Status"),
+                  count: r.c,
+                }))}
+              />
+            </div>
+            <div className="col-lg-6">
+              <BreakdownBarChart
+                title="By source"
+                rows={sourceRows.map((r) => ({
+                  key: breakdownLabel(FEEDBACK_SOURCE_LABELS, r.source, "Source"),
+                  count: r.c,
+                }))}
+              />
+            </div>
+          </section>
+
+          <section className="row g-4">
+            <div className="col-lg-6">
+              <div className="card h-100 border-secondary-subtle shadow-sm">
+                <div className="card-body">
+                  <h2 className="h6 text-body-emphasis">Top themes</h2>
+                  <ul className="list-group list-group-flush small mt-2">
+                    {topThemes.length === 0 ? (
+                      <li className="list-group-item text-body-secondary">None in this window.</li>
+                    ) : (
+                      topThemes.map((t) => (
+                        <li key={t.id} className="list-group-item d-flex justify-content-between">
+                          <span>{t.name}</span>
+                          <span className="text-body-secondary">score {t.priorityScore}</span>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="col-lg-6">
+              <div className="card h-100 border-secondary-subtle shadow-sm">
+                <div className="card-body">
+                  <h2 className="h6 text-body-emphasis">Recent insights</h2>
+                  <ul className="list-group list-group-flush small mt-2">
+                    {topInsights.length === 0 ? (
+                      <li className="list-group-item text-body-secondary">None in this window.</li>
+                    ) : (
+                      topInsights.map((i) => (
+                        <li key={i.id} className="list-group-item">
+                          {i.title}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Pinned charts live on the Overview so your saved dashboard is all in one place */}
+          <section>
+            <h2 className="h5 text-body-emphasis mb-3">Pinned charts</h2>
+            <PinnedChartGrid
+              charts={pinnedCharts.map((c) => ({
+                id: c.id,
+                title: c.title,
+                prompt: c.prompt,
+                chartJson: c.chartJson as Record<string, unknown>,
+                narrative: c.narrative,
+                rangeDays: c.rangeDays,
+                pinnedAt: c.pinnedAt?.toISOString() ?? new Date().toISOString(),
+              }))}
+            />
+          </section>
+        </>
+      )}
+
+      {/* ── Ask AI tab ──────────────────────────────────────────────── */}
+      {activeTab === "ask" && (
+        <>
+          {/* NL assistant is at the top of this tab — the whole point of the tab is to reach it quickly */}
+          <ReportingNlAssistant defaultRangeDays={rangeDays} />
+
+          <section className="card border-secondary-subtle shadow-sm">
+            <div className="card-body">
+              <h2 className="h5 text-body-emphasis">Recent questions</h2>
+              <p className="small text-body-secondary">
+                History of natural-language requests for this project (newest first).
+              </p>
+              <ul className="list-group list-group-flush mt-3">
+                {nlHistory.length === 0 ? (
+                  <li className="list-group-item text-body-secondary small">No requests yet.</li>
+                ) : (
+                  nlHistory.map((h) => (
+                    <li key={h.id} className="list-group-item small">
+                      <span className="fw-medium">{outputModeText(h.outputMode)}</span>
+                      <span className="text-body-secondary"> · {statusText(h.status)}</span>
+                      <p className="mb-0 mt-1">{h.prompt}</p>
+                      <p className="text-body-tertiary mb-0 mt-1" style={{ fontSize: "0.75rem" }}>
+                        {formatAppDateTime(h.createdAt)}
+                      </p>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </section>
+        </>
+      )}
     </PageShell>
   );
 }

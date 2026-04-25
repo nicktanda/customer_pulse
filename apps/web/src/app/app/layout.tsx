@@ -13,10 +13,9 @@ import {
 import { signOutAction } from "./actions";
 import { ensureCurrentProjectCookie } from "@/lib/current-project";
 import { ResponsiveSidebar } from "./ResponsiveSidebar";
+import { MobileTopBar } from "./MobileTopBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "@/components/SidebarNav";
-import { ModeBar } from "@/components/ModeBar";
-
 function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
   const workspaceItems: SidebarNavItem[] = [];
   if (!onboardingComplete) {
@@ -44,6 +43,16 @@ function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
         { href: "/app/reporting", label: "Reporting" },
         { href: "/app/strategy", label: "Strategy" },
         { href: "/app/pulse-reports", label: "Pulse reports" },
+      ],
+    },
+    {
+      /*
+       * Discover — validate an insight before committing to a spec.
+       * Activities (interview guides, surveys, etc.) live here.
+       */
+      label: "Discover",
+      items: [
+        { href: "/app/discover", label: "Activities" },
       ],
     },
     {
@@ -231,8 +240,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
        * to include it themselves.
        */}
       <div className="d-flex flex-column flex-grow-1 min-w-0">
-        <ModeBar />
-        <main className="flex-grow-1 bg-body-tertiary px-4 pb-4 pt-5 p-lg-5 app-main-pane">
+        <MobileTopBar />
+        <main className="flex-grow-1 bg-body-tertiary px-4 pb-4 pt-3 p-lg-5 app-main-pane">
           {children}
         </main>
       </div>

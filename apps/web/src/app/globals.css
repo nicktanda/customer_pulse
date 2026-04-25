@@ -120,6 +120,170 @@
 }
 
 /*
+ * Bootstrap 5 hard-codes #0d6efd (blue) directly on several component selectors
+ * rather than reading --bs-primary, so our :root override alone is not enough.
+ * We re-declare those same selectors here (after the Bootstrap import) with
+ * ember values so they win via cascade.
+ *
+ * Components covered: btn-primary, btn-outline-primary, form-check-input,
+ * pagination active, list-group active.
+ */
+
+/* --- Filled primary button --- */
+.btn-primary {
+  --bs-btn-color:               #fff;
+  --bs-btn-bg:                  #C4501A;
+  --bs-btn-border-color:        #C4501A;
+  --bs-btn-hover-color:         #fff;
+  --bs-btn-hover-bg:            #A8421A;
+  --bs-btn-hover-border-color:  #A8421A;
+  --bs-btn-focus-shadow-rgb:    196, 80, 26;
+  --bs-btn-active-color:        #fff;
+  --bs-btn-active-bg:           #8B2A0F;
+  --bs-btn-active-border-color: #8B2A0F;
+  --bs-btn-disabled-color:      #fff;
+  --bs-btn-disabled-bg:         #C4501A;
+  --bs-btn-disabled-border-color:#C4501A;
+}
+
+/* --- Outline primary button --- */
+.btn-outline-primary {
+  --bs-btn-color:               #C4501A;
+  --bs-btn-border-color:        #C4501A;
+  --bs-btn-hover-color:         #fff;
+  --bs-btn-hover-bg:            #C4501A;
+  --bs-btn-hover-border-color:  #C4501A;
+  --bs-btn-focus-shadow-rgb:    196, 80, 26;
+  --bs-btn-active-color:        #fff;
+  --bs-btn-active-bg:           #C4501A;
+  --bs-btn-active-border-color: #C4501A;
+  --bs-btn-disabled-color:      #C4501A;
+  --bs-btn-disabled-border-color:#C4501A;
+}
+
+/* Dark mode: use the brighter ember token on dark surfaces */
+[data-bs-theme="dark"] .btn-primary {
+  --bs-btn-bg:                  #E8793A;
+  --bs-btn-border-color:        #E8793A;
+  --bs-btn-hover-bg:            #EE8A4A;
+  --bs-btn-hover-border-color:  #EE8A4A;
+  --bs-btn-focus-shadow-rgb:    232, 121, 58;
+  --bs-btn-active-bg:           #C4501A;
+  --bs-btn-active-border-color: #C4501A;
+  --bs-btn-disabled-bg:         #E8793A;
+  --bs-btn-disabled-border-color:#E8793A;
+}
+
+[data-bs-theme="dark"] .btn-outline-primary {
+  --bs-btn-color:               #E8793A;
+  --bs-btn-border-color:        #E8793A;
+  --bs-btn-hover-bg:            #E8793A;
+  --bs-btn-hover-border-color:  #E8793A;
+  --bs-btn-focus-shadow-rgb:    232, 121, 58;
+  --bs-btn-active-bg:           #E8793A;
+  --bs-btn-active-border-color: #E8793A;
+  --bs-btn-disabled-color:      #E8793A;
+  --bs-btn-disabled-border-color:#E8793A;
+}
+
+/* --- Form checkboxes and radio buttons checked state ---
+ * Bootstrap hard-codes #0d6efd as background-color here (not a CSS variable),
+ * so we must override the property directly.
+ */
+.form-check-input:checked {
+  background-color: #C4501A;
+  border-color:     #C4501A;
+}
+
+.form-check-input[type=checkbox]:indeterminate {
+  background-color: #C4501A;
+  border-color:     #C4501A;
+}
+
+[data-bs-theme="dark"] .form-check-input:checked {
+  background-color: #E8793A;
+  border-color:     #E8793A;
+}
+
+[data-bs-theme="dark"] .form-check-input[type=checkbox]:indeterminate {
+  background-color: #E8793A;
+  border-color:     #E8793A;
+}
+
+/* Focus ring on form-check-input */
+.form-check-input:focus {
+  border-color: #C4501A;
+  box-shadow:   0 0 0 0.25rem rgba(196, 80, 26, 0.25);
+}
+
+[data-bs-theme="dark"] .form-check-input:focus {
+  border-color: #E8793A;
+  box-shadow:   0 0 0 0.25rem rgba(232, 121, 58, 0.25);
+}
+
+/* --- Pagination active page --- */
+.pagination {
+  --bs-pagination-active-bg:           #C4501A;
+  --bs-pagination-active-border-color: #C4501A;
+  --bs-pagination-focus-box-shadow:    0 0 0 0.25rem rgba(196, 80, 26, 0.25);
+  --bs-pagination-focus-color:         #C4501A;
+}
+
+[data-bs-theme="dark"] .pagination {
+  --bs-pagination-active-bg:           #E8793A;
+  --bs-pagination-active-border-color: #E8793A;
+  --bs-pagination-focus-box-shadow:    0 0 0 0.25rem rgba(232, 121, 58, 0.25);
+  --bs-pagination-focus-color:         #E8793A;
+}
+
+/* --- List-group active item --- */
+.list-group {
+  --bs-list-group-active-bg:           #C4501A;
+  --bs-list-group-active-border-color: #C4501A;
+}
+
+[data-bs-theme="dark"] .list-group {
+  --bs-list-group-active-bg:           #E8793A;
+  --bs-list-group-active-border-color: #E8793A;
+}
+
+/* --- .link-primary hover / focus ---
+ * Bootstrap hard-codes RGBA(10, 88, 202, …) as the hover color on .link-primary
+ * (not a CSS variable), so our :root override doesn't reach it.
+ * We use --bs-link-hover-color-rgb (already themed: ember-deep in light mode,
+ * ember-light in dark mode) so hover stays visually distinct from resting state.
+ */
+.link-primary:hover,
+.link-primary:focus {
+  color: RGBA(var(--bs-link-hover-color-rgb), var(--bs-link-opacity, 1)) !important;
+  -webkit-text-decoration-color: RGBA(var(--bs-link-hover-color-rgb), var(--bs-link-underline-opacity, 1)) !important;
+  text-decoration-color: RGBA(var(--bs-link-hover-color-rgb), var(--bs-link-underline-opacity, 1)) !important;
+}
+
+/* --- Text selection highlight --- */
+::selection {
+  background-color: rgba(196, 80, 26, 0.2);
+}
+
+[data-bs-theme="dark"] ::selection {
+  background-color: rgba(232, 121, 58, 0.25);
+}
+
+/*
+ * accent-color controls the native browser tint for checkboxes, radios,
+ * range sliders, and progress elements. Without this, Chrome/Firefox fall back
+ * to system blue regardless of Bootstrap's CSS.
+ */
+:root,
+[data-bs-theme="light"] {
+  accent-color: #C4501A;
+}
+
+[data-bs-theme="dark"] {
+  accent-color: #E8793A;
+}
+
+/*
  * Sidebar nav pills: Bootstrap hard-codes the active pill background to blue.
  * Point those variables at our primary token so active state stays on-brand.
  */
@@ -163,17 +327,6 @@ a:hover,
 .app-sidebar a:hover,
 .app-sidebar a:focus-visible {
   text-decoration: none;
-}
-
-/*
- * On small screens the sidebar collapses and a fixed "Menu" button appears top-left.
- * Give the mode bar enough left padding to stop the button overlapping the first tab.
- * At lg+ the sidebar is always visible so the button is hidden and normal padding resumes.
- */
-@media (max-width: 991.98px) {
-  .mode-bar-shell {
-    padding-left: 4.5rem !important;
-  }
 }
 
 /*
@@ -583,6 +736,73 @@ button.peek-panel-icon-btn:hover {
 
 .app-back-link__icon {
   opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Peek drawer (resizable side panel — used on Feedback and Insights list pages)
+   Clicking a row adds ?detail=<id> to the URL; the panel slides in from the
+   right over the list. A semi-transparent backdrop link closes it on click.
+   --------------------------------------------------------------------------- */
+
+/*
+ * Backdrop: covers the full viewport so clicking outside the drawer closes it.
+ * It's rendered as a <Link> so the browser navigates without any JS.
+ */
+.peek-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1040;
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+[data-bs-theme="dark"] .peek-drawer-backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/*
+ * The drawer panel itself — fixed to the right edge, full viewport height.
+ * Width is driven by an inline style set by PeekDrawerPanel.tsx (resizable).
+ * The CSS here handles positioning, scroll, appearance, and the drag handle gap.
+ */
+.peek-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1045;
+  min-width: 280px;
+  max-width: min(100vw, 900px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  background-color: var(--bs-body-bg);
+  border-left: 1px solid var(--bs-border-color);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+  /* Extra left padding so content clears the 6px drag handle strip */
+  padding: 1.25rem 1.5rem 2rem calc(1.5rem + 6px);
+}
+
+[data-bs-theme="dark"] .peek-drawer-panel {
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * Drag handle — a thin strip on the left edge of the panel.
+ * position:fixed creates a containing block, so position:absolute works here.
+ */
+.peek-drawer-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 1;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.peek-drawer-resize-handle:hover {
+  background-color: rgba(var(--bs-primary-rgb), 0.25);
 }
 
 /* ---------------------------------------------------------------------------

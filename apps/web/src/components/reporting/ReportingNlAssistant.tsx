@@ -15,6 +15,18 @@ type PollPayload = {
   errorMessage: string | null;
 };
 
+/** Quick-start chip prompts shown above the textarea to inspire new users. */
+const QUICK_PROMPTS = [
+  "Feedback by category (pie)",
+  "Volume by day",
+  "Top themes by score",
+  "Bugs vs features over time",
+];
+
+/** Allowed date range options shown in the assistant card. */
+const RANGE_OPTIONS = [7, 30, 90] as const;
+type RangeOption = (typeof RANGE_OPTIONS)[number];
+
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) {
@@ -38,17 +50,25 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
  * Ask the worker (via BullMQ) to answer in plain text or return chart-ready JSON + narrative.
  * Polls until done/failed, then refreshes the server-rendered history list.
  * User can cancel a long-running poll; progress is shown with a live region for screen readers.
+ *
+ * Props:
+ *   defaultRangeDays - the page-level active time range, used as the default for the date selector.
  */
-export function ReportingNlAssistant() {
+export function ReportingNlAssistant({ defaultRangeDays = 30 }: { defaultRangeDays?: number }) {
   const router = useRouter();
   const abortRef = useRef<AbortController | null>(null);
   const [prompt, setPrompt] = useState("");
   const [outputMode, setOutputMode] = useState<"answer" | "report_chart">("answer");
+  const [rangeDays, setRangeDays] = useState<RangeOption>(
+    RANGE_OPTIONS.includes(defaultRangeDays as RangeOption) ? (defaultRangeDays as RangeOption) : 30,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PollPayload | null>(null);
   /** Short status line while the request is in flight (also announced politely to assistive tech). */
   const [progressText, setProgressText] = useState("");
+  const [pinningIndex, setPinningIndex] = useState<number | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
 
   const poll = useCallback(async (id: number, signal: AbortSignal): Promise<PollPayload> => {
     const maxAttempts = 120;
@@ -68,10 +88,10 @@ export function ReportingNlAssistant() {
           : data.status === "pending"
             ? "Queued"
             : "Processing";
-      setProgressText(`${phaseHint}… (~${waitSeconds}s elapsed)`);
+      setProgressText(`${phaseHint}... (~${waitSeconds}s elapsed)`);
       await sleep(1500, signal);
     }
-    throw new Error("Timed out waiting for the report — check the worker and Redis.");
+    throw new Error("Timed out waiting for the report -- check the worker and Redis.");
   }, []);
 
   const onCancel = () => {
@@ -82,16 +102,17 @@ export function ReportingNlAssistant() {
     e.preventDefault();
     setError(null);
     setResult(null);
+    setPinError(null);
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
     setLoading(true);
-    setProgressText("Sending your question…");
+    setProgressText("Sending your question...");
     try {
       const res = await fetch("/api/app/reporting/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt, outputMode }),
+        body: JSON.stringify({ prompt, outputMode, rangeDays }),
         signal,
       });
       const data = (await res.json()) as { id?: number; error?: string; status?: string };
@@ -101,7 +122,7 @@ export function ReportingNlAssistant() {
       if (data.id == null) {
         throw new Error("No request id returned");
       }
-      setProgressText("Job started — waiting for the worker…");
+      setProgressText("Job started -- waiting for the worker...");
       const final = await poll(data.id, signal);
       setResult(final);
       setProgressText("");
@@ -120,6 +141,30 @@ export function ReportingNlAssistant() {
     }
   };
 
+  /** Called when the user clicks "Pin to page" on a specific chart card. */
+  const onPin = async (chartIndex: number) => {
+    if (!result?.id) return;
+    setPinningIndex(chartIndex);
+    setPinError(null);
+    try {
+      const res = await fetch("/api/app/reporting/pin", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId: result.id, chartIndex }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      // Refresh so the PinnedChartGrid above updates.
+      router.refresh();
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPinningIndex(null);
+    }
+  };
+
   const structured =
     result?.outputMode === "report_chart" && result.resultStructured
       ? parseReportStructured(result.resultStructured)
@@ -130,13 +175,32 @@ export function ReportingNlAssistant() {
       <div className="card-body">
         <h2 className="h5 text-body-emphasis">Ask about your feedback (natural language)</h2>
         <p className="small text-body-secondary">
-          Questions run in the background on the worker using a <strong>fixed summary</strong> of your project’s
-          feedback (counts, recent snippets, themes) — not the full database. Choose a quick answer or a report with
-          charts.
+          Questions run in the background on the worker using a <strong>fixed summary</strong> of your
+          project&apos;s feedback (counts, recent snippets, themes) -- not the full database. Choose a quick
+          answer or generate interactive graphs.
         </p>
+
+        {/* Quick-start prompt chips -- click to populate the textarea and switch to graph mode */}
+        <div className="d-flex flex-wrap gap-2 mb-3 mt-2">
+          {QUICK_PROMPTS.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => {
+                setPrompt(chip);
+                setOutputMode("report_chart");
+              }}
+              disabled={loading}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+
         <form
           onSubmit={(e) => void onSubmit(e)}
-          className="d-flex flex-column gap-3 mt-3"
+          className="d-flex flex-column gap-3"
           aria-busy={loading}
         >
           <div>
@@ -149,11 +213,12 @@ export function ReportingNlAssistant() {
               rows={3}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder='e.g. "What themes stand out this month?" or "Summarize volume vs last week"'
+              placeholder='e.g. "Pie chart of feedback by category" or "Volume by day, last 14 days"'
               required
               disabled={loading}
             />
           </div>
+
           <div className="d-flex flex-wrap gap-3 align-items-center">
             <span className="small fw-medium text-body-secondary">Output</span>
             <div className="form-check">
@@ -181,10 +246,28 @@ export function ReportingNlAssistant() {
                 disabled={loading}
               />
               <label className="form-check-label small" htmlFor="mode_report">
-                Report + charts (structured JSON the UI can graph)
+                Generate graph(s)
               </label>
             </div>
           </div>
+
+          {/* Date range selector -- defaults to the page-level range passed in via props */}
+          <div className="d-flex flex-wrap gap-2 align-items-center">
+            <span className="small fw-medium text-body-secondary">Date range</span>
+            {RANGE_OPTIONS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                className={`btn btn-sm ${d === rangeDays ? "btn-primary" : "btn-outline-secondary"}`}
+                onClick={() => setRangeDays(d)}
+                disabled={loading}
+                aria-pressed={d === rangeDays}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
+
           <div className="d-flex flex-wrap align-items-center gap-2">
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? (
@@ -194,7 +277,7 @@ export function ReportingNlAssistant() {
                     role="status"
                     aria-hidden="true"
                   />
-                  Working…
+                  Working...
                 </>
               ) : (
                 "Run"
@@ -220,6 +303,18 @@ export function ReportingNlAssistant() {
           </InlineAlert>
         ) : null}
 
+        {pinError ? (
+          <InlineAlert variant="warning" className="mt-3">
+            Could not pin chart: {pinError}
+          </InlineAlert>
+        ) : null}
+
+        {pinningIndex !== null ? (
+          <p className="small text-body-secondary mb-0 mt-2" role="status" aria-live="polite">
+            Pinning chart...
+          </p>
+        ) : null}
+
         {result?.status === "failed" && result.errorMessage ? (
           <InlineAlert variant="warning" className="mt-3" role="status">
             {result.errorMessage}
@@ -238,7 +333,7 @@ export function ReportingNlAssistant() {
             {structured && structured.charts.length > 0 ? (
               <div className="mt-4">
                 <h3 className="h6 text-body-emphasis">Charts</h3>
-                <NlResultCharts structured={structured} />
+                <NlResultCharts structured={structured} onPin={onPin} />
               </div>
             ) : null}
           </div>

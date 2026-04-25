@@ -5,10 +5,10 @@ import {
   PageHeader,
   PageShell,
   PaginationNav,
+  PeekDrawerPanel,
   PeekPanelNotFound,
   ProjectAccessDenied,
   SimplePeekPanelHeader,
-  StickyDetailAside,
 } from "@/components/ui";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
@@ -94,9 +94,6 @@ export default async function PulseReportsPage({
     detailData = await fetchPulseReportPageData(db, projectId, detailId);
   }
 
-  const listColClass =
-    detailData != null || detailId != null ? "col-12 col-lg-7 col-xl-8" : "col-12";
-
   return (
     <PageShell width="full">
       <PageHeader
@@ -110,7 +107,7 @@ export default async function PulseReportsPage({
             choose who receives the daily message.{" "}
             {canEdit ? (
               <span className="text-body-secondary">
-                “Queue daily pulse” sends to those recipients when the worker and mailer are configured.
+                &ldquo;Queue daily pulse&rdquo; sends to those recipients when the worker and mailer are configured.
               </span>
             ) : null}
           </>
@@ -140,26 +137,25 @@ export default async function PulseReportsPage({
         </InlineAlert>
       ) : null}
 
-      <div className="row g-3 align-items-start mt-4">
-        <div className={listColClass}>
-          <ul className="list-group shadow-sm">
-            {rows.length === 0 ? (
-              <li className="list-group-item text-body-secondary small">No reports yet.</li>
-            ) : (
-              <PulseReportListRows rows={rowsForList} selectedId={detailData?.row.id ?? null} />
-            )}
-          </ul>
+      <ul className="list-group shadow-sm mt-4">
+        {rows.length === 0 ? (
+          <li className="list-group-item text-body-secondary small">No reports yet.</li>
+        ) : (
+          <PulseReportListRows rows={rowsForList} selectedId={detailData?.row.id ?? null} />
+        )}
+      </ul>
 
-          <PaginationNav
-            className="mt-3"
-            prevHref={prevHref}
-            nextHref={nextHref}
-            status={`Page ${page} of ${totalPages}`}
-          />
-        </div>
+      <PaginationNav
+        className="mt-3"
+        prevHref={prevHref}
+        nextHref={nextHref}
+        status={`Page ${page} of ${totalPages}`}
+      />
 
-        {detailId != null ? (
-          <StickyDetailAside aria-label="Pulse report detail">
+      {detailId != null ? (
+        <>
+          <Link href={closePanelHref} className="peek-drawer-backdrop" aria-label="Close detail panel" />
+          <PeekDrawerPanel storageKey="pulse-reports-drawer-width">
             {detailData != null ? (
               <>
                 <SimplePeekPanelHeader
@@ -194,9 +190,9 @@ export default async function PulseReportsPage({
                 closeHref={closePanelHref}
               />
             )}
-          </StickyDetailAside>
-        ) : null}
-      </div>
+          </PeekDrawerPanel>
+        </>
+      ) : null}
     </PageShell>
   );
 }

@@ -13,7 +13,8 @@
     "./control-plane-schema": "./src/control-plane-schema.ts",
     "./tenant-connection-manager": "./src/tenant-connection-manager.ts",
     "./neon-provisioner": "./src/neon-provisioner.ts",
-    "./queries/specs": "./src/queries/specs.ts"
+    "./queries/specs": "./src/queries/specs.ts",
+    "./queries/discovery": "./src/queries/discovery.ts"
   },
   "scripts": {
     "build": "tsc",

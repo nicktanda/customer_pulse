@@ -69,9 +69,25 @@ export default async function InsightShowPage({ params }: { params: Promise<{ id
           </>
         }
         back={{ href: "/app/learn/insights", label: "Insights" }}
+        actions={
+          <div className="d-flex gap-2 flex-wrap">
+            <Link
+              href={`/app/discover/insights/${row.id}`}
+              className="btn btn-sm btn-outline-secondary"
+            >
+              Start Discovery
+            </Link>
+            <Link
+              href={`/app/build/specs/new?from_insight=${row.id}`}
+              className="btn btn-sm btn-primary"
+            >
+              Create spec
+            </Link>
+          </div>
+        }
       />
 
-      <InsightDetailBody row={row} linkedFeedback={linkedFeedback} />
+      <InsightDetailBody row={row} linkedFeedback={linkedFeedback} showSpecCta={false} />
     </PageShell>
   );
 }

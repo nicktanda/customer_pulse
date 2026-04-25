@@ -4,6 +4,7 @@
  * Insight cards on `/app/insights`: click anywhere on the card (except inner links) to open `?detail=id`.
  */
 import Link from "next/link";
+import type { MouseEvent } from "react";
 import { formatAppDateTime } from "@/lib/format-app-date";
 import { useDetailHrefNavigation } from "@/lib/use-detail-href-navigation";
 import {
@@ -144,6 +145,24 @@ export function InsightListCards({
                   <span className={`badge rounded-pill ${insightStatusBadgeClass(row.status)}`}>
                     {insightStatusLabel(row.status)}
                   </span>
+                </div>
+
+                {/*
+                 * Quick "Create spec" action at the card footer.
+                 * stopPropagation prevents the article's onClick (which opens the
+                 * peek panel) from also firing when the user clicks this button.
+                 */}
+                <div
+                  className="mt-3 pt-2 d-flex justify-content-end"
+                  style={{ borderTop: "1px solid var(--bs-border-color-translucent)" }}
+                >
+                  <Link
+                    href={`/app/build/specs/new?from_insight=${row.id}`}
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={(e: MouseEvent) => e.stopPropagation()}
+                  >
+                    Create spec →
+                  </Link>
                 </div>
               </div>
             </article>
