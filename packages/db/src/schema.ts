@@ -576,6 +576,41 @@ export const specInsights = pgTable(
   ],
 );
 
+/**
+ * discovery_activities — research tasks linked to an insight.
+ *
+ * Each row represents one discovery activity (interview guide, survey, etc.)
+ * created by a PM on the Discover tab. The activityType integer maps to
+ * DiscoveryActivityType in enums.ts; status maps to DiscoveryActivityStatus.
+ */
+export const discoveryActivities = pgTable(
+  "discovery_activities",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    insightId: bigint("insight_id", { mode: "number" }).notNull(),
+    /** Integer aligned with DiscoveryActivityType enum — e.g. 1=interview_guide */
+    activityType: integer("activity_type").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    /** Integer aligned with DiscoveryActivityStatus enum — 1=draft, 2=in_progress, 3=complete */
+    status: integer("status").notNull().default(1),
+    /** AI-generated draft content (questions, hypotheses, etc.) stored as JSONB */
+    aiGeneratedContent: jsonb("ai_generated_content").$type<Record<string, unknown>>(),
+    /** Free-text notes or findings entered by the PM */
+    findings: text("findings"),
+    /** True when aiGeneratedContent was produced by Claude */
+    aiGenerated: boolean("ai_generated").notNull().default(false),
+    createdBy: bigint("created_by", { mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index("index_discovery_activities_on_project_id").on(t.projectId),
+    index("index_discovery_activities_on_insight_id").on(t.insightId),
+    index("index_discovery_activities_on_status").on(t.status),
+  ],
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   projectUsers: many(projectUsers),
   skills: many(skills),

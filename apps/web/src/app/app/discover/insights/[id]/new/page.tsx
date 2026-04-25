@@ -6,7 +6,7 @@ import { getRequestDb } from "@/lib/db";
 import { insights } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userHasProjectAccess } from "@/lib/project-access";
-import { createDiscoveryActivityAction } from "../../actions";
+import { createDiscoveryActivityAction } from "../../../actions";
 
 /**
  * Maps activity type integer to a label and description shown in the form.
@@ -157,10 +157,14 @@ export default async function NewDiscoveryActivityPage({
           <div className="form-text">Leave blank to use the default name for this activity type.</div>
         </div>
 
-        <FormActions
-          submitLabel="Create activity"
-          cancelHref={`/app/discover/insights/${insightId}`}
-        />
+        <FormActions variant="plain">
+          <button type="submit" className="btn btn-primary">
+            Create activity
+          </button>
+          <a href={`/app/discover/insights/${insightId}`} className="btn btn-outline-secondary">
+            Cancel
+          </a>
+        </FormActions>
       </NarrowCardForm>
     </PageShell>
   );

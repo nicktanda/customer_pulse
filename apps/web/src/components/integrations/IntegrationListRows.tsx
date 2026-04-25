@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   MessageSquare,   // Slack
   Layers,          // Linear
-  Trello,          // Jira
+  Kanban,          // Jira
   ClipboardList,   // Google Forms
   Code2,           // Custom API
   Phone,           // Gong
@@ -38,7 +38,7 @@ const SOURCE_ICONS: Record<number, LucideIcon> = {
   3: Code2,          // Custom API
   4: Phone,          // Gong
   5: Table,          // Excel Online
-  6: Trello,         // Jira
+  6: Kanban,         // Jira
   7: Monitor,        // LogRocket
   8: Video,          // FullStory
   9: MessagesSquare, // Intercom
