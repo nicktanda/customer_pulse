@@ -28,7 +28,7 @@ export default async function FeedbackShowPage({
   const userId = Number(session?.user?.id);
   const projectId = await getCurrentProjectIdForUser(userId);
   if (projectId == null || !(await userHasProjectAccess(userId, projectId))) {
-    redirect("/app/feedback");
+    redirect("/app/learn/feedback");
   }
 
   const db = await getRequestDb();
@@ -66,11 +66,11 @@ export default async function FeedbackShowPage({
             ) : null}
           </>
         }
-        back={{ href: "/app/feedback", label: "Feedback" }}
+        back={{ href: "/app/learn/feedback", label: "Feedback" }}
         actions={
           <div className="d-flex flex-wrap gap-2" role="navigation" aria-label="Adjacent feedback">
             {newerId != null ? (
-              <Link href={`/app/feedback/${newerId}`} className="btn btn-sm btn-outline-secondary">
+              <Link href={`/app/learn/feedback/${newerId}`} className="btn btn-sm btn-outline-secondary">
                 ← Previous
               </Link>
             ) : (
@@ -79,7 +79,7 @@ export default async function FeedbackShowPage({
               </span>
             )}
             {olderId != null ? (
-              <Link href={`/app/feedback/${olderId}`} className="btn btn-sm btn-outline-secondary">
+              <Link href={`/app/learn/feedback/${olderId}`} className="btn btn-sm btn-outline-secondary">
                 Next →
               </Link>
             ) : (

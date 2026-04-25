@@ -6,95 +6,117 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
-   Monochrome theme (sleek black / grey)
-   ---------------------------------------------------------------------------
-   Bootstrap’s default “primary” color and default link color are blue (#0d6efd).
-   This app overrides CSS *custom properties* so every `btn-primary`, `link-primary`,
-   plain `<a href>`, focus rings, and most accents stay in a neutral palette.
+   Ember theme — adapted from the Kairos design system.
 
-   These rules are loaded *after* Bootstrap, so they win over the library defaults.
-   Light vs dark mode: the root `<html>` sets `data-bs-theme` (see `layout.tsx` +
-   `ThemeToggle`), and we mirror Bootstrap by defining tokens for both themes.
+   Primary accent is "ember" (#C4501A in light / #E8793A in dark), replacing
+   Bootstrap's default blue. Every btn-primary, link-primary, nav pill, focus
+   ring, and mode-bar active indicator picks this up automatically.
+
+   Success stays a readable green so it has semantic meaning distinct from ember.
+   Warning / info remain neutral-grey so they don't compete with the accent.
+   The dark mode uses a very slightly warm surface palette rather than pure
+   Bootstrap charcoal.
    --------------------------------------------------------------------------- */
+
+/* Palette tokens — referenced throughout this file */
+:root {
+  --k-ember:        #C4501A;
+  --k-ember-bright: #E8793A;
+  --k-ember-deep:   #8B2A0F;
+  --k-crimson:      #9B2335;
+  --k-gold:         #D4882A;
+  --k-warm-white:   #F5EDE4;
+  --k-warm:         #C4A882;
+}
 
 :root,
 [data-bs-theme="light"] {
-  /* Main actions (was blue) */
-  --bs-primary: #181818;
-  --bs-primary-rgb: 24, 24, 24;
-  --bs-primary-text-emphasis: #0f0f0f;
-  --bs-primary-bg-subtle: #ebebeb;
-  --bs-primary-border-subtle: #c8c8c8;
+  /* Primary — ember orange replaces Bootstrap blue */
+  --bs-primary:              #C4501A;
+  --bs-primary-rgb:          196, 80, 26;
+  --bs-primary-text-emphasis:#8B2A0F;
+  --bs-primary-bg-subtle:    #FCEAE2;
+  --bs-primary-border-subtle:#E8B09A;
 
-  /* Default hyperlinks (was blue) — still clearly clickable via hover underline below */
-  --bs-link-color: #2a2a2a;
-  --bs-link-color-rgb: 42, 42, 42;
-  --bs-link-hover-color: #000000;
-  --bs-link-hover-color-rgb: 0, 0, 0;
-  --bs-link-decoration: none;
+  /* Hyperlinks — ember, darker on hover */
+  --bs-link-color:           #C4501A;
+  --bs-link-color-rgb:       196, 80, 26;
+  --bs-link-hover-color:     #8B2A0F;
+  --bs-link-hover-color-rgb: 139, 42, 15;
+  --bs-link-decoration:      none;
 
-  /* Keyboard focus ring (was a blue glow tied to primary) */
-  --bs-focus-ring-color: rgba(24, 24, 24, 0.25);
+  /* Focus ring — ember glow */
+  --bs-focus-ring-color: rgba(196, 80, 26, 0.28);
 
-  /* Success flash messages → neutral grey banner (keeps role="status" semantics) */
-  --bs-success: #383838;
-  --bs-success-rgb: 56, 56, 56;
-  --bs-success-text-emphasis: #1a1a1a;
-  --bs-success-bg-subtle: #eeeeee;
-  --bs-success-border-subtle: #d0d0d0;
+  /* Success — real green so it reads as "good" not just "ember" */
+  --bs-success:              #3d7a5a;
+  --bs-success-rgb:          61, 122, 90;
+  --bs-success-text-emphasis:#1e4a35;
+  --bs-success-bg-subtle:    #e8f5ee;
+  --bs-success-border-subtle:#b8ddc8;
 
-  /* Warning / info → grey so leftover utility classes don’t reintroduce amber or cyan */
-  --bs-warning: #6c757d;
-  --bs-warning-rgb: 108, 117, 125;
-  --bs-warning-text-emphasis: #3a3a3a;
-  --bs-warning-bg-subtle: #f3f3f3;
-  --bs-warning-border-subtle: #dddddd;
+  /* Warning / info → neutral grey (no colour competition with ember) */
+  --bs-warning:              #6c757d;
+  --bs-warning-rgb:          108, 117, 125;
+  --bs-warning-text-emphasis:#3a3a3a;
+  --bs-warning-bg-subtle:    #f3f3f3;
+  --bs-warning-border-subtle:#dddddd;
 
-  --bs-info: #4a4a4a;
-  --bs-info-rgb: 74, 74, 74;
-  --bs-info-text-emphasis: #252525;
-  --bs-info-bg-subtle: #ededed;
-  --bs-info-border-subtle: #d0d0d0;
+  --bs-info:                 #4a4a4a;
+  --bs-info-rgb:             74, 74, 74;
+  --bs-info-text-emphasis:   #252525;
+  --bs-info-bg-subtle:       #ededed;
+  --bs-info-border-subtle:   #d0d0d0;
 
-  /* Inline <code> (Bootstrap defaults to pink / teal) */
-  --bs-code-color: #3a3a3a;
+  /* Inline <code> */
+  --bs-code-color: #8B2A0F;
 }
 
 [data-bs-theme="dark"] {
-  /* Mid-grey so white label text on primary buttons stays readable */
-  --bs-primary: #9a9a9a;
-  --bs-primary-rgb: 154, 154, 154;
-  --bs-primary-text-emphasis: #e2e2e2;
-  --bs-primary-bg-subtle: #2d2d2d;
-  --bs-primary-border-subtle: #4f4f4f;
+  /*
+   * Dark mode: ember-bright (#E8793A) is more legible on dark surfaces than
+   * the deeper ember. Surfaces use very slightly warm darks to hint at the
+   * Kairos warmth without going full dark-marketing-site.
+   */
+  --bs-primary:              #E8793A;
+  --bs-primary-rgb:          232, 121, 58;
+  --bs-primary-text-emphasis:#F5A875;
+  --bs-primary-bg-subtle:    #2D1508;
+  --bs-primary-border-subtle:#6B3015;
 
-  --bs-link-color: #d0d0d0;
-  --bs-link-color-rgb: 208, 208, 208;
-  --bs-link-hover-color: #ffffff;
-  --bs-link-hover-color-rgb: 255, 255, 255;
-  --bs-link-decoration: none;
+  --bs-link-color:           #E8793A;
+  --bs-link-color-rgb:       232, 121, 58;
+  --bs-link-hover-color:     #F5A875;
+  --bs-link-hover-color-rgb: 245, 168, 117;
+  --bs-link-decoration:      none;
 
-  --bs-focus-ring-color: rgba(255, 255, 255, 0.2);
+  --bs-focus-ring-color: rgba(232, 121, 58, 0.35);
 
-  --bs-success: #8a8a8a;
-  --bs-success-rgb: 138, 138, 138;
-  --bs-success-text-emphasis: #dedede;
-  --bs-success-bg-subtle: #2a2a2a;
-  --bs-success-border-subtle: #4a4a4a;
+  /* Slightly warm dark surfaces instead of Bootstrap's pure charcoal */
+  --bs-body-bg:              #141210;
+  --bs-body-bg-rgb:          20, 18, 16;
+  --bs-secondary-bg:         #1E1B18;
+  --bs-tertiary-bg:          #252220;
 
-  --bs-warning: #8a8a8a;
-  --bs-warning-rgb: 138, 138, 138;
-  --bs-warning-text-emphasis: #e0e0e0;
-  --bs-warning-bg-subtle: #2c2c2c;
-  --bs-warning-border-subtle: #4a4a4a;
+  --bs-success:              #5aab80;
+  --bs-success-rgb:          90, 171, 128;
+  --bs-success-text-emphasis:#a8ddc0;
+  --bs-success-bg-subtle:    #142a1e;
+  --bs-success-border-subtle:#2a5a3e;
 
-  --bs-info: #8a8a8a;
-  --bs-info-rgb: 138, 138, 138;
-  --bs-info-text-emphasis: #dedede;
-  --bs-info-bg-subtle: #2a2a2a;
-  --bs-info-border-subtle: #4a4a4a;
+  --bs-warning:              #8a8a8a;
+  --bs-warning-rgb:          138, 138, 138;
+  --bs-warning-text-emphasis:#e0e0e0;
+  --bs-warning-bg-subtle:    #2c2c2c;
+  --bs-warning-border-subtle:#4a4a4a;
 
-  --bs-code-color: #c8c8c8;
+  --bs-info:                 #8a8a8a;
+  --bs-info-rgb:             138, 138, 138;
+  --bs-info-text-emphasis:   #dedede;
+  --bs-info-bg-subtle:       #2a2a2a;
+  --bs-info-border-subtle:   #4a4a4a;
+
+  --bs-code-color: #F5A875;
 }
 
 /*
@@ -107,30 +129,29 @@
 }
 
 [data-bs-theme="dark"] .nav-pills {
-  /* Light pill + dark type reads better here than mid-grey + white */
-  --bs-nav-pills-link-active-bg: #eaeaea;
-  --bs-nav-pills-link-active-color: #121212;
+  /* Ember-bright pill with white text — readable and on-brand in dark mode */
+  --bs-nav-pills-link-active-bg: var(--bs-primary);
+  --bs-nav-pills-link-active-color: #fff;
 }
 
-/* Inactive routes: quiet grey; hover darkens without flashing blue */
+/* Inactive routes: quiet grey; hover darkens without flashing colour */
 .nav-pills .nav-link {
   color: var(--bs-body-secondary);
 }
 
-/* Only non-active pills: hover text color. Including .active here overwrote the active
-   pill’s foreground on hover (e.g. dark mode: near-white body text on light pill). */
+/* Only non-active pills: hover text color */
 .nav-pills .nav-link:not(.active):hover {
   color: var(--bs-body-color);
 }
 
-/* “Sign out” / ghost actions: muted text, not a loud link color */
+/* "Sign out" / ghost actions: muted text, not a loud link color */
 .btn-link:not(.text-danger) {
   --bs-btn-color: var(--bs-secondary-color);
   --bs-btn-hover-color: var(--bs-body-color);
   --bs-btn-active-color: var(--bs-body-color);
 }
 
-/* Underline on hover so links stay obvious without default blue */
+/* Underline on hover so links stay obvious */
 a:hover,
 .link-primary:hover,
 .link-secondary:hover {
@@ -138,21 +159,56 @@ a:hover,
   text-underline-offset: 0.15em;
 }
 
-/* Sidebar nav uses pill styling, not “document links” — no hover underline */
+/* Sidebar nav uses pill styling — no hover underline */
 .app-sidebar a:hover,
 .app-sidebar a:focus-visible {
   text-decoration: none;
 }
 
+/*
+ * On small screens the sidebar collapses and a fixed "Menu" button appears top-left.
+ * Give the mode bar enough left padding to stop the button overlapping the first tab.
+ * At lg+ the sidebar is always visible so the button is hidden and normal padding resumes.
+ */
+@media (max-width: 991.98px) {
+  .mode-bar-shell {
+    padding-left: 4.5rem !important;
+  }
+}
+
+/*
+ * Dark mode: Bootstrap's default card background equals --bs-body-bg, so cards are invisible.
+ * Bump cards to --bs-secondary-bg (#1E1B18) so they visibly float above the page (#141210).
+ * Light mode cards default to white, which already contrasts the off-white page bg — no override needed.
+ */
+[data-bs-theme="dark"] .card {
+  background-color: var(--bs-secondary-bg);
+}
+
 .card.shadow-sm {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 [data-bs-theme="dark"] .card.shadow-sm {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45) !important;
 }
 
-/* Two-line clamp for feedback previews (Tailwind's line-clamp is not available without the plugin). */
+/*
+ * Cards that are wrapped in a link get a more visible lift on hover so the user
+ * knows they're interactive without us needing to add any per-page styles.
+ */
+a:hover > .card.shadow-sm,
+a:focus-visible > .card.shadow-sm {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-bs-theme="dark"] a:hover > .card.shadow-sm,
+[data-bs-theme="dark"] a:focus-visible > .card.shadow-sm {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Two-line clamp for feedback previews. */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -199,16 +255,19 @@ a:hover,
 
 /* Dashboard breakdown: proportion bar inside each row. */
 .feedback-breakdown-bar {
-  height: 0.35rem;
+  height: 0.4rem;
   background-color: var(--bs-secondary-bg);
   overflow: hidden;
+  border-radius: 999px;
 }
 
 .feedback-breakdown-bar__fill {
   height: 100%;
-  min-width: 2px;
+  min-width: 3px;
   background-color: var(--bs-primary);
-  opacity: 0.65;
+  opacity: 0.75;
+  transition: width 0.4s ease;
+  border-radius: 999px;
 }
 
 /* Feedback list: removable filter chips (links styled as pills). */
@@ -217,64 +276,115 @@ a.feedback-filter-chip:hover {
 }
 
 /*
- * Feedback priority badges (P2 / P3): use fixed accent colors.
- * Bootstrap `text-bg-warning` is not used here because this theme remaps `--bs-warning`
- * to grey (see :root above) so generic “warning” UI stays neutral — priorities should stay vivid.
+ * Feedback priority badges (P2 / P3): vivid fixed accent colors so they stand
+ * out from the ember primary without clashing.
  */
 .badge.feedback-priority-badge--p2 {
-  background-color: #e65100;
+  background-color: #C4501A;
   color: #fff;
 }
 
 .badge.feedback-priority-badge--p3 {
-  background-color: #f9a825;
-  color: #1a1a1a;
+  background-color: #D4882A;
+  color: #fff;
 }
 
 [data-bs-theme="dark"] .badge.feedback-priority-badge--p2 {
-  background-color: #fb8c00;
+  background-color: #E8793A;
   color: #fff;
 }
 
 [data-bs-theme="dark"] .badge.feedback-priority-badge--p3 {
-  background-color: #ffca28;
-  color: #121212;
+  background-color: #D4882A;
+  color: #fff;
 }
 
-/* Feedback list: thead matches the rest of the app (avoid Bootstrap’s bright `table-light` strip). */
+/* Feedback list: thead matches the rest of the app */
 .feedback-results-table thead th {
   background-color: var(--bs-secondary-bg) !important;
   color: var(--bs-body-color) !important;
   border-bottom-color: var(--bs-border-color) !important;
 }
 
-/* Master–detail row: pointer + subtle highlight + left accent for the open item. */
+/* Master–detail row: pointer + subtle highlight */
 .feedback-results-table tbody tr {
   cursor: pointer;
 }
 
-/* Background only — inset box-shadow on each `<td>` drew extra vertical “divider” lines between columns. */
 .feedback-list-row-selected td {
-  background-color: rgba(var(--bs-primary-rgb), 0.12) !important;
+  background-color: rgba(var(--bs-primary-rgb), 0.08) !important;
 }
 
-/* List groups / cards: whole row opens detail panel (cursor + hover). */
+/* List groups / cards: whole row opens detail panel */
 .app-clickable-list-row {
   cursor: pointer;
+  transition: background-color 0.12s ease;
 }
 
 .app-clickable-list-row:hover {
   background-color: var(--bs-secondary-bg);
 }
 
-/* Selected row in master–detail lists (list-group-item or card body). */
+/*
+ * List-group items that are links (e.g. recent activity, high-priority feedback)
+ * get a subtle background transition and a left-border peek on hover.
+ */
+.list-group-item a.d-block,
+.list-group-item > a.d-block {
+  transition: background-color 0.12s ease;
+}
+
+.list-group-item > a.d-block:hover {
+  background-color: var(--bs-secondary-bg);
+}
+
+/* Selected row in master–detail lists */
 .app-list-row-selected {
-  background-color: rgba(var(--bs-primary-rgb), 0.12) !important;
+  background-color: rgba(var(--bs-primary-rgb), 0.08) !important;
   box-shadow: inset 3px 0 0 0 var(--bs-primary);
 }
 
 /* ---------------------------------------------------------------------------
-   App layout: main pane scrolls on lg+ so detail panels stick to its top (Notion-style).
+   Mode bar tab hover — muted underline on non-active tabs for discoverability.
+   --------------------------------------------------------------------------- */
+.mode-bar-tab:not([data-active="true"]):hover {
+  color: var(--bs-body-color) !important;
+  border-bottom-color: var(--bs-border-color) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   ModeLandingPage primitives (Build, Monitor area landing pages).
+   Using Tailwind @apply for layout utilities so the classes stay composable.
+   --------------------------------------------------------------------------- */
+
+/* Small-caps section label used above hero headings and roadmap titles. */
+.mode-section-label {
+  @apply text-xs font-semibold uppercase tracking-widest;
+  color: var(--bs-secondary-color);
+}
+
+/* Numbered circle in the activation-steps column. */
+.mode-step-circle {
+  @apply flex items-center justify-center flex-shrink-0 text-sm font-semibold rounded;
+  width: 2rem;
+  height: 2rem;
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+}
+
+/* Tabular number label in the upcoming features list. */
+.mode-feature-number {
+  @apply flex-shrink-0 font-semibold;
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+  width: 1.75rem;
+  padding-top: 0.2rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* ---------------------------------------------------------------------------
+   App layout: main pane scrolls on lg+ so detail panels stick to its top.
    --------------------------------------------------------------------------- */
 
 .app-layout-shell {
@@ -296,7 +406,7 @@ a.feedback-filter-chip:hover {
   }
 }
 
-/* Master–detail: panel pins to top of `.app-main-pane` scrollport; inner body scrolls. */
+/* Master–detail: panel pins to top of `.app-main-pane` scrollport */
 @media (min-width: 992px) {
   .feedback-detail-aside-shell {
     position: sticky;
@@ -315,7 +425,6 @@ a.feedback-filter-chip:hover {
     overflow-y: auto;
   }
 
-  /* Same behavior for insights / pulse reports / integrations / projects (`StickyDetailAside`). */
   .app-detail-aside {
     position: sticky;
     top: 0;
@@ -336,13 +445,12 @@ a.feedback-filter-chip:hover {
   }
 }
 
-/* Feedback list panel: same inner scroll padding as `StickyDetailAside` (`app-detail-aside__scroll`). */
 .feedback-detail-aside-scroll {
   padding-top: 0.75rem;
   padding-bottom: 1rem;
 }
 
-/* Shared master–detail peek header (Feedback, Insights, Pulse, Integrations, Projects, …) */
+/* Shared master–detail peek header */
 .peek-panel-header {
   padding-top: 0.25rem;
   padding-bottom: 1rem;
@@ -402,7 +510,7 @@ a.peek-panel-entity-link {
 a.peek-panel-entity-link:hover {
   color: var(--bs-primary);
   border-color: var(--bs-primary-border-subtle);
-  background-color: rgba(var(--bs-primary-rgb), 0.12);
+  background-color: rgba(var(--bs-primary-rgb), 0.08);
 }
 
 a.peek-panel-entity-link:focus-visible {
@@ -450,15 +558,14 @@ button.peek-panel-icon-btn:hover {
   pointer-events: none;
 }
 
-/* Muted back control: not a loud primary link; clear focus for keyboard users. */
+/* Muted back control — layout from Tailwind @apply, colours from Bootstrap tokens. */
 .app-back-link {
-  display: inline-flex;
-  align-items: center;
+  @apply inline-flex items-center;
+  text-decoration: none;
   gap: 0.35rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--bs-secondary-color);
-  text-decoration: none;
   border-radius: var(--bs-border-radius);
   padding: 0.25rem 0.35rem;
   margin: -0.25rem -0.35rem;

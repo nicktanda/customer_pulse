@@ -201,71 +201,82 @@ export default async function FeedbackPage({
 
   return (
     <PageShell width="full">
+      {pageHeader}
+
+      {notice ? (
+        <InlineAlert variant="success" className="mt-3">
+          {notice}
+        </InlineAlert>
+      ) : null}
+      {err ? (
+        <InlineAlert variant="danger" className="mt-3">
+          {err}
+        </InlineAlert>
+      ) : null}
+
+      {/*
+       * Pass detailId so the filter form preserves ?detail= when the panel is open.
+       * That way applying a new filter keeps the same item selected.
+       */}
+      <FeedbackFiltersSection
+        detailId={detailId}
+        sp={sp}
+        activeChips={activeChips}
+        sortPreserve={sortQueryFields}
+      />
+
+      {/* Bulk form only wraps the list — triage/reprocess forms live in the drawer (no nested forms). */}
+      <div className="mt-4">
+        {canEdit ? (
+          <form id={FEEDBACK_LIST_BULK_FORM_ID} action={bulkUpdateFeedbackAction}>
+            <FeedbackBulkAndResults
+              rows={rows}
+              rowsWithDetailHref={rowsWithDetailHref}
+              total={total}
+              canEdit
+              detailRowId={detailRow?.id ?? null}
+              listQuery={filterOnly}
+              sortKey={sortKey}
+              sortDir={sortDir}
+            />
+          </form>
+        ) : (
+          <FeedbackBulkAndResults
+            rows={rows}
+            rowsWithDetailHref={rowsWithDetailHref}
+            total={total}
+            canEdit={false}
+            detailRowId={detailRow?.id ?? null}
+            listQuery={filterOnly}
+            sortKey={sortKey}
+            sortDir={sortDir}
+          />
+        )}
+
+        <PaginationNav
+          className="mt-3"
+          prevHref={prevHref}
+          nextHref={nextHref}
+          status={`Page ${page} of ${totalPages}`}
+        />
+      </div>
+
       {detailId != null ? (
-        /* Left: title through list. Right: full-height detail (large screens) starting level with the title. */
-        <div className="row g-4 g-lg-0 align-items-start flex-lg-nowrap">
-          <div className="col-12 col-lg-7 col-xl-8 pe-lg-4 pb-lg-4">
-            {pageHeader}
+        <>
+          {/*
+           * Semi-transparent backdrop — rendered as a <Link> so clicking anywhere
+           * outside the drawer navigates back to the list (closes the panel).
+           */}
+          <Link
+            href={closePanelHref}
+            className="feedback-drawer-backdrop"
+            aria-label="Close detail panel"
+          />
 
-            {notice ? (
-              <InlineAlert variant="success" className="mt-3">
-                {notice}
-              </InlineAlert>
-            ) : null}
-            {err ? (
-              <InlineAlert variant="danger" className="mt-3">
-                {err}
-              </InlineAlert>
-            ) : null}
-
-            <FeedbackFiltersSection
-              detailId={detailId}
-              sp={sp}
-              activeChips={activeChips}
-              sortPreserve={sortQueryFields}
-            />
-
-            {/* Bulk form only wraps the list — triage/reprocess forms live in the aside (no nested forms). */}
-            {canEdit ? (
-              <form id={FEEDBACK_LIST_BULK_FORM_ID} action={bulkUpdateFeedbackAction}>
-                <FeedbackBulkAndResults
-                  rows={rows}
-                  rowsWithDetailHref={rowsWithDetailHref}
-                  total={total}
-                  canEdit
-                  detailRowId={detailRow?.id ?? null}
-                  listQuery={filterOnly}
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                />
-              </form>
-            ) : (
-              <FeedbackBulkAndResults
-                rows={rows}
-                rowsWithDetailHref={rowsWithDetailHref}
-                total={total}
-                canEdit={false}
-                detailRowId={detailRow?.id ?? null}
-                listQuery={filterOnly}
-                sortKey={sortKey}
-                sortDir={sortDir}
-              />
-            )}
-
-            <PaginationNav
-              className="mt-3"
-              prevHref={prevHref}
-              nextHref={nextHref}
-              status={`Page ${page} of ${totalPages}`}
-            />
-          </div>
-
-          <aside
-            className="col-12 col-lg-5 col-xl-4 border-lg-start border-secondary-subtle ps-3 pe-3 ps-lg-4 pe-lg-4 pt-4 pt-lg-0 mt-4 mt-lg-0 feedback-detail-aside-shell"
-            aria-label="Feedback detail"
-          >
+          {/* Fixed overlay drawer — slides in from the right, single scroll context */}
+          <aside className="feedback-drawer-panel" aria-label="Feedback detail">
             {detailRow != null ? (
-              <div className="feedback-detail-aside-scroll">
+              <>
                 <FeedbackDetailPanelHeader
                   feedbackId={detailRow.id}
                   title={detailRow.title || "(no title)"}
@@ -281,7 +292,6 @@ export default async function FeedbackPage({
                       : null
                   }
                 />
-
                 <FeedbackDetailBody
                   row={detailRow}
                   feedbackId={detailRow.id}
@@ -290,75 +300,16 @@ export default async function FeedbackPage({
                   listReturnPath={listReturnPath}
                   variant="panel"
                 />
-              </div>
+              </>
             ) : (
-              <div className="feedback-detail-aside-scroll">
-                <PeekPanelNotFound
-                  message="No feedback found for this id in the current project."
-                  closeHref={closePanelHref}
-                />
-              </div>
-            )}
-          </aside>
-        </div>
-      ) : (
-        <>
-          {pageHeader}
-
-          {notice ? (
-            <InlineAlert variant="success" className="mt-3">
-              {notice}
-            </InlineAlert>
-          ) : null}
-          {err ? (
-            <InlineAlert variant="danger" className="mt-3">
-              {err}
-            </InlineAlert>
-          ) : null}
-
-          <FeedbackFiltersSection
-            detailId={null}
-            sp={sp}
-            activeChips={activeChips}
-            sortPreserve={sortQueryFields}
-          />
-
-          <div className="mt-4">
-            {canEdit ? (
-              <form id={FEEDBACK_LIST_BULK_FORM_ID} action={bulkUpdateFeedbackAction}>
-                <FeedbackBulkAndResults
-                  rows={rows}
-                  rowsWithDetailHref={rowsWithDetailHref}
-                  total={total}
-                  canEdit
-                  detailRowId={null}
-                  listQuery={filterOnly}
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                />
-              </form>
-            ) : (
-              <FeedbackBulkAndResults
-                rows={rows}
-                rowsWithDetailHref={rowsWithDetailHref}
-                total={total}
-                canEdit={false}
-                detailRowId={null}
-                listQuery={filterOnly}
-                sortKey={sortKey}
-                sortDir={sortDir}
+              <PeekPanelNotFound
+                message="No feedback found for this id in the current project."
+                closeHref={closePanelHref}
               />
             )}
-
-            <PaginationNav
-              className="mt-3"
-              prevHref={prevHref}
-              nextHref={nextHref}
-              status={`Page ${page} of ${totalPages}`}
-            />
-          </div>
+          </aside>
         </>
-      )}
+      ) : null}
     </PageShell>
   );
 }
@@ -444,7 +395,7 @@ function FeedbackFiltersSection({
               <button type="submit" className="btn btn-primary btn-sm">
                 Filter
               </button>
-              <Link href="/app/feedback" className="small link-secondary">
+              <Link href="/app/learn/feedback" className="small link-secondary">
                 Clear all
               </Link>
             </form>

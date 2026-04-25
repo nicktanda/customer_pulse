@@ -1,4 +1,5 @@
 export { BackLink } from "./BackLink";
+export { ModeLandingPage, type ModeLandingStep, type ModeLandingFeature } from "./ModeLandingPage";
 export { InlineAlert, type InlineAlertVariant } from "./InlineAlert";
 export { MetricTile } from "./MetricTile";
 export { NarrowCardForm } from "./NarrowCardForm";

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Menu, X } from "lucide-react";
 
 /**
  * On small viewports the nav lives in a fixed drawer so the main column can use full width.
@@ -19,15 +20,26 @@ export function ResponsiveSidebar({ children }: { children: ReactNode }) {
 
   return (
     <>
+      {/* Hamburger toggle — only visible below lg breakpoint */}
       <button
         type="button"
-        className="btn btn-outline-secondary btn-sm d-lg-none position-fixed top-0 start-0 m-2"
-        style={{ zIndex: 1060 }}
+        className="d-lg-none position-fixed top-0 start-0 border-0 d-flex align-items-center justify-content-center"
+        style={{
+          zIndex: 1060,
+          margin: "0.6rem",
+          width: "2.25rem",
+          height: "2.25rem",
+          borderRadius: "0.4rem",
+          background: "var(--bs-secondary-bg)",
+          color: "var(--bs-body-color)",
+          cursor: "pointer",
+        }}
+        aria-label="Open navigation menu"
         aria-expanded={open}
         aria-controls="app-sidebar-nav"
         onClick={() => setOpen(true)}
       >
-        Menu
+        <Menu size={18} aria-hidden="true" />
       </button>
       {open ? (
         <button
@@ -45,7 +57,23 @@ export function ResponsiveSidebar({ children }: { children: ReactNode }) {
       >
         <div className="d-flex d-lg-none justify-content-between align-items-center pb-2 mb-2 border-bottom border-secondary-subtle">
           <span className="small fw-semibold text-body-secondary">Navigation</span>
-          <button type="button" className="btn-close" aria-label="Close menu" onClick={() => setOpen(false)} />
+          {/* X icon closes the drawer */}
+          <button
+            type="button"
+            className="border-0 d-flex align-items-center justify-content-center"
+            style={{
+              width: "1.75rem",
+              height: "1.75rem",
+              borderRadius: "0.35rem",
+              background: "transparent",
+              color: "var(--bs-secondary-color)",
+              cursor: "pointer",
+            }}
+            aria-label="Close menu"
+            onClick={() => setOpen(false)}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
         </div>
         {children}
       </aside>

@@ -100,3 +100,23 @@ export const InsightStatus = {
   addressed: 3,
   dismissed: 4,
 } as const;
+
+/**
+ * specs.status — tracks a spec through the Build pipeline.
+ * Integer values must stay stable once rows exist in production.
+ *
+ * backlog    (0) — idea logged, not yet being written
+ * drafting   (1) — someone is actively writing the spec
+ * review     (2) — spec is ready for PM/stakeholder review
+ * ready      (3) — reviewed and approved, waiting for dev
+ * in_progress(4) — development has started
+ * shipped    (5) — feature is live; triggers Monitor area
+ */
+export const SpecStatus = {
+  backlog: 0,
+  drafting: 1,
+  review: 2,
+  ready: 3,
+  in_progress: 4,
+  shipped: 5,
+} as const;

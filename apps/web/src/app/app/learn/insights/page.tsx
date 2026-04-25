@@ -149,9 +149,10 @@ export default async function InsightsPage({
 
       <div className="row g-3 align-items-start mt-4">
         <div className={listColClass}>
-          <ul className="list-unstyled mb-0 d-flex flex-column gap-3">
+          {/* row g-3 activates the Bootstrap grid so InsightListCards' col-md-6 items sit two-per-row */}
+          <ul className="row g-3 list-unstyled mb-0">
             {rows.length === 0 ? (
-              <li className="card border-secondary-subtle">
+              <li className="col-12 card border-secondary-subtle">
                 <div className="card-body py-4 text-body-secondary small">
                   <p className="mb-2">No insights yet for this project.</p>
                   <p className="mb-0">
@@ -185,7 +186,7 @@ export default async function InsightsPage({
               <>
                 <SimplePeekPanelHeader
                   closeHref={closePanelHref}
-                  fullPageHref={`/app/insights/${detailRow.id}`}
+                  fullPageHref={`/app/learn/insights/${detailRow.id}`}
                   entityId={detailRow.id}
                   title={detailRow.title}
                   entityLinkTitle={`Open insight #${detailRow.id} on its own page`}

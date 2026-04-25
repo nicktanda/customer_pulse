@@ -25,7 +25,7 @@ export default async function InsightShowPage({ params }: { params: Promise<{ id
   const projectId = await getCurrentProjectIdForUser(userId);
 
   if (projectId == null || !(await userHasProjectAccess(userId, projectId))) {
-    redirect("/app/insights");
+    redirect("/app/learn/insights");
   }
 
   const db = await getRequestDb();
@@ -68,7 +68,7 @@ export default async function InsightShowPage({ params }: { params: Promise<{ id
             ) : null}
           </>
         }
-        back={{ href: "/app/insights", label: "Insights" }}
+        back={{ href: "/app/learn/insights", label: "Insights" }}
       />
 
       <InsightDetailBody row={row} linkedFeedback={linkedFeedback} />

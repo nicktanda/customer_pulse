@@ -38,6 +38,53 @@ function previewText(text: string): string {
   return `${t.slice(0, DESCRIPTION_PREVIEW).trim()}…`;
 }
 
+/**
+ * Returns the Bootstrap badge class for each insight *type* value.
+ * Colours follow semantic conventions: problems are red/warning, positive signals are green, etc.
+ */
+function insightTypeBadgeClass(insightType: number): string {
+  // 0=Problem, 1=Opportunity, 2=Trend, 3=Risk, 4=User need
+  const map: Record<number, string> = {
+    0: "text-bg-danger",
+    1: "text-bg-success",
+    2: "text-bg-info",
+    3: "text-bg-warning",
+    4: "text-bg-primary",
+  };
+  return map[insightType] ?? "text-bg-secondary";
+}
+
+/**
+ * Returns the Bootstrap badge class for each insight *severity* value.
+ * Higher severity = warmer/more alarming colour.
+ */
+function insightSeverityBadgeClass(severity: number): string {
+  // 0=Informational, 1=Minor, 2=Moderate, 3=Major, 4=Critical
+  const map: Record<number, string> = {
+    0: "text-bg-secondary",
+    1: "text-bg-secondary",
+    2: "text-bg-warning",
+    3: "text-bg-danger",
+    4: "text-bg-danger",
+  };
+  return map[severity] ?? "text-bg-secondary";
+}
+
+/**
+ * Returns the Bootstrap badge class for each insight *status* value.
+ */
+function insightStatusBadgeClass(status: number): string {
+  // 0=Discovered, 1=Validated, 2=In progress, 3=Addressed, 4=Dismissed
+  const map: Record<number, string> = {
+    0: "text-bg-primary",
+    1: "text-bg-success",
+    2: "text-bg-info",
+    3: "text-bg-secondary",
+    4: "text-bg-secondary",
+  };
+  return map[status] ?? "text-bg-secondary";
+}
+
 export function InsightListCards({
   rows,
   selectedId,
@@ -55,35 +102,48 @@ export function InsightListCards({
         const isSelected = selectedId === row.id;
         const { onClick, onKeyDown } = handlersFor(href);
         return (
-          <li key={row.id}>
+          // col-md-6 makes cards sit two-per-row on medium+ screens
+          <li key={row.id} className="col-md-6">
             <article
               tabIndex={0}
               className={`card border-secondary-subtle h-100 app-clickable-list-row${isSelected ? " app-list-row-selected" : ""}`}
               onClick={onClick}
               onKeyDown={onKeyDown}
             >
-              <div className="card-body py-3">
+              {/* p-4 gives the card more breathing room than the default py-3 */}
+              <div className="card-body p-4">
                 <div className="d-flex flex-wrap gap-2 align-items-start justify-content-between">
-                  <h2 className="h6 mb-0">
+                  {/* fw-semibold gives the title real visual weight */}
+                  <h2 className="h6 mb-0 fw-semibold">
                     <Link href={href} className="link-primary text-decoration-none">
                       {row.title}
                     </Link>
                   </h2>
-                  <span className="small text-body-secondary text-nowrap">
-                    {formatAppDateTime(when)}
-                    {row.feedbackCount > 0 ? ` · ${row.feedbackCount} feedback` : null}
-                  </span>
+                  <div className="d-flex flex-wrap align-items-center gap-2">
+                    <span className="small text-body-secondary text-nowrap">
+                      {formatAppDateTime(when)}
+                      {row.feedbackCount > 0 ? ` · ${row.feedbackCount} feedback` : null}
+                    </span>
+                    {/* Confidence pill badge — placed inline with the metadata line */}
+                    {row.confidenceScore > 0 ? (
+                      <span className="badge text-bg-primary" title="Confidence score">
+                        {row.confidenceScore}%
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <p className="small text-body-secondary mb-2 mt-2">{previewText(row.description)}</p>
                 <div className="d-flex flex-wrap gap-1 align-items-center">
-                  <span className="badge rounded-pill text-bg-light border">{insightTypeLabel(row.insightType)}</span>
-                  <span className="badge rounded-pill text-bg-light border">
+                  {/* Semantic badge colours: type, severity, status each get meaningful hues */}
+                  <span className={`badge rounded-pill ${insightTypeBadgeClass(row.insightType)}`}>
+                    {insightTypeLabel(row.insightType)}
+                  </span>
+                  <span className={`badge rounded-pill ${insightSeverityBadgeClass(row.severity)}`}>
                     {insightSeverityLabel(row.severity)}
                   </span>
-                  <span className="badge rounded-pill text-bg-light border">{insightStatusLabel(row.status)}</span>
-                  {row.confidenceScore > 0 ? (
-                    <span className="small text-body-secondary ms-1">Confidence {row.confidenceScore}%</span>
-                  ) : null}
+                  <span className={`badge rounded-pill ${insightStatusBadgeClass(row.status)}`}>
+                    {insightStatusLabel(row.status)}
+                  </span>
                 </div>
               </div>
             </article>

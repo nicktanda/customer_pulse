@@ -7,7 +7,35 @@ import type { NextRequest } from "next/server";
  *
  * Auth is still enforced inside `app/app/layout.tsx` with `auth()`.
  */
+
+/**
+ * Legacy-path redirects — 301 Permanent.
+ *
+ * Pages that lived at /app/<resource> have moved to /app/learn/<resource>.
+ * These redirects keep old bookmarks and external links working, and must be
+ * registered before any page component is touched so nothing breaks during the
+ * refactor (see design principle: "Redirects before refactors").
+ */
+const LEARN_REDIRECTS: [prefix: string, newPrefix: string][] = [
+  ["/app/insights", "/app/learn/insights"],
+  ["/app/feedback", "/app/learn/feedback"],
+  ["/app/themes", "/app/learn/themes"],
+  ["/app/ideas", "/app/learn/ideas"],
+];
+
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Check for a learn-area redirect before doing anything else.
+  for (const [oldPrefix, newPrefix] of LEARN_REDIRECTS) {
+    if (pathname === oldPrefix || pathname.startsWith(`${oldPrefix}/`) || pathname.startsWith(`${oldPrefix}?`)) {
+      const newUrl = request.nextUrl.clone();
+      // Replace only the matched prefix so query strings and sub-paths are preserved.
+      newUrl.pathname = newPrefix + pathname.slice(oldPrefix.length);
+      return NextResponse.redirect(newUrl, { status: 301 });
+    }
+  }
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
 
