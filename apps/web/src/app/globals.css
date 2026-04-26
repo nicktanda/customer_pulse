@@ -506,6 +506,70 @@ a.feedback-filter-chip:hover {
 }
 
 /* ---------------------------------------------------------------------------
+   App tab bar (shared) — page-level tabs (e.g. Reporting) aligned with mode bar
+   ember accent: active = tint + bottom border; inactive = hover surface; accent
+   tabs get a subtle border when inactive so they don’t read as plain text.
+   --------------------------------------------------------------------------- */
+.app-tab-bar {
+  gap: 0.125rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.app-tab-bar__link {
+  padding: 0.625rem 0.875rem;
+  margin-bottom: -1px;
+  border-radius: 0.375rem 0.375rem 0 0;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  color: var(--bs-body-color);
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.app-tab-bar__link:hover {
+  color: var(--bs-body-color);
+  background-color: var(--bs-secondary-bg);
+  border-color: var(--bs-border-color);
+  border-bottom-color: transparent;
+}
+
+.app-tab-bar__link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
+  position: relative;
+  z-index: 1;
+}
+
+.app-tab-bar__link--active {
+  color: var(--bs-primary);
+  font-weight: 600;
+  background-color: rgba(var(--bs-primary-rgb), 0.08);
+  border-color: var(--bs-border-color);
+  border-bottom-color: var(--bs-primary);
+}
+
+/* Optional “AI”-style tab: visible chrome when not selected */
+.app-tab-bar__link--accent:not(.app-tab-bar__link--active) {
+  border-color: rgba(var(--bs-primary-rgb), 0.28);
+  background-color: rgba(var(--bs-primary-rgb), 0.04);
+}
+
+.app-tab-bar__link--accent:not(.app-tab-bar__link--active):hover {
+  border-color: rgba(var(--bs-primary-rgb), 0.42);
+  background-color: rgba(var(--bs-primary-rgb), 0.07);
+}
+
+.app-tab-bar__accent-icon {
+  font-size: 0.75em;
+  opacity: 0.8;
+}
+
+/* ---------------------------------------------------------------------------
    ModeLandingPage primitives (Build, Monitor area landing pages).
    Using Tailwind @apply for layout utilities so the classes stay composable.
    --------------------------------------------------------------------------- */
@@ -841,4 +905,168 @@ button.peek-panel-icon-btn:hover {
     max-height: 100dvh;
     overflow-y: auto;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Discovery — Assumption map "Print" (see AssumptionMapContent.tsx).
+   `assumption-map-print-mode` is added to <html> only for that print job.
+   --------------------------------------------------------------------------- */
+@media print {
+  html.assumption-map-print-mode body * {
+    visibility: hidden;
+  }
+
+  html.assumption-map-print-mode .assumption-map-print-area,
+  html.assumption-map-print-mode .assumption-map-print-area * {
+    visibility: visible;
+  }
+
+  html.assumption-map-print-mode .assumption-map-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0 0.5rem;
+  }
+
+  html.assumption-map-print-mode .assumption-map-no-print {
+    display: none !important;
+  }
+
+  html.assumption-map-print-mode body {
+    background: #fff !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Discovery — Opportunity solution tree map (`DiscoveryOstMapGraph.client.tsx`).
+   --------------------------------------------------------------------------- */
+/* In-page #anchors on the Discover hub — sticky top bar should not cover the section title. */
+.scroll-target-discover-map,
+.scroll-target-ost-map-embed {
+  scroll-margin-top: 4.5rem;
+}
+
+.ost-map-dot-grid {
+  background-color: var(--bs-body-bg);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--bs-body-color) 12%, transparent) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+[data-bs-theme="dark"] .ost-map-dot-grid {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+}
+
+.ost-map-connector {
+  stroke: color-mix(in srgb, var(--bs-body-color) 55%, var(--bs-body-bg));
+}
+
+.ost-node-outcome {
+  background: color-mix(in srgb, var(--bs-warning) 32%, var(--bs-body-bg));
+  border: 2px solid color-mix(in srgb, var(--bs-warning) 55%, var(--bs-border-color));
+  padding: 1.1rem 1.35rem 1.2rem;
+}
+
+.ost-node-outcome .ost-map-outcome-actions {
+  margin-top: 0.9rem;
+  padding-top: 0.25rem;
+}
+
+.ost-node-opportunity {
+  background: color-mix(in srgb, var(--bs-primary) 20%, var(--bs-body-bg));
+  border: 2px solid color-mix(in srgb, var(--bs-primary) 48%, var(--bs-border-color));
+  padding: 1.1rem 1.2rem 1.15rem;
+}
+
+.ost-node-opportunity .ost-map-opp-title {
+  line-height: 1.45;
+  margin-bottom: 0.4rem;
+}
+
+.ost-node-opportunity .ost-map-opp-badge {
+  margin-top: 0.65rem;
+  display: inline-block;
+}
+
+.ost-node-solution {
+  background: var(--bs-secondary-bg);
+  border: 1px solid var(--bs-border-color);
+  padding: 0.85rem 0.95rem 0.9rem;
+}
+
+.ost-node-solution .ost-map-solution-list li {
+  line-height: 1.5;
+  margin-bottom: 0.4rem;
+}
+
+.ost-node-solution .ost-map-solution-list li:last-child {
+  margin-bottom: 0.25rem;
+}
+
+/* Numbered “stack” of solution options — clearer when there are many */
+.ost-map-solution-list--stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ost-map-solution-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem 0.65rem;
+  padding: 0.55rem 0.6rem 0.6rem 0.65rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background: color-mix(in srgb, var(--bs-body-bg) 70%, var(--bs-secondary-bg));
+}
+
+.ost-map-solution-idx {
+  font-variant-numeric: tabular-nums;
+  min-width: 1.4rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  padding-top: 0.1rem;
+}
+
+.ost-map-solution-line {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+  font-size: 0.9rem;
+}
+
+.ost-map-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.ost-node-test {
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  padding: 0.6rem 0.75rem 0.7rem;
+}
+
+.ost-node-test .ost-map-test-line {
+  line-height: 1.5;
+  margin-top: 0.35rem;
+}
+
+.ost-node-test .ost-map-test-line:first-of-type {
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+}
+
+.ost-map-opp-column {
+  gap: 0.9rem;
+  /* Prevent a short branch from stretching to match a taller sibling in the same row */
+  align-self: flex-start;
+}
+
+.ost-map-assumption-block {
+  gap: 0.65rem;
 }

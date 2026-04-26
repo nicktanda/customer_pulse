@@ -138,6 +138,20 @@ export const DiscoveryActivityStatus = {
 } as const;
 
 /**
+ * insights.discovery_stage — where this opportunity is in the **research process** (Stage 4),
+ * separate from per-activity draft/complete and from `insights.status` (Learn lifecycle).
+ *
+ * framing (1) → recruiting (2) → running_research (3) → synthesis (4) → decision (5)
+ */
+export const DiscoveryInsightStage = {
+  framing: 1,
+  recruiting: 2,
+  running_research: 3,
+  synthesis: 4,
+  decision: 5,
+} as const;
+
+/**
  * specs.status — tracks a spec through the Build pipeline.
  * Integer values must stay stable once rows exist in production.
  *

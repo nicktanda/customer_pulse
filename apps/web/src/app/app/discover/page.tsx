@@ -1,27 +1,52 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { DiscoverHubContent } from "@/components/discover/DiscoverHubContent";
 import { PageHeader, PageShell, ProjectAccessDenied } from "@/components/ui";
-import { DiscoverInsightPicker } from "@/components/discover/DiscoverInsightPicker";
 import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser, getCurrentProjectSummaryForUser } from "@/lib/current-project";
-import { userHasProjectAccess } from "@/lib/project-access";
-import { listInsightTitlesForProject } from "@customer-pulse/db/queries/discovery";
-import { DiscoverHomeToolSections } from "./DiscoverHomeToolSections";
+import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
+import { buildWhosDoingWhatGroups } from "@/lib/discovery-whos-doing-what";
+import {
+  getDiscoveryActivityStatusCounts,
+  getDiscoveryOstMap,
+  listDiscoveryActivitiesForBoard,
+  listMyDiscoveryActivitiesForUser,
+} from "@customer-pulse/db/queries/discovery";
 
-export default async function DiscoverPage({
+/**
+ * Discover *hub* — one landing page: at-a-glance stats, who owns what, recent activity, then the
+ * OST map, plus a compact in-page “Go to” list (aligned with the sidebar). See `DiscoverHubContent`.
+ *
+ * If someone bookmarked the old `?insight=` or `?note=` query on this path, we forward them to
+ * the workspace so their link keeps working. The full OST map also has its own route at
+ * `/app/discover/map` — the same view is embedded below on this page.
+ */
+export default async function DiscoverHubPage({
   searchParams,
 }: {
-  searchParams: Promise<{ insight?: string; note?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const sp = await searchParams;
+  // Preserve legacy links: previously `/app/discover?insight=1&note=...` opened the tool workspace.
+  const insightQ = sp.insight;
+  const noteQ = sp.note;
+  const hasWorkspaceQuery =
+    (typeof insightQ === "string" && insightQ.length > 0) || typeof noteQ === "string";
+  if (hasWorkspaceQuery) {
+    const q = new URLSearchParams();
+    if (typeof insightQ === "string") {
+      q.set("insight", insightQ);
+    }
+    if (typeof noteQ === "string") {
+      q.set("note", noteQ);
+    }
+    redirect(`/app/discover/workspace?${q.toString()}`);
+  }
+
   const session = await auth();
   const userId = Number(session?.user?.id);
   const projectId = await getCurrentProjectIdForUser(userId);
   const project = await getCurrentProjectSummaryForUser(userId);
-  const sp = await searchParams;
-  const insightParam = typeof sp.insight === "string" ? sp.insight : undefined;
-  const noteParam = typeof sp.note === "string" ? sp.note : undefined;
-  const insightId = insightParam ? Number.parseInt(insightParam, 10) : NaN;
-  const hasValidInsight = Number.isFinite(insightId);
 
   if (projectId == null) {
     return (
@@ -40,59 +65,49 @@ export default async function DiscoverPage({
   }
 
   const db = await getRequestDb();
-  const insightOptions = await listInsightTitlesForProject(db, projectId);
-  const selectedInsight = hasValidInsight ? insightOptions.find((i) => i.id === insightId) : undefined;
+  // Run these queries in parallel so the page waits once instead of several round-trips.
+  const [mapData, statusCounts, recentActivities, forWhosDoingWhat, myQueueRows, canEdit] =
+    await Promise.all([
+      getDiscoveryOstMap(db, projectId),
+      getDiscoveryActivityStatusCounts(db, projectId),
+      // Same ordering as the full board, but only the 6 most recently updated rows.
+      listDiscoveryActivitiesForBoard(db, projectId, { limit: 6 }),
+      // For "Who's doing what" — up to 200 *active* (non-archived) rows, then we group in memory.
+      listDiscoveryActivitiesForBoard(db, projectId, { excludeArchived: true, limit: 200 }),
+      listMyDiscoveryActivitiesForUser(db, projectId, userId),
+      userCanEditProject(userId, projectId),
+    ]);
+
+  // One subsection per person (assignee, else insight lead, else unassigned), capped for the hub UI.
+  const whosDoingWhat = buildWhosDoingWhatGroups(forWhosDoingWhat, { perPersonMax: 4, maxGroups: 12 });
+
+  // OST map opportunity count = insight nodes in the tree (one per insight with map data).
+  const opportunityCount = mapData.insightGroups.length;
+  const myQueueCount = myQueueRows.length;
 
   return (
-    <PageShell width="full">
+    <PageShell width="full" className="d-flex flex-column min-h-0">
       <PageHeader
         title="Discover"
-        description={project ? `${project.name} — validate before you build` : "Validate before you build"}
-        actions={
-          <Link href="/app/discover/insights" className="btn btn-outline-secondary btn-sm">
-            Insights in discovery
-          </Link>
+        description={
+          project
+            ? `${project.name} — validate insights and plan experiments before you commit work in Build`
+            : "Validate insights and plan experiments before you commit work in Build"
         }
       />
 
-      <p className="text-body-secondary small mb-4" style={{ maxWidth: "40rem" }}>
-        Pick an insight once, then use all four tools on this page — interview guide, survey, assumption map, and
-        competitor scan. Each tool has its own AI draft and findings panel; everything still links to the same insight
-        for your spec trail in Build.
-      </p>
-
-      <DiscoverInsightPicker insights={insightOptions} value={hasValidInsight && selectedInsight ? String(insightId) : ""} />
-
-      {noteParam === "empty_findings" && hasValidInsight && selectedInsight ? (
-        <div className="alert alert-info d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-4">
-          <p className="small mb-0">
-            You marked an <strong>assumption map</strong> complete without notes in <strong>Your findings</strong>. That
-            is fine — add learnings anytime by clicking <strong>Reopen</strong> on that tool.
-          </p>
-          <Link className="btn btn-sm btn-outline-info text-nowrap" href={`/app/discover?insight=${insightId}`}>
-            Dismiss
-          </Link>
-        </div>
-      ) : null}
-
-      {!hasValidInsight || !selectedInsight ? (
-        <div className="card border-secondary-subtle">
-          <div className="card-body py-5 text-center text-body-secondary small">
-            {insightOptions.length === 0 ? (
-              <p className="mb-2">
-                No insights in this project yet. Generate or import feedback in Learn, then come back here.
-              </p>
-            ) : (
-              <p className="mb-0">Select an insight above to load the four discovery tools on this page.</p>
-            )}
-            <Link href="/app/learn/insights" className="btn btn-primary btn-sm mt-3">
-              Open Learn insights
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <DiscoverHomeToolSections insightId={insightId} projectId={projectId} insightTitle={selectedInsight.title} />
-      )}
+      <div className="mt-4">
+        <DiscoverHubContent
+          projectName={mapData.projectName}
+          mapData={mapData}
+          canEdit={canEdit}
+          statusCounts={statusCounts}
+          opportunityCount={opportunityCount}
+          myQueueCount={myQueueCount}
+          recentActivities={recentActivities}
+          whosDoingWhat={whosDoingWhat}
+        />
+      </div>
     </PageShell>
   );
 }

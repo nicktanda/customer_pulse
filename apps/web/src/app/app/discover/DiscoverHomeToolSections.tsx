@@ -45,7 +45,7 @@ type Props = {
 };
 
 /**
- * Renders the four expandable tool panels for Discover home (server component).
+ * Renders the four expandable tool panels on the insight workspace (`/app/discover/workspace`).
  */
 export async function DiscoverHomeToolSections({ insightId, projectId, insightTitle }: Props) {
   const db = await getRequestDb();
@@ -103,7 +103,7 @@ export async function DiscoverHomeToolSections({ insightId, projectId, insightTi
                 <DiscoveryActivityWorkspace
                   activity={detail}
                   insightTitle={insightTitle}
-                  embedOnDiscoverHome
+                  embedOnInsightWorkspace
                 />
               </>
             )}

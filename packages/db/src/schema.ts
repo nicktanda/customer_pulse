@@ -65,6 +65,13 @@ export const projects = pgTable(
     /** Business-level objectives for the Strategy tab (project = workspace). */
     businessObjectives: text("business_objectives"),
     businessStrategy: text("business_strategy"),
+    /**
+     * OST / discovery map v1: optional root “goal” copy + link (outcomes at top of the tree in `/app/discover/map`).
+     */
+    ostMapRoot: jsonb("ost_map_root")
+      .$type<{ text?: string }>()
+      .notNull()
+      .default({}),
   },
   (t) => [uniqueIndex("index_projects_on_slug").on(t.slug)],
 );
@@ -298,8 +305,28 @@ export const insights = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
     projectId: bigint("project_id", { mode: "number" }).notNull(),
+    /**
+     * Default discovery “owner” for this insight — inherited by activities unless
+     * `discovery_activities.assignee_id` is set. Stage 3 assignments.
+     */
+    discoveryLeadId: bigint("discovery_lead_id", { mode: "number" }),
+    /**
+     * Coarse process position for discovery (framing → … → decision). Stage 4.
+     * Integers: see `DiscoveryInsightStage` in `enums.ts`.
+     */
+    discoveryStage: integer("discovery_stage").notNull().default(1),
+    /**
+     * Optional Strategy-tab team for this opportunity (same `project_id` as the insight);
+     * shown on the OST map when set.
+     */
+    teamId: bigint("team_id", { mode: "number" }),
   },
-  (t) => [index("index_insights_on_project_id").on(t.projectId)],
+  (t) => [
+    index("index_insights_on_project_id").on(t.projectId),
+    index("index_insights_on_discovery_lead_id").on(t.discoveryLeadId),
+    index("index_insights_on_discovery_stage").on(t.discoveryStage),
+    index("index_insights_on_team_id").on(t.teamId),
+  ],
 );
 
 export const themes = pgTable("themes", {
@@ -600,6 +627,11 @@ export const discoveryActivities = pgTable(
     findings: text("findings"),
     /** True when aiGeneratedContent was produced by Claude */
     aiGenerated: boolean("ai_generated").notNull().default(false),
+    /**
+     * When set, this person “owns” the activity. When null, ownership falls back to
+     * `insights.discovery_lead_id` (see Stage 3).
+     */
+    assigneeId: bigint("assignee_id", { mode: "number" }),
     createdBy: bigint("created_by", { mode: "number" }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
@@ -608,6 +640,7 @@ export const discoveryActivities = pgTable(
     index("index_discovery_activities_on_project_id").on(t.projectId),
     index("index_discovery_activities_on_insight_id").on(t.insightId),
     index("index_discovery_activities_on_status").on(t.status),
+    index("index_discovery_activities_on_assignee_id").on(t.assigneeId),
   ],
 );
 

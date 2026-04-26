@@ -16,6 +16,7 @@ import { ResponsiveSidebar } from "./ResponsiveSidebar";
 import { MobileTopBar } from "./MobileTopBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "@/components/SidebarNav";
+/** Each group is rendered with the same heading toggle + sub-links (`NavGroupSection` in `SidebarNav`). */
 function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
   const workspaceItems: SidebarNavItem[] = [];
   if (!onboardingComplete) {
@@ -47,12 +48,16 @@ function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
     },
     {
       /*
-       * Discover — validate an insight before committing to a spec.
-       * Activities (interview guides, surveys, etc.) live here.
+       * Discover — sub-links auto-expand on any /app/discover/... page (see `NavGroupSection`).
        */
       label: "Discover",
       items: [
-        { href: "/app/discover", label: "Activities" },
+        { href: "/app/discover", label: "Overview" },
+        { href: "/app/discover/map", label: "OST Map" },
+        { href: "/app/discover/me", label: "My discovery" },
+        { href: "/app/discover/board", label: "Board" },
+        { href: "/app/discover/workspace", label: "Workspace" },
+        { href: "/app/discover/insights", label: "Insights" },
       ],
     },
     {

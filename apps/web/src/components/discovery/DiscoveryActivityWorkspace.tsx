@@ -161,8 +161,8 @@ function AIContentBlock({
 export type DiscoveryActivityWorkspaceProps = {
   activity: ActivityDetailRow;
   insightTitle: string | null;
-  /** When embedded on /app/discover, empty-findings redirect stays on Discover home. */
-  embedOnDiscoverHome?: boolean;
+  /** When embedded on the insight workspace, mark-complete can send you back there with a note. */
+  embedOnInsightWorkspace?: boolean;
   /** e.g. alert for assumption map empty findings */
   showEmptyFindingsNote?: boolean;
   /** Optional toolbar row above the two columns (link to full-page activity view). */
@@ -171,12 +171,12 @@ export type DiscoveryActivityWorkspaceProps = {
 
 /**
  * Shared two-column discovery UI: AI draft (left) + findings (right).
- * Used on `/app/discover/activities/[id]` and on `/app/discover` when an insight is selected.
+ * Used on `/app/discover/activities/[id]` and on `/app/discover/workspace` when an insight is selected.
  */
 export function DiscoveryActivityWorkspace({
   activity,
   insightTitle,
-  embedOnDiscoverHome = false,
+  embedOnInsightWorkspace = false,
   showEmptyFindingsNote = false,
   toolbar,
 }: DiscoveryActivityWorkspaceProps) {
@@ -199,8 +199,8 @@ export function DiscoveryActivityWorkspace({
           <a
             className="btn btn-sm btn-outline-info text-nowrap"
             href={
-              embedOnDiscoverHome
-                ? `/app/discover?insight=${activity.insightId}`
+              embedOnInsightWorkspace
+                ? `/app/discover/workspace?insight=${activity.insightId}`
                 : `/app/discover/activities/${activity.id}`
             }
           >
@@ -351,7 +351,7 @@ export function DiscoveryActivityWorkspace({
                 <form action={saveDiscoveryFindingsAction} className="d-flex flex-column flex-grow-1 gap-3">
                   <input type="hidden" name="activity_id" value={activity.id} />
                   <input type="hidden" name="insight_id" value={activity.insightId} />
-                  {embedOnDiscoverHome ? <input type="hidden" name="return_to" value="discover" /> : null}
+                  {embedOnInsightWorkspace ? <input type="hidden" name="return_to" value="discover" /> : null}
                   <textarea
                     name="findings"
                     className="form-control flex-grow-1"

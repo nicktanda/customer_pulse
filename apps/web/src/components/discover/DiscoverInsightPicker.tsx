@@ -11,11 +11,12 @@ type Props = {
 };
 
 /**
- * Client-side insight selector for /app/discover — updates the URL so the server can render
- * the four discovery tools for the chosen insight without a full page reload beyond RSC refresh.
+ * Client-side insight selector for `/app/discover/workspace` — updates the URL so the server
+ * can render the four discovery tools for the chosen insight (RSC refresh).
  */
 export function DiscoverInsightPicker({ insights, value }: Props) {
   const router = useRouter();
+  const base = "/app/discover/workspace";
 
   return (
     <div className="mb-4">
@@ -29,9 +30,9 @@ export function DiscoverInsightPicker({ insights, value }: Props) {
         onChange={(e) => {
           const v = e.target.value;
           if (!v) {
-            router.push("/app/discover");
+            router.push(base);
           } else {
-            router.push(`/app/discover?insight=${encodeURIComponent(v)}`);
+            router.push(`${base}?insight=${encodeURIComponent(v)}`);
           }
         }}
       >

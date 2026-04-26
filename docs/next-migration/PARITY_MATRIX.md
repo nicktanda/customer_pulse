@@ -82,11 +82,16 @@ linear=0, google_forms=1, slack=2, custom=3, gong=4, excel_online=5, jira=6, log
 
 viewer=0, admin=1
 
+### `projects`
+
+- **ost_map_root** (jsonb, Stage 5): optional `{ "text"?: string }` for the top node of `/app/discover/map`
+
 ### `insights`
 
 - **insight_type**: problem=0, opportunity=1, trend=2, risk=3, user_need=4
 - **severity**: informational=0, minor=1, moderate=2, major=3, critical=4
 - **status**: discovered=0, validated=1, in_progress=2, addressed=3, dismissed=4
+- **discovery_stage** (Stage 4): framing=1, recruiting=2, running_research=3, synthesis=4, decision=5
 
 ### `ideas`
 

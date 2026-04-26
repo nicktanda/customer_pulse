@@ -5,6 +5,7 @@ import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser, getCurrentProjectSummaryForUser } from "@/lib/current-project";
 import { userHasProjectAccess } from "@/lib/project-access";
 import { getInsightsWithDiscovery, type InsightDiscoverySummaryRow } from "@customer-pulse/db/queries/discovery";
+import { discoveryInsightStageBadgeClass, discoveryInsightStageLabel } from "@/lib/discovery-insight-stage";
 
 /**
  * A single row card in the "insights with discovery" list.
@@ -25,14 +26,19 @@ function InsightDiscoveryCard({ row }: { row: InsightDiscoverySummaryRow }) {
             <span className="small text-body-secondary">
               {row.activityCount} {row.activityCount === 1 ? "activity" : "activities"}
             </span>
-            {/* Completed activities */}
+            <span
+              className={`badge ${discoveryInsightStageBadgeClass(row.discoveryStage)}`}
+              style={{ fontSize: "0.7rem" }}
+            >
+              {discoveryInsightStageLabel(row.discoveryStage)}
+            </span>
             {row.completeCount > 0 ? (
               <span className="badge text-bg-success" style={{ fontSize: "0.7rem" }}>
                 {row.completeCount} complete
               </span>
             ) : (
               <span className="badge bg-body-secondary text-body-secondary border border-secondary-subtle" style={{ fontSize: "0.7rem" }}>
-                In progress
+                No activities complete
               </span>
             )}
           </div>
@@ -63,15 +69,15 @@ export default async function DiscoverInsightsPage() {
     return (
       <PageShell width="full">
         <PageHeader
-          title="Discovery Activities"
-          description="Select an active project under Settings to see discovery activities."
+          title="Insights in discovery"
+          description="Select an active project under Settings to see insights with discovery work."
         />
       </PageShell>
     );
   }
 
   if (!(await userHasProjectAccess(userId, projectId))) {
-    return <ProjectAccessDenied pageTitle="Discovery Activities" />;
+    return <ProjectAccessDenied pageTitle="Insights in discovery" />;
   }
 
   const db = await getRequestDb();
@@ -80,11 +86,11 @@ export default async function DiscoverInsightsPage() {
   return (
     <PageShell width="full">
       <PageHeader
-        title="Discovery Activities"
+        title="Insights in discovery"
         description={
           projectSummary
-            ? `Validating insights for ${projectSummary.name}`
-            : "Insights with active discovery work"
+            ? `${projectSummary.name} — insights that already have at least one discovery activity`
+            : "Insights that already have at least one discovery activity"
         }
         back={{ href: "/app/discover", label: "Discover" }}
         actions={

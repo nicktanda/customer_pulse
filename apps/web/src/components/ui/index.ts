@@ -1,3 +1,4 @@
+export { AppTabBar, type AppTabBarProps, type AppTabItem } from "./AppTabBar";
 export { BackLink } from "./BackLink";
 export { ModeLandingPage, type ModeLandingStep, type ModeLandingFeature } from "./ModeLandingPage";
 export { InlineAlert, type InlineAlertVariant } from "./InlineAlert";

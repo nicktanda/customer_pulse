@@ -1,15 +1,22 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { PageHeader, PageShell } from "@/components/ui";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
-import { insights } from "@customer-pulse/db/client";
+import { insights, teams } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
-import { userHasProjectAccess } from "@/lib/project-access";
+import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
 import { getActivitiesByInsight, type ActivityListRow } from "@customer-pulse/db/queries/discovery";
+import { listProjectMemberUsersForAssignment } from "@customer-pulse/db/queries/project-members";
+import {
+  setInsightDiscoveryLeadAction,
+  setInsightDiscoveryStageAction,
+  setInsightTeamIdAction,
+} from "../../actions";
 import { insightSeverityLabel, insightTypeLabel } from "@/lib/insight-enums-display";
 import { generateDiscoverySummaryAction } from "../../actions";
+import { DISCOVERY_INSIGHT_STAGE_ORDER, discoveryInsightStageLabel } from "@/lib/discovery-insight-stage";
 
 /**
  * Maps the numeric DiscoveryActivityType integer to a human-readable label and icon character.
@@ -135,6 +142,7 @@ export default async function InsightDiscoveryPage({
     redirect("/app/discover");
   }
 
+  const canEdit = await userCanEditProject(userId, projectId);
   const db = await getRequestDb();
 
   // Load the insight row
@@ -148,8 +156,28 @@ export default async function InsightDiscoveryPage({
     notFound();
   }
 
+  // If this opportunity is tagged to a Strategy team, load the name once for display (viewers and map context).
+  let insightTeamName: string | null = null;
+  if (insight.teamId != null) {
+    const [t] = await db
+      .select({ name: teams.name })
+      .from(teams)
+      .where(and(eq(teams.id, insight.teamId), eq(teams.projectId, projectId)))
+      .limit(1);
+    insightTeamName = t?.name ?? null;
+  }
+
   // Load all discovery activities for this insight
   const activities = await getActivitiesByInsight(db, insightId, projectId);
+  const memberOptions = canEdit ? await listProjectMemberUsersForAssignment(db, projectId) : [];
+  // Editor-only dropdown: same teams as Strategy tab (project-scoped).
+  const teamOptions = canEdit
+    ? await db
+        .select({ id: teams.id, name: teams.name })
+        .from(teams)
+        .where(eq(teams.projectId, projectId))
+        .orderBy(asc(teams.name))
+    : [];
 
   const completeCount = activities.filter((a) => a.status === 3).length;
 
@@ -210,6 +238,117 @@ export default async function InsightDiscoveryPage({
             View full insight in Learn →
           </Link>
         </div>
+        {canEdit ? (
+          <>
+            {/* How far along this *opportunity* is in the research process — separate from each activity’s draft/complete. */}
+            <form action={setInsightDiscoveryStageAction} className="mt-3 pt-3 border-top border-secondary-subtle">
+              <input type="hidden" name="insight_id" value={String(insight.id)} />
+              <label htmlFor="discovery-stage" className="form-label small fw-semibold text-body-emphasis mb-1">
+                Discovery process stage
+              </label>
+              <p className="small text-body-secondary mb-2">
+                Where is this opportunity in the flow: framing, recruiting, running research, synthesis, or ready to
+                decide? This is team-visible on the board and activity cards.
+              </p>
+              <div className="d-flex flex-wrap align-items-end gap-2">
+                <select
+                  id="discovery-stage"
+                  name="discovery_stage"
+                  className="form-select form-select-sm"
+                  defaultValue={String(insight.discoveryStage ?? 1)}
+                  style={{ maxWidth: "22rem" }}
+                  aria-label="Discovery process stage for this insight"
+                >
+                  {DISCOVERY_INSIGHT_STAGE_ORDER.map((s) => (
+                    <option key={s} value={String(s)}>
+                      {discoveryInsightStageLabel(s)}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit" className="btn btn-sm btn-primary">
+                  Save stage
+                </button>
+              </div>
+            </form>
+            {/* Default owner for every activity under this insight unless an activity sets its own assignee. */}
+            {/* Optional “bucket” from Strategy — shows on the discovery map under the opportunity. */}
+            <form action={setInsightTeamIdAction} className="mt-3 pt-3 border-top border-secondary-subtle">
+              <input type="hidden" name="insight_id" value={String(insight.id)} />
+              <label htmlFor="insight-team" className="form-label small fw-semibold text-body-emphasis mb-1">
+                Team (optional)
+              </label>
+              <p className="small text-body-secondary mb-2">
+                Link this opportunity to a team from the Strategy tab. When set, the team name appears on the
+                discovery map graph.
+              </p>
+              <div className="d-flex flex-wrap align-items-end gap-2">
+                <select
+                  id="insight-team"
+                  name="team_id"
+                  className="form-select form-select-sm"
+                  defaultValue={insight.teamId != null ? String(insight.teamId) : ""}
+                  style={{ maxWidth: "22rem" }}
+                  aria-label="Optional strategy team for this insight"
+                >
+                  <option value="">No team</option>
+                  {teamOptions.map((t) => (
+                    <option key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit" className="btn btn-sm btn-primary">
+                  Save team
+                </button>
+              </div>
+            </form>
+            <form action={setInsightDiscoveryLeadAction} className="mt-3 pt-3 border-top border-secondary-subtle">
+              <input type="hidden" name="insight_id" value={String(insight.id)} />
+              <label htmlFor="discovery-lead" className="form-label small fw-semibold text-body-emphasis mb-1">
+                Discovery lead (insight)
+              </label>
+              <p className="small text-body-secondary mb-2">
+                New and unassigned activities inherit this person. You can still assign a specific teammate on an activity
+                page.
+              </p>
+              <div className="d-flex flex-wrap align-items-end gap-2">
+                <select
+                  id="discovery-lead"
+                  name="discovery_lead_id"
+                  className="form-select form-select-sm"
+                  defaultValue={insight.discoveryLeadId != null ? String(insight.discoveryLeadId) : ""}
+                  style={{ maxWidth: "20rem" }}
+                  aria-label="Default discovery lead for this insight"
+                >
+                  <option value="">Unassigned</option>
+                  {memberOptions.map((m) => (
+                    <option key={m.id} value={String(m.id)}>
+                      {m.name?.trim() || m.email}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit" className="btn btn-sm btn-primary">
+                  Save lead
+                </button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <div className="mt-3 pt-3 border-top border-secondary-subtle">
+            <p className="small text-body-secondary mb-1">Discovery process</p>
+            <p className="small mb-0 text-body-emphasis">
+              {discoveryInsightStageLabel(insight.discoveryStage ?? 1)}
+            </p>
+            {insightTeamName ? (
+              <p className="small text-body-secondary mt-2 mb-0">
+                Team: <span className="text-body-emphasis">{insightTeamName}</span>
+              </p>
+            ) : null}
+            <p className="small text-body-tertiary mt-1 mb-0" style={{ fontSize: "0.8rem" }}>
+              Only editors can change stage; ask a project admin if this looks wrong.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* AI findings summary — shown when ?summary= param is set by generateDiscoverySummaryAction */}

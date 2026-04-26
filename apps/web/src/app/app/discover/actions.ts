@@ -3,16 +3,29 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import type { Database } from "@customer-pulse/db/client";
 import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
-import { insights } from "@customer-pulse/db/client";
+import { insights, projectUsers, teams } from "@customer-pulse/db/client";
 import { and, eq } from "drizzle-orm";
 import {
   createDiscoveryActivity,
   updateDiscoveryActivity,
   getActivityById,
   getActivitiesByInsight,
+  setInsightDiscoveryLeadId,
+  setInsightDiscoveryStage,
+  setInsightTeamId,
+  setProjectOstMapRoot,
+  createInsightWithInitialDiscoveryActivity,
+  appendOstMapSolution,
+  removeOstMapSolution,
+  updateOstMapSolution,
+  updateInsightTitle,
+  updateDiscoveryActivityTitle,
+  deleteDiscoveryActivity,
+  deleteInsightAndRelated,
 } from "@customer-pulse/db/queries/discovery";
 import { validateSurveyShape } from "@/lib/discovery-survey";
 import {
@@ -41,6 +54,18 @@ async function requireEditor() {
     redirect("/app/discover");
   }
   return { userId, projectId };
+}
+
+/**
+ * True when this user is a member of the project (used to validate assignee / lead pickers).
+ */
+async function isProjectMember(db: Database, projectId: number, memberUserId: number) {
+  const [m] = await db
+    .select({ x: projectUsers.id })
+    .from(projectUsers)
+    .where(and(eq(projectUsers.projectId, projectId), eq(projectUsers.userId, memberUserId)))
+    .limit(1);
+  return Boolean(m);
 }
 
 // ─── Activity labels (mirrors enums — kept in sync with enums.ts) ─────────────
@@ -111,14 +136,16 @@ export async function createDiscoveryActivityAction(formData: FormData): Promise
   revalidatePath(`/app/discover/insights/${insightId}`);
   revalidatePath("/app/discover/insights");
   revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
 
   /**
-   * `return_to=discover` keeps the PM on `/app/discover` after creating an activity
-   * so all four tools stay on one page (see Discover home workspace).
+   * `return_to=discover` keeps the PM on the insight workspace after creating an activity
+   * so all four tools stay on one page.
    */
   const returnTo = String(formData.get("return_to") ?? "");
   if (returnTo === "discover") {
-    redirect(`/app/discover?insight=${insightId}`);
+    redirect(`/app/discover/workspace?insight=${insightId}`);
   }
 
   redirect(`/app/discover/activities/${newId}`);
@@ -150,6 +177,8 @@ export async function saveDiscoveryFindingsAction(formData: FormData): Promise<v
 
   revalidatePath(`/app/discover/activities/${activityId}`);
   revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
   if (Number.isFinite(insightId)) {
     revalidatePath(`/app/discover/insights/${insightId}`);
   }
@@ -196,6 +225,8 @@ export async function updateSurveyDraftAction(formData: FormData): Promise<void>
 
   revalidatePath(`/app/discover/activities/${activityId}`);
   revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
   if (Number.isFinite(insightId)) {
     revalidatePath(`/app/discover/insights/${insightId}`);
   }
@@ -235,6 +266,8 @@ export async function markActivityCompleteAction(formData: FormData): Promise<vo
 
   revalidatePath(`/app/discover/activities/${activityId}`);
   revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
   if (Number.isFinite(insightId)) {
     revalidatePath(`/app/discover/insights/${insightId}`);
     revalidatePath("/app/discover/insights");
@@ -243,7 +276,7 @@ export async function markActivityCompleteAction(formData: FormData): Promise<vo
   // Assumption map: nudge if they completed with no learnings recorded (allowed, but we explain once).
   if (activity.activityType === 3 && !findings) {
     if (returnTo === "discover" && Number.isFinite(insightId)) {
-      redirect(`/app/discover?insight=${insightId}&note=empty_findings`);
+      redirect(`/app/discover/workspace?insight=${insightId}&note=empty_findings`);
     }
     redirect(`/app/discover/activities/${activityId}?note=empty_findings`);
   }
@@ -269,9 +302,416 @@ export async function reopenActivityAction(formData: FormData): Promise<void> {
 
   revalidatePath(`/app/discover/activities/${activityId}`);
   revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
   if (Number.isFinite(insightId)) {
     revalidatePath(`/app/discover/insights/${insightId}`);
   }
+}
+
+/**
+ * Server action: sets a discovery activity's status from the Kanban board (1–4).
+ *
+ * Form fields:
+ *   activity_id  (required)
+ *   next_status  (required) — integer 1–4 matching DiscoveryActivityStatus
+ *
+ * Editors only; redirects if the user cannot edit the project. Never updates a row outside
+ * the current project (checked via getActivityById).
+ */
+export async function setDiscoveryActivityStatusAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const nextStatus = Number.parseInt(String(formData.get("next_status") ?? ""), 10);
+
+  if (!Number.isFinite(activityId)) {
+    return;
+  }
+  if (nextStatus !== 1 && nextStatus !== 2 && nextStatus !== 3 && nextStatus !== 4) {
+    return;
+  }
+
+  const db = await getRequestDb();
+  const activity = await getActivityById(db, activityId, projectId);
+  if (!activity) {
+    return;
+  }
+
+  await updateDiscoveryActivity(db, activityId, projectId, { status: nextStatus });
+
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${activity.insightId}`);
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+}
+
+/**
+ * Server action: sets the insight’s default discovery lead. Empty value clears it.
+ * Form: insight_id, discovery_lead_id (user id or blank).
+ */
+export async function setInsightDiscoveryLeadAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const raw = String(formData.get("discovery_lead_id") ?? "").trim();
+  if (!Number.isFinite(insightId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  if (raw === "") {
+    await setInsightDiscoveryLeadId(db, insightId, projectId, null);
+  } else {
+    const leadId = Number.parseInt(raw, 10);
+    if (!Number.isFinite(leadId) || leadId < 1) {
+      return;
+    }
+    if (!(await isProjectMember(db, projectId, leadId))) {
+      return;
+    }
+    await setInsightDiscoveryLeadId(db, insightId, projectId, leadId);
+  }
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/me");
+}
+
+/**
+ * Server action: sets the insight’s discovery **process** stage (framing → decision). Stage 4.
+ * Form: insight_id, discovery_stage (integer 1–5).
+ */
+export async function setInsightDiscoveryStageAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const stageRaw = String(formData.get("discovery_stage") ?? "").trim();
+  if (!Number.isFinite(insightId)) {
+    return;
+  }
+  const stage = Number.parseInt(stageRaw, 10);
+  if (!Number.isFinite(stage) || stage < 1 || stage > 5) {
+    return;
+  }
+  const db = await getRequestDb();
+  await setInsightDiscoveryStage(db, insightId, projectId, stage);
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/me");
+  for (const a of await getActivitiesByInsight(db, insightId, projectId)) {
+    revalidatePath(`/app/discover/activities/${a.id}`);
+  }
+}
+
+/**
+ * Server action: saves the OST map root (project goal) for the current project. Stage 5.
+ * Form: ost_root_text.
+ */
+export async function saveProjectOstMapRootAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const text = String(formData.get("ost_root_text") ?? "").trim();
+  const db = await getRequestDb();
+  await setProjectOstMapRoot(db, projectId, { text: text || undefined });
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: creates a new opportunity from the discovery map with one draft activity,
+ * so it appears on the map, board, and workspace without leaving this flow.
+ * Form: opportunity_title (non-empty, max 255).
+ */
+export async function createOpportunityFromMapAction(formData: FormData): Promise<void> {
+  const { userId, projectId } = await requireEditor();
+  const raw = String(formData.get("opportunity_title") ?? "").trim();
+  if (raw.length === 0 || raw.length > 255) {
+    return;
+  }
+  const db = await getRequestDb();
+  const { insightId, activityId } = await createInsightWithInitialDiscoveryActivity(db, {
+    projectId,
+    createdByUserId: userId,
+    title: raw,
+  });
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/discover");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath(`/app/discover/activities/${activityId}`);
+}
+
+/**
+ * Server action: appends a solution line for one opportunity on the OST map (`insights.metadata.ost_map_solutions`).
+ * Form: insight_id, solution_line.
+ */
+export async function addOstMapSolutionAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const line = String(formData.get("solution_line") ?? "");
+  if (!Number.isFinite(insightId) || line.trim().length === 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await appendOstMapSolution(db, insightId, projectId, line);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: removes a solution line by 0-based index. Form: insight_id, solution_index.
+ */
+export async function removeOstMapSolutionAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const index = Number.parseInt(String(formData.get("solution_index") ?? ""), 10);
+  if (!Number.isFinite(insightId) || !Number.isInteger(index) || index < 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await removeOstMapSolution(db, insightId, projectId, index);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: replaces one OST map solution line. Form: insight_id, solution_index, solution_line.
+ */
+export async function updateOstMapSolutionAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const index = Number.parseInt(String(formData.get("solution_index") ?? ""), 10);
+  const line = String(formData.get("solution_line") ?? "");
+  if (!Number.isFinite(insightId) || !Number.isInteger(index) || index < 0 || line.trim().length === 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await updateOstMapSolution(db, insightId, projectId, index, line);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: renames an opportunity (insight) from the map. Form: insight_id, insight_title.
+ */
+export async function updateInsightTitleOstMapAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const title = String(formData.get("insight_title") ?? "").trim();
+  if (!Number.isFinite(insightId) || title.length === 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await updateInsightTitle(db, insightId, projectId, title);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/learn/insights");
+  revalidatePath(`/app/learn/insights/${insightId}`);
+}
+
+/**
+ * Server action: renames a discovery activity from the map. Form: activity_id, insight_id, activity_title.
+ */
+export async function updateDiscoveryActivityTitleOstMapAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const title = String(formData.get("activity_title") ?? "").trim();
+  if (!Number.isFinite(activityId) || title.length === 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await updateDiscoveryActivityTitle(db, activityId, projectId, title);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  if (Number.isFinite(insightId)) {
+    revalidatePath(`/app/discover/insights/${insightId}`);
+  }
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: deletes a discovery activity. Form: activity_id, insight_id.
+ */
+export async function deleteDiscoveryActivityOstMapAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  if (!Number.isFinite(activityId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  await deleteDiscoveryActivity(db, activityId, projectId);
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/discover");
+  if (Number.isFinite(insightId)) {
+    revalidatePath(`/app/discover/insights/${insightId}`);
+    for (const a of await getActivitiesByInsight(db, insightId, projectId)) {
+      revalidatePath(`/app/discover/activities/${a.id}`);
+    }
+  }
+}
+
+/**
+ * Server action: deletes an opportunity and its links (for the map / discovery). Form: insight_id.
+ */
+export async function deleteOpportunityOstMapAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  if (!Number.isFinite(insightId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  const preActivities = await getActivitiesByInsight(db, insightId, projectId);
+  await deleteInsightAndRelated(db, insightId, projectId);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/discover");
+  revalidatePath("/app/learn/insights");
+  revalidatePath(`/app/learn/insights/${insightId}`);
+  for (const a of preActivities) {
+    revalidatePath(`/app/discover/activities/${a.id}`);
+  }
+}
+
+/**
+ * Server action: adds a discovery activity under an insight from the map (stays in sync with the board).
+ * Form: insight_id, activity_title (optional), activity_type (1–7, default 1).
+ */
+export async function addDiscoveryActivityFromMapAction(formData: FormData): Promise<void> {
+  const { userId, projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const typeRaw = String(formData.get("activity_type") ?? "1");
+  const activityType = Number.parseInt(typeRaw, 10);
+  const titleRaw = String(formData.get("activity_title") ?? "").trim();
+  if (!Number.isFinite(insightId) || !Number.isFinite(activityType) || activityType < 1 || activityType > 7) {
+    return;
+  }
+  const title = titleRaw || defaultTitleForType(activityType);
+  const db = await getRequestDb();
+  const [insightRow] = await db
+    .select({ id: insights.id })
+    .from(insights)
+    .where(and(eq(insights.id, insightId), eq(insights.projectId, projectId)))
+    .limit(1);
+  if (!insightRow) {
+    return;
+  }
+  const newId = await createDiscoveryActivity(db, {
+    projectId,
+    insightId,
+    activityType,
+    title,
+    createdBy: userId,
+  });
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/discover");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath(`/app/discover/activities/${newId}`);
+}
+
+/**
+ * Server action: sets the optional Strategy team for an insight (or clears it). Editors only.
+ * Form: insight_id, team_id (team row id or blank).
+ */
+export async function setInsightTeamIdAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const raw = String(formData.get("team_id") ?? "").trim();
+  if (!Number.isFinite(insightId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  if (raw === "") {
+    await setInsightTeamId(db, insightId, projectId, null);
+  } else {
+    const teamId = Number.parseInt(raw, 10);
+    if (!Number.isFinite(teamId) || teamId < 1) {
+      return;
+    }
+    const [t] = await db
+      .select({ id: teams.id })
+      .from(teams)
+      .where(and(eq(teams.id, teamId), eq(teams.projectId, projectId)))
+      .limit(1);
+    if (!t) {
+      return;
+    }
+    await setInsightTeamId(db, insightId, projectId, teamId);
+  }
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/me");
+  for (const a of await getActivitiesByInsight(db, insightId, projectId)) {
+    revalidatePath(`/app/discover/activities/${a.id}`);
+  }
+}
+
+/**
+ * Server action: sets who is assigned to an activity, or clear to inherit the insight lead.
+ * Form: activity_id, assignee_id (user id or blank).
+ */
+export async function setDiscoveryActivityAssigneeAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const raw = String(formData.get("assignee_id") ?? "").trim();
+  if (!Number.isFinite(activityId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  const activity = await getActivityById(db, activityId, projectId);
+  if (!activity) {
+    return;
+  }
+  if (raw === "") {
+    await updateDiscoveryActivity(db, activityId, projectId, { assigneeId: null });
+  } else {
+    const assigneeId = Number.parseInt(raw, 10);
+    if (!Number.isFinite(assigneeId) || assigneeId < 1) {
+      return;
+    }
+    if (!(await isProjectMember(db, projectId, assigneeId))) {
+      return;
+    }
+    await updateDiscoveryActivity(db, activityId, projectId, { assigneeId });
+  }
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath(`/app/discover/insights/${activity.insightId}`);
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
 }
 
 // ─── AI drafting ──────────────────────────────────────────────────────────────
@@ -525,6 +965,8 @@ export async function draftActivityWithAIAction(formData: FormData): Promise<voi
       });
       revalidatePath(`/app/discover/activities/${activityId}`);
       revalidatePath("/app/discover");
+      revalidatePath("/app/discover/workspace");
+      revalidatePath("/app/discover/me");
       return;
     }
 
@@ -560,6 +1002,8 @@ export async function draftActivityWithAIAction(formData: FormData): Promise<voi
       });
       revalidatePath(`/app/discover/activities/${activityId}`);
       revalidatePath("/app/discover");
+      revalidatePath("/app/discover/workspace");
+      revalidatePath("/app/discover/me");
       return;
     }
 
@@ -570,6 +1014,8 @@ export async function draftActivityWithAIAction(formData: FormData): Promise<voi
     });
     revalidatePath(`/app/discover/activities/${activityId}`);
     revalidatePath("/app/discover");
+    revalidatePath("/app/discover/workspace");
+    revalidatePath("/app/discover/me");
     return;
   }
 
@@ -606,6 +1052,8 @@ export async function draftActivityWithAIAction(formData: FormData): Promise<voi
 
   revalidatePath(`/app/discover/activities/${activityId}`);
   revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
 }
 
 // ─── AI findings summary ──────────────────────────────────────────────────────
