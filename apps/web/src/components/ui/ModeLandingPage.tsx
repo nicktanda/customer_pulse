@@ -16,6 +16,13 @@ export type ModeLandingFeature = {
   number: string;
   title: string;
   description: string;
+  /**
+   * Optional pill beside the title — use `available` once a feature ships so the landing
+   * page does not look like a stale “coming soon” list.
+   */
+  availability?: "available" | "planned";
+  /** Optional text link under the description (e.g. “Use from an insight”). */
+  action?: { href: string; label: string };
 };
 
 type ModeLandingPageProps = {
@@ -86,9 +93,28 @@ function UpcomingFeatureList({ features }: { features: readonly ModeLandingFeatu
           <span className="mode-feature-number" aria-hidden="true">
             {f.number}
           </span>
-          <div>
-            <p className="fw-semibold text-body-emphasis mb-1 small">{f.title}</p>
+          <div className="min-w-0">
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+              <p className="fw-semibold text-body-emphasis mb-0 small">{f.title}</p>
+              {f.availability === "available" ? (
+                <span className="badge rounded-pill text-bg-success" style={{ fontSize: "0.65rem" }}>
+                  Available
+                </span>
+              ) : null}
+              {f.availability === "planned" ? (
+                <span className="badge rounded-pill bg-body-secondary text-body-secondary border border-secondary-subtle" style={{ fontSize: "0.65rem" }}>
+                  Planned
+                </span>
+              ) : null}
+            </div>
             <p className="small text-body-secondary mb-0">{f.description}</p>
+            {f.action ? (
+              <p className="mb-0 mt-2">
+                <Link href={f.action.href} className="small fw-medium">
+                  {f.action.label} →
+                </Link>
+              </p>
+            ) : null}
           </div>
         </div>
       ))}

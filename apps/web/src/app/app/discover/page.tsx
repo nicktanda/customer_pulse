@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { ModeLandingPage, type ModeLandingFeature, type ModeLandingStep } from "@/components/ui";
 import { getCurrentProjectSummaryForUser } from "@/lib/current-project";
@@ -15,31 +16,42 @@ const FEATURES: readonly ModeLandingFeature[] = [
     title: "Interview Guide Generator",
     description:
       "Claude reads the insight evidence and drafts a set of open-ended interview questions tailored to the specific problem. Paste into your scheduling tool and go.",
+    availability: "available",
+    action: { href: "/app/learn/insights", label: "Add this from an insight" },
   },
   {
     number: "02",
     title: "Survey Builder",
     description:
       "Get a short 5-question survey aimed at the affected users to quantitatively confirm the insight. Edit and export before sending.",
+    availability: "available",
+    action: { href: "/app/learn/insights", label: "Add this from an insight" },
   },
   {
     number: "03",
     title: "Assumption Mapper",
     description:
       "Every insight carries hidden assumptions. Claude surfaces them and suggests one way to test or disprove each — so you enter Build with eyes open.",
+    availability: "available",
+    action: { href: "/app/learn/insights", label: "Add this from an insight" },
   },
   {
     number: "04",
     title: "Competitor Scan",
     description:
       "Find out how 2–3 comparable products handle the same problem. Claude suggests which competitors to research and what specifically to look for.",
+    availability: "available",
+    action: { href: "/app/learn/insights", label: "Add this from an insight" },
   },
 ];
 
 /**
  * Discovery mode landing page.
  * Shown when the user first arrives at /app/discover.
- * Once discovery activities exist, this page will redirect to the activities list.
+ *
+ * Note: the interview guide, survey, assumption map, and competitor scan **UIs** live on
+ * `/app/discover/activities/[id]` after you add an activity from an insight — this page
+ * explains how to get there and lists what each tool does.
  */
 export default async function DiscoverPage() {
   const session = await auth();
@@ -61,8 +73,35 @@ export default async function DiscoverPage() {
       }
       cta={{ href: "/app/learn/insights", label: "Browse Insights" }}
       steps={STEPS}
-      roadmapTitle="Coming to Discover"
+      roadmapTitle="Discovery tools"
       features={FEATURES}
-    />
+    >
+      {/*
+        Without this block, the list below still looked like a “coming soon” roadmap even though
+        types 1–4 are implemented on the activity detail page — so PMs assumed nothing was live.
+      */}
+      <div className="rounded border border-secondary-subtle bg-body-secondary px-4 py-3">
+        <p className="small fw-semibold text-body-emphasis mb-2">Where to use these</p>
+        <p className="small text-body-secondary mb-2">
+          Open an insight, then add a discovery activity. The interview guide, survey, assumption map,
+          and competitor experiences open on the activity page after you create it (you will see{" "}
+          <strong>Draft with AI</strong>, copy/export buttons, and the rest there — not on this overview).
+        </p>
+        <ul className="small text-body-secondary mb-0 ps-3">
+          <li className="mb-1">
+            From Learn: open an insight → <strong>Start Discovery</strong> (or use the Discover menu).
+          </li>
+          <li className="mb-1">
+            <Link href="/app/learn/insights" className="fw-medium">
+              Browse all insights
+            </Link>{" "}
+            ·{" "}
+            <Link href="/app/discover/insights" className="fw-medium">
+              Insights already in discovery
+            </Link>
+          </li>
+        </ul>
+      </div>
+    </ModeLandingPage>
   );
 }
