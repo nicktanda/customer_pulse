@@ -6,7 +6,7 @@ Scratchpad for today’s Customer Pulse work. Add dated notes (`01-…`, `02-…
 
 | File | What it covers |
 |------|----------------|
-| *(none yet)* | — |
+| [`01-roadmap.md`](./01-roadmap.md) | Today’s game plan — Discovery + flow priorities, phased tasks, out of scope |
 
 ## What shipped today
 
