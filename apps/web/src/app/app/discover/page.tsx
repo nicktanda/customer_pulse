@@ -1,107 +1,98 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { ModeLandingPage, type ModeLandingFeature, type ModeLandingStep } from "@/components/ui";
-import { getCurrentProjectSummaryForUser } from "@/lib/current-project";
+import { PageHeader, PageShell, ProjectAccessDenied } from "@/components/ui";
+import { DiscoverInsightPicker } from "@/components/discover/DiscoverInsightPicker";
+import { getRequestDb } from "@/lib/db";
+import { getCurrentProjectIdForUser, getCurrentProjectSummaryForUser } from "@/lib/current-project";
+import { userHasProjectAccess } from "@/lib/project-access";
+import { listInsightTitlesForProject } from "@customer-pulse/db/queries/discovery";
+import { DiscoverHomeToolSections } from "./DiscoverHomeToolSections";
 
-const STEPS: ModeLandingStep[] = [
-  { step: "1", label: "Pick an insight you want to investigate further" },
-  { step: "2", label: "Add discovery activities — interviews, surveys, data queries, competitor scans" },
-  { step: "3", label: "Complete each activity and record your findings" },
-  { step: "4", label: "When confident, click Create spec to move to Build" },
-];
-
-const FEATURES: readonly ModeLandingFeature[] = [
-  {
-    number: "01",
-    title: "Interview Guide Generator",
-    description:
-      "Claude reads the insight evidence and drafts a set of open-ended interview questions tailored to the specific problem. Paste into your scheduling tool and go.",
-    availability: "available",
-    action: { href: "/app/learn/insights", label: "Add this from an insight" },
-  },
-  {
-    number: "02",
-    title: "Survey Builder",
-    description:
-      "Get a short 5-question survey aimed at the affected users to quantitatively confirm the insight. Edit and export before sending.",
-    availability: "available",
-    action: { href: "/app/learn/insights", label: "Add this from an insight" },
-  },
-  {
-    number: "03",
-    title: "Assumption Mapper",
-    description:
-      "Every insight carries hidden assumptions. Claude surfaces them and suggests one way to test or disprove each — so you enter Build with eyes open.",
-    availability: "available",
-    action: { href: "/app/learn/insights", label: "Add this from an insight" },
-  },
-  {
-    number: "04",
-    title: "Competitor Scan",
-    description:
-      "Find out how 2–3 comparable products handle the same problem. Claude suggests which competitors to research and what specifically to look for.",
-    availability: "available",
-    action: { href: "/app/learn/insights", label: "Add this from an insight" },
-  },
-];
-
-/**
- * Discovery mode landing page.
- * Shown when the user first arrives at /app/discover.
- *
- * Note: the interview guide, survey, assumption map, and competitor scan **UIs** live on
- * `/app/discover/activities/[id]` after you add an activity from an insight — this page
- * explains how to get there and lists what each tool does.
- */
-export default async function DiscoverPage() {
+export default async function DiscoverPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ insight?: string; note?: string }>;
+}) {
   const session = await auth();
-  const project = await getCurrentProjectSummaryForUser(Number(session?.user?.id));
+  const userId = Number(session?.user?.id);
+  const projectId = await getCurrentProjectIdForUser(userId);
+  const project = await getCurrentProjectSummaryForUser(userId);
+  const sp = await searchParams;
+  const insightParam = typeof sp.insight === "string" ? sp.insight : undefined;
+  const noteParam = typeof sp.note === "string" ? sp.note : undefined;
+  const insightId = insightParam ? Number.parseInt(insightParam, 10) : NaN;
+  const hasValidInsight = Number.isFinite(insightId);
+
+  if (projectId == null) {
+    return (
+      <PageShell width="full">
+        <PageHeader
+          title="Discover"
+          description="Select or create a project first."
+          back={{ href: "/app/projects", label: "Projects" }}
+        />
+      </PageShell>
+    );
+  }
+
+  if (!(await userHasProjectAccess(userId, projectId))) {
+    return <ProjectAccessDenied pageTitle="Discover" />;
+  }
+
+  const db = await getRequestDb();
+  const insightOptions = await listInsightTitlesForProject(db, projectId);
+  const selectedInsight = hasValidInsight ? insightOptions.find((i) => i.id === insightId) : undefined;
 
   return (
-    <ModeLandingPage
-      title="Discover"
-      pageDescription={project ? `Discovery for ${project.name}` : "Discovery"}
-      kickerText="Validate before you build"
-      headline="Know your insight is real before you invest in a solution"
-      body={
-        <>
-          Discovery gives you a structured way to back up an insight with interviews, surveys,
-          competitor research, and data — so when you do start building, you are building the
-          right thing. Every activity links back to the insight that prompted it, keeping the
-          trail of evidence intact.
-        </>
-      }
-      cta={{ href: "/app/learn/insights", label: "Browse Insights" }}
-      steps={STEPS}
-      roadmapTitle="Discovery tools"
-      features={FEATURES}
-    >
-      {/*
-        Without this block, the list below still looked like a “coming soon” roadmap even though
-        types 1–4 are implemented on the activity detail page — so PMs assumed nothing was live.
-      */}
-      <div className="rounded border border-secondary-subtle bg-body-secondary px-4 py-3">
-        <p className="small fw-semibold text-body-emphasis mb-2">Where to use these</p>
-        <p className="small text-body-secondary mb-2">
-          Open an insight, then add a discovery activity. The interview guide, survey, assumption map,
-          and competitor experiences open on the activity page after you create it (you will see{" "}
-          <strong>Draft with AI</strong>, copy/export buttons, and the rest there — not on this overview).
-        </p>
-        <ul className="small text-body-secondary mb-0 ps-3">
-          <li className="mb-1">
-            From Learn: open an insight → <strong>Start Discovery</strong> (or use the Discover menu).
-          </li>
-          <li className="mb-1">
-            <Link href="/app/learn/insights" className="fw-medium">
-              Browse all insights
-            </Link>{" "}
-            ·{" "}
-            <Link href="/app/discover/insights" className="fw-medium">
-              Insights already in discovery
+    <PageShell width="full">
+      <PageHeader
+        title="Discover"
+        description={project ? `${project.name} — validate before you build` : "Validate before you build"}
+        actions={
+          <Link href="/app/discover/insights" className="btn btn-outline-secondary btn-sm">
+            Insights in discovery
+          </Link>
+        }
+      />
+
+      <p className="text-body-secondary small mb-4" style={{ maxWidth: "40rem" }}>
+        Pick an insight once, then use all four tools on this page — interview guide, survey, assumption map, and
+        competitor scan. Each tool has its own AI draft and findings panel; everything still links to the same insight
+        for your spec trail in Build.
+      </p>
+
+      <DiscoverInsightPicker insights={insightOptions} value={hasValidInsight && selectedInsight ? String(insightId) : ""} />
+
+      {noteParam === "empty_findings" && hasValidInsight && selectedInsight ? (
+        <div className="alert alert-info d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-4">
+          <p className="small mb-0">
+            You marked an <strong>assumption map</strong> complete without notes in <strong>Your findings</strong>. That
+            is fine — add learnings anytime by clicking <strong>Reopen</strong> on that tool.
+          </p>
+          <Link className="btn btn-sm btn-outline-info text-nowrap" href={`/app/discover?insight=${insightId}`}>
+            Dismiss
+          </Link>
+        </div>
+      ) : null}
+
+      {!hasValidInsight || !selectedInsight ? (
+        <div className="card border-secondary-subtle">
+          <div className="card-body py-5 text-center text-body-secondary small">
+            {insightOptions.length === 0 ? (
+              <p className="mb-2">
+                No insights in this project yet. Generate or import feedback in Learn, then come back here.
+              </p>
+            ) : (
+              <p className="mb-0">Select an insight above to load the four discovery tools on this page.</p>
+            )}
+            <Link href="/app/learn/insights" className="btn btn-primary btn-sm mt-3">
+              Open Learn insights
             </Link>
-          </li>
-        </ul>
-      </div>
-    </ModeLandingPage>
+          </div>
+        </div>
+      ) : (
+        <DiscoverHomeToolSections insightId={insightId} projectId={projectId} insightTitle={selectedInsight.title} />
+      )}
+    </PageShell>
   );
 }

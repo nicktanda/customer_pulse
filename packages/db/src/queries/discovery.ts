@@ -49,6 +49,12 @@ export type InsightDiscoverySummaryRow = {
   completeCount: number;
 };
 
+/** Minimal row for insight pickers (Discover home, etc.). */
+export type InsightTitleRow = {
+  id: number;
+  title: string;
+};
+
 /** Input for createDiscoveryActivity. */
 export type CreateDiscoveryActivityInput = {
   projectId: number;
@@ -149,6 +155,26 @@ export async function getInsightsWithDiscovery(
     .orderBy(desc(sql`count(*)`));
 
   return rows;
+}
+
+/**
+ * Insight id + title for the current project, newest first — used on /app/discover
+ * so PMs can pick an insight and run tools without leaving the page.
+ */
+export async function listInsightTitlesForProject(
+  db: Database,
+  projectId: number,
+  limit = 200,
+): Promise<InsightTitleRow[]> {
+  return db
+    .select({
+      id: insights.id,
+      title: insights.title,
+    })
+    .from(insights)
+    .where(eq(insights.projectId, projectId))
+    .orderBy(desc(insights.updatedAt))
+    .limit(limit);
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────

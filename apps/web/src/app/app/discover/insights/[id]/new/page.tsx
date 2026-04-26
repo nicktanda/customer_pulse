@@ -18,7 +18,7 @@ function activityTypeInfo(type: number): { label: string; icon: string; descript
       return {
         label: "Interview guide",
         icon: "💬",
-        description: "Claude will draft 6 open-ended interview questions tailored to this insight.",
+        description: "Claude will draft 6–8 open-ended interview questions tailored to this insight.",
       };
     case 2:
       return {
@@ -36,7 +36,8 @@ function activityTypeInfo(type: number): { label: string; icon: string; descript
       return {
         label: "Competitor scan",
         icon: "🔭",
-        description: "Claude will suggest 3 competitors to research and what to look for about how they handle this problem.",
+        description:
+          "Claude will suggest 2–3 competitors (direct and adjacent) to research and what to look for in how they handle this problem.",
       };
     case 5:
       return {

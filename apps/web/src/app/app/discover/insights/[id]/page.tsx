@@ -82,6 +82,12 @@ function ActivityRow({ activity, insightId }: { activity: ActivityListRow; insig
                   AI drafted
                 </span>
               ) : null}
+              {/* Ongoing assumption map: surface that Build should wait for validation to finish. */}
+              {activity.activityType === 3 && activity.status !== 3 && activity.status !== 4 ? (
+                <span className="badge text-bg-info" style={{ fontSize: "0.65rem" }}>
+                  Assumptions in flight
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
