@@ -122,7 +122,7 @@ The Discover landing **Coming to Discover** list is the public backlog for valid
 
 **Goal:** Implement the four “Coming to Discover” capabilities end-to-end (UI + persistence + optional Claude), one brief per feature.
 
-- [ ] **E0** Create the five brief files named in the tables above (`02`–`06`) with acceptance criteria, file lists, and test notes — *then* assign agents.
+- [x] **E0** Create the five brief files named in the tables above (`02`–`06`) — **done** in `docs/sessions/2026-04-26/`.
 - [ ] **E1** Interview Guide Generator — `02-discovery-interview-guide.md`.
 - [ ] **E2** Survey Builder — `03-discovery-survey-builder.md`.
 - [ ] **E3** Assumption Mapper — `04-discovery-assumption-mapper.md`.
@@ -132,7 +132,7 @@ The Discover landing **Coming to Discover** list is the public backlog for valid
 
 ## Phase F — Formal tabs *(via agent brief)*
 
-- [ ] **F0** Write `06-formal-tab-structure.md` (visual spec + component API + Reporting migration steps).
+- [x] **F0** Write `06-formal-tab-structure.md` — **done** (same folder).
 - [ ] **F1** Implement shared tab component + styles; switch Reporting to it.
 - [ ] **F2** List other pages that should adopt the same pattern (optional follow-ups in brief).
 
