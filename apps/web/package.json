@@ -14,7 +14,7 @@
     "@customer-pulse/db": "*",
     "bcryptjs": "^2.4.3",
     "bootstrap": "^5.3.8",
-    "bullmq": "^5.34.5",
+    "bullmq": "^5.76.2",
     "drizzle-orm": "^0.39.0",
     "ioredis": "^5.4.2",
     "lucide-react": "^1.11.0",
