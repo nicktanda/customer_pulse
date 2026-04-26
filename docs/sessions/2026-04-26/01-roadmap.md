@@ -37,6 +37,43 @@ Exact UI can be incremental; the **mental model** should be clear.
 | **P1** | Insight ↔ activity flow | Creating and resuming activities should feel smooth. |
 | **P2** | Build handoff | Bridge from “discovery done” to spec creation (even if lightweight). |
 | **P3** | Nice-to-have UX | Copy, empty states, small visual consistency — after P0–P1. |
+| **P4** | **Discovery activity types** | Ship the “Coming to Discover” generators (see below) — each gets its own agent brief. |
+| **P5** | **Formal tab shell** | Reusable, styled tabs (Reporting is the first place that shows the gap). |
+
+---
+
+## “Coming to Discover” — what we should be building
+
+The Discover landing **Coming to Discover** list is the public backlog for validation tools. Each line item should become a **separate `.md` brief** so different agents can implement in parallel without stepping on each other.
+
+| # | Feature | User-facing promise (from the product copy) | Agent brief *(add file at this path when splitting work)* |
+|---|---------|-----------------------------------------------|--------------------------------------------------------|
+| 01 | **Interview Guide Generator** | Claude reads insight evidence and drafts open-ended interview questions; PM pastes into a scheduling tool. | `02-discovery-interview-guide.md` |
+| 02 | **Survey Builder** | Short ~5-question survey aimed at affected users to confirm the insight; edit and export before sending. | `03-discovery-survey-builder.md` |
+| 03 | **Assumption Mapper** | Surface hidden assumptions in the insight; suggest one way to test or disprove each before Build. | `04-discovery-assumption-mapper.md` |
+| 04 | **Competitor Scan** | How 2–3 comparable products handle the problem; Claude suggests who to research and what to look for. | `05-discovery-competitor-scan.md` |
+
+*Until those files exist, the names above are the contract — create them in this same folder and link them from [`README.md`](./README.md).*
+
+**Cross-cutting spec:** behaviour of activity types, states, and DB shape remains anchored in [`../2026-04-25/07-discovery-plan.md`](../2026-04-25/07-discovery-plan.md). Each brief above should link back to that doc and name exact routes, enums, and worker/API touchpoints.
+
+---
+
+## Formal tab structure (app-wide)
+
+**Problem:** Pages like **Reporting** use a **basic tab row** (e.g. **Overview** vs **Ask AI**): functional, but inactive tabs don’t match the active tab’s visual weight, and the pattern isn’t reused consistently elsewhere.
+
+**Goal:**
+
+1. **Design tokens / CSS** — one clear pattern for tab lists: active pill or underline, inactive hover, optional “accent” tab (e.g. Ask AI) that still fits the system.  
+2. **Reusable component** — e.g. extend or replace `ReportingTabBar` with something in `apps/web/src/components/ui/` that any page can adopt.  
+3. **Rollout** — Reporting first; then any other multi-panel pages (Discover, Build, etc.) as needed.
+
+| Workstream | Agent brief *(add file at this path when splitting work)* |
+|------------|--------------------------------------------------------------|
+| Tab shell + Reporting adoption | `06-formal-tab-structure.md` |
+
+**Likely code today:** `apps/web/src/components/reporting/ReportingTabBar.tsx`, `apps/web/src/app/app/reporting/page.tsx`, plus `globals.css` for mode-bar / surface variables.
 
 ---
 
@@ -81,10 +118,30 @@ Exact UI can be incremental; the **mental model** should be clear.
 
 ---
 
-## Out of scope for today (unless trivial)
+## Phase E — Discovery activity delivery *(via agent briefs)*
 
-- Brand-new activity **types** not already in the codebase.
-- Full **Reporting** integration for “data query” activities (unless already wired).
+**Goal:** Implement the four “Coming to Discover” capabilities end-to-end (UI + persistence + optional Claude), one brief per feature.
+
+- [ ] **E0** Create the five brief files named in the tables above (`02`–`06`) with acceptance criteria, file lists, and test notes — *then* assign agents.
+- [ ] **E1** Interview Guide Generator — `02-discovery-interview-guide.md`.
+- [ ] **E2** Survey Builder — `03-discovery-survey-builder.md`.
+- [ ] **E3** Assumption Mapper — `04-discovery-assumption-mapper.md`.
+- [ ] **E4** Competitor Scan — `05-discovery-competitor-scan.md`.
+
+---
+
+## Phase F — Formal tabs *(via agent brief)*
+
+- [ ] **F0** Write `06-formal-tab-structure.md` (visual spec + component API + Reporting migration steps).
+- [ ] **F1** Implement shared tab component + styles; switch Reporting to it.
+- [ ] **F2** List other pages that should adopt the same pattern (optional follow-ups in brief).
+
+---
+
+## Out of scope for this branch *(unless a brief explicitly includes it)*
+
+- Full **Reporting** *data layer* changes unrelated to tabs (chart queries, etc.).
+- **Data query** discovery activity deep-linking into Reporting — track inside the relevant Discovery brief if needed.
 - **Multi-user** / assignments (see [`../Nicktodo/multi-user-plan.md`](../Nicktodo/multi-user-plan.md)) — capture ideas only.
 
 ---
@@ -92,7 +149,7 @@ Exact UI can be incremental; the **mental model** should be clear.
 ## End-of-day checklist
 
 - [ ] Update [`README.md`](./README.md): link any new docs; check off **What shipped today**.
-- [ ] Note follow-ups for next session in this file or a new `02-…` doc.
+- [ ] When splitting work: add the `02`–`06` briefs and link them in [`README.md`](./README.md).
 
 ---
 
