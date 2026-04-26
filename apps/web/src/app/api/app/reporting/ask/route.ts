@@ -19,6 +19,8 @@ export const runtime = "nodejs";
 const bodySchema = z.object({
   prompt: z.string().trim().min(1).max(8000),
   outputMode: z.enum(["answer", "report_chart"]),
+  /** How many days of context to include in the AI prompt (7, 30, or 90). Defaults to 30. */
+  rangeDays: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30),
 });
 
 const RATE_WINDOW_MS = 60 * 60 * 1000;
@@ -80,6 +82,7 @@ export async function POST(req: Request) {
       userId,
       prompt: parsed.data.prompt,
       outputMode,
+      rangeDays: parsed.data.rangeDays,
       status: ReportingRequestStatus.pending,
       createdAt: now,
       updatedAt: now,

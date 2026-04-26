@@ -25,7 +25,7 @@ export default async function InsightShowPage({ params }: { params: Promise<{ id
   const projectId = await getCurrentProjectIdForUser(userId);
 
   if (projectId == null || !(await userHasProjectAccess(userId, projectId))) {
-    redirect("/app/insights");
+    redirect("/app/learn/insights");
   }
 
   const db = await getRequestDb();
@@ -68,10 +68,26 @@ export default async function InsightShowPage({ params }: { params: Promise<{ id
             ) : null}
           </>
         }
-        back={{ href: "/app/insights", label: "Insights" }}
+        back={{ href: "/app/learn/insights", label: "Insights" }}
+        actions={
+          <div className="d-flex gap-2 flex-wrap">
+            <Link
+              href={`/app/discover/insights/${row.id}`}
+              className="btn btn-sm btn-outline-secondary"
+            >
+              Start Discovery
+            </Link>
+            <Link
+              href={`/app/build/specs/new?from_insight=${row.id}`}
+              className="btn btn-sm btn-primary"
+            >
+              Create spec
+            </Link>
+          </div>
+        }
       />
 
-      <InsightDetailBody row={row} linkedFeedback={linkedFeedback} />
+      <InsightDetailBody row={row} linkedFeedback={linkedFeedback} showSpecCta={false} />
     </PageShell>
   );
 }

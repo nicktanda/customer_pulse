@@ -1,5 +1,5 @@
 /**
- * Builds stable query strings for `/app/feedback` (filters, search, AI queue, pagination, sort).
+ * Builds stable query strings for `/app/learn/feedback` (filters, search, AI queue, pagination, sort).
  * Centralizes this so filter chips, pagination, and the filter form stay in sync.
  */
 
@@ -126,5 +126,5 @@ export function serializeFeedbackListQuery(sp: FeedbackListQuery): string {
 
 export function feedbackListHref(sp: FeedbackListQuery): string {
   const s = serializeFeedbackListQuery(sp);
-  return s ? `/app/feedback?${s}` : "/app/feedback";
+  return s ? `/app/learn/feedback?${s}` : "/app/learn/feedback";
 }

@@ -27,12 +27,12 @@ function parseSafeListReturnPath(raw: FormDataEntryValue | null): string | null 
   if (s.includes("\n") || s.includes("\r")) {
     return null;
   }
-  if (!s.startsWith("/app/feedback")) {
+  if (!s.startsWith("/app/learn/feedback")) {
     return null;
   }
   const q = s.indexOf("?");
   const path = q === -1 ? s : s.slice(0, q);
-  if (path !== "/app/feedback") {
+  if (path !== "/app/learn/feedback") {
     return null;
   }
   return s;
@@ -54,7 +54,7 @@ async function requireEditorAndProject(): Promise<{ userId: number; projectId: n
     redirect("/app/projects");
   }
   if (!(await userCanEditProject(userId, projectId))) {
-    redirect("/app/feedback");
+    redirect("/app/learn/feedback");
   }
   return { userId, projectId };
 }
@@ -73,7 +73,7 @@ export async function updateFeedbackAction(feedbackId: number, formData: FormDat
   const { projectId } = await requireEditorAndProject();
   const row = await loadFeedbackInProject(projectId, feedbackId);
   if (!row) {
-    redirect("/app/feedback");
+    redirect("/app/learn/feedback");
   }
 
   const status = Number(formData.get("status"));
@@ -95,17 +95,17 @@ export async function updateFeedbackAction(feedbackId: number, formData: FormDat
     })
     .where(eq(feedbacks.id, feedbackId));
 
-  revalidatePath("/app/feedback");
-  revalidatePath(`/app/feedback/${feedbackId}`);
+  revalidatePath("/app/learn/feedback");
+  revalidatePath(`/app/learn/feedback/${feedbackId}`);
   const back = parseSafeListReturnPath(formData.get("return_path"));
-  redirect(back ?? `/app/feedback/${feedbackId}`);
+  redirect(back ?? `/app/learn/feedback/${feedbackId}`);
 }
 
 export async function reprocessFeedbackAction(feedbackId: number, _formData?: FormData): Promise<void> {
   const { projectId } = await requireEditorAndProject();
   const row = await loadFeedbackInProject(projectId, feedbackId);
   if (!row) {
-    redirect("/app/feedback");
+    redirect("/app/learn/feedback");
   }
 
   try {
@@ -115,9 +115,9 @@ export async function reprocessFeedbackAction(feedbackId: number, _formData?: Fo
     // Redis optional in local dev
   }
 
-  revalidatePath(`/app/feedback/${feedbackId}`);
+  revalidatePath(`/app/learn/feedback/${feedbackId}`);
   const back = parseSafeListReturnPath(_formData?.get("return_path") ?? null);
-  const target = back ?? `/app/feedback/${feedbackId}`;
+  const target = back ?? `/app/learn/feedback/${feedbackId}`;
   redirect(withQueryParam(target, "notice", "reprocess"));
 }
 
@@ -126,7 +126,7 @@ export async function bulkUpdateFeedbackAction(formData: FormData): Promise<void
   const rawIds = formData.getAll("feedback_ids").map(String);
   const ids = rawIds.map((x) => Number.parseInt(x, 10)).filter((n) => Number.isFinite(n) && n > 0);
   if (ids.length === 0) {
-    redirect("/app/feedback?error=bulk");
+    redirect("/app/learn/feedback?error=bulk");
   }
 
   const patch: {
@@ -149,7 +149,7 @@ export async function bulkUpdateFeedbackAction(formData: FormData): Promise<void
   }
 
   if (patch.status === undefined && patch.priority === undefined && patch.category === undefined) {
-    redirect("/app/feedback?error=bulk");
+    redirect("/app/learn/feedback?error=bulk");
   }
 
   const db = await getRequestDb();
@@ -158,6 +158,6 @@ export async function bulkUpdateFeedbackAction(formData: FormData): Promise<void
     .set(patch)
     .where(and(eq(feedbacks.projectId, projectId), inArray(feedbacks.id, ids)));
 
-  revalidatePath("/app/feedback");
-  redirect("/app/feedback?notice=bulk");
+  revalidatePath("/app/learn/feedback");
+  redirect("/app/learn/feedback?notice=bulk");
 }

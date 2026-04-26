@@ -7,28 +7,31 @@ import { useEffect, useState } from "react";
 /**
  * On small viewports the nav lives in a fixed drawer so the main column can use full width.
  * On `lg` and up the sidebar stays visible (Bootstrap breakpoint 992px).
+ *
+ * The open trigger comes from MobileTopBar via a custom browser event ("app:sidebar-open"),
+ * which avoids prop-drilling through the server-component layout.
  * Closing when the route changes avoids a stale open menu after navigation.
  */
 export function ResponsiveSidebar({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  // Close the drawer whenever the user navigates to a new route
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
+  // Listen for the open signal fired by MobileTopBar's hamburger button
+  useEffect(() => {
+    function handleOpen() {
+      setOpen(true);
+    }
+    window.addEventListener("app:sidebar-open", handleOpen);
+    return () => window.removeEventListener("app:sidebar-open", handleOpen);
+  }, []);
+
   return (
     <>
-      <button
-        type="button"
-        className="btn btn-outline-secondary btn-sm d-lg-none position-fixed top-0 start-0 m-2"
-        style={{ zIndex: 1060 }}
-        aria-expanded={open}
-        aria-controls="app-sidebar-nav"
-        onClick={() => setOpen(true)}
-      >
-        Menu
-      </button>
       {open ? (
         <button
           type="button"
@@ -43,10 +46,6 @@ export function ResponsiveSidebar({ children }: { children: ReactNode }) {
         className={`app-sidebar border-end bg-body-secondary flex-shrink-0 p-3 d-flex flex-column${open ? " app-sidebar--open" : ""}`}
         style={{ width: "14rem" }}
       >
-        <div className="d-flex d-lg-none justify-content-between align-items-center pb-2 mb-2 border-bottom border-secondary-subtle">
-          <span className="small fw-semibold text-body-secondary">Navigation</span>
-          <button type="button" className="btn-close" aria-label="Close menu" onClick={() => setOpen(false)} />
-        </div>
         {children}
       </aside>
     </>

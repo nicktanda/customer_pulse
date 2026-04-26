@@ -10,10 +10,10 @@ import {
   InlineAlert,
   PageHeader,
   PageShell,
+  PeekDrawerPanel,
   PeekPanelNotFound,
   ProjectAccessDenied,
   SimplePeekPanelHeader,
-  StickyDetailAside,
 } from "@/components/ui";
 import { integrationsListHref } from "@/lib/integrations-list-query";
 import { INTEGRATION_SOURCE_LABELS } from "@/lib/integration-source-meta";
@@ -67,9 +67,6 @@ export default async function IntegrationsPage({
     }
   }
 
-  const listColClass =
-    detailRow != null || detailId != null ? "col-12 col-lg-7 col-xl-8" : "col-12";
-
   return (
     <PageShell width="full">
       <PageHeader
@@ -98,19 +95,18 @@ export default async function IntegrationsPage({
         </InlineAlert>
       ) : null}
 
-      <div className="row g-3 align-items-start mt-4">
-        <div className={listColClass}>
-          <ul className="list-group shadow-sm">
-            {rows.length === 0 ? (
-              <li className="list-group-item text-body-secondary small">No integrations yet.</li>
-            ) : (
-              <IntegrationListRows rows={rowsForList} selectedId={detailRow?.id ?? null} />
-            )}
-          </ul>
-        </div>
+      <ul className="list-group shadow-sm mt-4">
+        {rows.length === 0 ? (
+          <li className="list-group-item text-body-secondary small">No integrations yet.</li>
+        ) : (
+          <IntegrationListRows rows={rowsForList} selectedId={detailRow?.id ?? null} />
+        )}
+      </ul>
 
-        {detailId != null ? (
-          <StickyDetailAside aria-label="Integration detail">
+      {detailId != null ? (
+        <>
+          <Link href={closePanelHref} className="peek-drawer-backdrop" aria-label="Close detail panel" />
+          <PeekDrawerPanel storageKey="integrations-drawer-width">
             {detailRow != null ? (
               <>
                 <SimplePeekPanelHeader
@@ -131,9 +127,9 @@ export default async function IntegrationsPage({
                 closeHref={closePanelHref}
               />
             )}
-          </StickyDetailAside>
-        ) : null}
-      </div>
+          </PeekDrawerPanel>
+        </>
+      ) : null}
     </PageShell>
   );
 }

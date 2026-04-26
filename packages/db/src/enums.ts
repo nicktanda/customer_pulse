@@ -100,3 +100,59 @@ export const InsightStatus = {
   addressed: 3,
   dismissed: 4,
 } as const;
+
+/**
+ * discovery_activities.activity_type — the kind of validation work being done.
+ *
+ * interview_guide      (1) — AI-drafted interview questions for the insight
+ * survey               (2) — short targeted survey to send to affected users
+ * assumption_map       (3) — list of assumptions and how to test each
+ * competitor_scan      (4) — research into how competitors handle the same problem
+ * data_query           (5) — quantitative question linked to the Reporting page
+ * desk_research        (6) — free-form notes from secondary research
+ * prototype_hypothesis (7) — one-sentence testable hypothesis before prototyping
+ */
+export const DiscoveryActivityType = {
+  interview_guide: 1,
+  survey: 2,
+  assumption_map: 3,
+  competitor_scan: 4,
+  data_query: 5,
+  desk_research: 6,
+  prototype_hypothesis: 7,
+} as const;
+
+/**
+ * discovery_activities.status — progress through a single activity.
+ *
+ * draft       (1) — created, not yet started
+ * in_progress (2) — PM is actively working on it
+ * complete    (3) — findings have been recorded
+ * archived    (4) — superseded or no longer relevant
+ */
+export const DiscoveryActivityStatus = {
+  draft: 1,
+  in_progress: 2,
+  complete: 3,
+  archived: 4,
+} as const;
+
+/**
+ * specs.status — tracks a spec through the Build pipeline.
+ * Integer values must stay stable once rows exist in production.
+ *
+ * backlog    (0) — idea logged, not yet being written
+ * drafting   (1) — someone is actively writing the spec
+ * review     (2) — spec is ready for PM/stakeholder review
+ * ready      (3) — reviewed and approved, waiting for dev
+ * in_progress(4) — development has started
+ * shipped    (5) — feature is live; triggers Monitor area
+ */
+export const SpecStatus = {
+  backlog: 0,
+  drafting: 1,
+  review: 2,
+  ready: 3,
+  in_progress: 4,
+  shipped: 5,
+} as const;

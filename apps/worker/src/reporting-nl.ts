@@ -10,7 +10,7 @@ import {
 } from "@customer-pulse/db/client";
 import { type ReportStructured, reportStructuredSchema, stripJsonFence } from "./reporting-structured.js";
 
-const CONTEXT_RANGE_DAYS = 30;
+/** Maximum text snippets included in the context bundle sent to the model. */
 const MAX_SNIPPETS = 12;
 const SNIPPET_LEN = 220;
 
@@ -20,10 +20,16 @@ function truncate(s: string, max: number): string {
 }
 
 /**
- * Fixed, allowlisted stats + tiny text samples — never send full feedback history to the model.
+ * Builds a fixed, allowlisted context bundle for the given date window.
+ * Accepts `rangeDays` so callers can pass a user-selected window (7 / 30 / 90).
+ * Never sends full feedback history to the model — only aggregated counts + snippets.
  */
-export async function buildReportingContextBundle(db: Database, projectId: number): Promise<string> {
-  const start = new Date(Date.now() - CONTEXT_RANGE_DAYS * 24 * 60 * 60 * 1000);
+export async function buildReportingContextBundle(
+  db: Database,
+  projectId: number,
+  rangeDays: number,
+): Promise<string> {
+  const start = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
   const dayTrunc = sql`date_trunc('day', ${feedbacks.createdAt})`;
 
   const [totalRow] = await db
@@ -96,7 +102,7 @@ export async function buildReportingContextBundle(db: Database, projectId: numbe
     .limit(8);
 
   const bundle = {
-    windowDays: CONTEXT_RANGE_DAYS,
+    windowDays: rangeDays,
     feedbackCountInWindow: totalRow?.c ?? 0,
     dailyVolume: dailyRows.map((r) => ({ day: r.day, count: r.c })),
     byCategory: categoryRows.map((r) => ({ category: r.category, count: r.c })),
@@ -147,6 +153,28 @@ async function callAnthropic(system: string, user: string, maxTokens: number): P
   return text ?? "(empty response)";
 }
 
+/**
+ * Graph-specific system prompt.
+ * Instructs the model to produce chart-ready JSON only, with guidance for each
+ * supported chart type shape so the renderer can handle the output directly.
+ */
+const GRAPH_SYSTEM_PROMPT = `You are a data visualisation assistant for a PM tool.
+You receive aggregated JSON about customer feedback.
+Your job is to produce chart-ready JSON only — no prose except the short "narrative" field.
+
+Supported chart types: bar, bar_stacked, bar_horizontal, line, area, pie, scatter.
+For pie charts: series must have exactly ONE entry; labels = slice names; series[0].data = values. Limit pie to 8 slices max — merge the rest as "Other".
+For scatter: labels = point names; series[0].data = x values; series[1].data = y values.
+For bar_stacked: each series is one stack segment; all data arrays must have equal length.
+
+Rules:
+- Use ONLY data from the provided JSON — never invent numbers.
+- Choose the chart type that best answers the user's question.
+- If the user specifies a type, use that type.
+- Keep narrative under 100 words.
+- Respond ONLY with a valid JSON object matching:
+  {"narrative": string, "charts": [{"title"?: string, "type": ChartType, "labels": string[], "series": [{"name": string, "data": number[]}]}]}`;
+
 export async function processReportingNlJob(db: Database, requestId: number): Promise<void> {
   const now = new Date();
   const claim = await db
@@ -170,19 +198,14 @@ export async function processReportingNlJob(db: Database, requestId: number): Pr
   }
 
   try {
-    const contextJson = await buildReportingContextBundle(db, row.projectId);
+    // Use the rangeDays stored on the row (written by the API route at submission time).
+    const rangeDays = row.rangeDays ?? 30;
+    const contextJson = await buildReportingContextBundle(db, row.projectId, rangeDays);
     const isReport = row.outputMode === ReportingOutputMode.report_chart;
 
     if (isReport) {
-      const system = `You are an analytics assistant for a PM. You receive ONLY aggregated JSON about customer feedback for one product workspace. 
-Do not invent numbers — use only facts from the JSON. 
-The user will ask for a short report and chart-ready data.
-Respond with a single JSON object (no markdown fences) matching exactly this shape:
-{"narrative": string, "charts": array of {"title"?: string, "type": "bar"|"line", "labels": string[], "series": {"name": string, "data": number[]}[]}}
-Each series data array must have the same length as labels. Use at least one chart when it helps. Keep narrative under 400 words.`;
-
       const user = `User question:\n${row.prompt}\n\nData (JSON):\n${contextJson}`;
-      const raw = await callAnthropic(system, user, 4096);
+      const raw = await callAnthropic(GRAPH_SYSTEM_PROMPT, user, 4096);
       const cleaned = stripJsonFence(raw);
       let resultStructured: ReportStructured | null = null;
       let narrative = raw;
@@ -193,6 +216,8 @@ Each series data array must have the same length as labels. Use at least one cha
           resultStructured = parsed.data;
           narrative = parsed.data.narrative;
         } else {
+          // Log the Zod error for debugging, fall back to showing the raw text.
+          console.warn("[reporting-nl] Zod parse failed for chart mode:", parsed.error.flatten());
           narrative = `Model returned invalid JSON for chart mode. Raw (trimmed):\n\n${truncate(cleaned, 4000)}`;
         }
       } catch {

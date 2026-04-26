@@ -1,5 +1,5 @@
 /**
- * Query strings for `/app/insights` (pagination + optional right-hand detail panel).
+ * Query strings for `/app/learn/insights` (pagination + optional right-hand detail panel).
  */
 export type InsightsListQuery = {
   page?: number;
@@ -19,5 +19,5 @@ export function serializeInsightsListQuery(sp: InsightsListQuery): string {
 
 export function insightsListHref(sp: InsightsListQuery): string {
   const s = serializeInsightsListQuery(sp);
-  return s ? `/app/insights?${s}` : "/app/insights";
+  return s ? `/app/learn/insights?${s}` : "/app/learn/insights";
 }

@@ -13,9 +13,9 @@ import {
 import { signOutAction } from "./actions";
 import { ensureCurrentProjectCookie } from "@/lib/current-project";
 import { ResponsiveSidebar } from "./ResponsiveSidebar";
+import { MobileTopBar } from "./MobileTopBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "@/components/SidebarNav";
-
 function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
   const workspaceItems: SidebarNavItem[] = [];
   if (!onboardingComplete) {
@@ -31,19 +31,42 @@ function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
 
   return [
     {
-      label: "Work",
+      /*
+       * Learn — all the "understand your customers" pages.
+       * Dashboard lives here as the starting point before a mode is chosen.
+       */
+      label: "Learn",
       items: [
         { href: "/app", label: "Dashboard" },
-        { href: "/app/feedback", label: "Feedback" },
+        { href: "/app/learn/feedback", label: "Feedback" },
+        { href: "/app/learn/insights", label: "Insights" },
+        { href: "/app/reporting", label: "Reporting" },
+        { href: "/app/strategy", label: "Strategy" },
+        { href: "/app/pulse-reports", label: "Pulse reports" },
       ],
     },
     {
-      label: "Insights & reports",
+      /*
+       * Discover — validate an insight before committing to a spec.
+       * Activities (interview guides, surveys, etc.) live here.
+       */
+      label: "Discover",
       items: [
-        { href: "/app/insights", label: "Insights" },
-        { href: "/app/pulse-reports", label: "Pulse reports" },
-        { href: "/app/reporting", label: "Reporting" },
-        { href: "/app/strategy", label: "Strategy" },
+        { href: "/app/discover", label: "Activities" },
+      ],
+    },
+    {
+      /* Build — turn insights into work. Specs Board comes once the table exists. */
+      label: "Build",
+      items: [
+        { href: "/app/build/specs", label: "Specs" },
+      ],
+    },
+    {
+      /* Monitor — watch shipped work via LogRocket. More items added as Monitor grows. */
+      label: "Monitor",
+      items: [
+        { href: "/app/monitor", label: "Features" },
       ],
     },
     {
@@ -167,7 +190,26 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="d-flex min-vh-100 app-layout-shell">
       <ResponsiveSidebar>
-        <p className="small fw-semibold text-uppercase text-body-secondary mb-0">Customer Pulse</p>
+        <div className="d-flex align-items-center gap-2 pb-3 mb-3 border-bottom border-secondary-subtle">
+          {/* Small ember accent square — acts as an app logo mark */}
+          <span
+            aria-hidden="true"
+            style={{
+              width: "1.125rem",
+              height: "1.125rem",
+              borderRadius: "0.25rem",
+              background: "var(--k-ember)",
+              flexShrink: 0,
+              display: "inline-block",
+            }}
+          />
+          <p
+            className="small fw-semibold text-uppercase mb-0"
+            style={{ color: "var(--k-ember)", letterSpacing: "0.07em", fontSize: "0.7rem" }}
+          >
+            Customer Pulse
+          </p>
+        </div>
         <SidebarNav groups={sidebarNavGroups(true)}>
           {isAdmin && bullBoardUrl ? (
             <a
@@ -192,9 +234,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </form>
         </div>
       </ResponsiveSidebar>
-      <main className="flex-grow-1 min-w-0 bg-body-tertiary px-4 pb-4 pt-5 p-lg-5 app-main-pane">
-        {children}
-      </main>
+      {/*
+       * Right-hand column: the mode bar sits above the page content so it
+       * spans the full content width on every page without each page needing
+       * to include it themselves.
+       */}
+      <div className="d-flex flex-column flex-grow-1 min-w-0">
+        <MobileTopBar />
+        <main className="flex-grow-1 bg-body-tertiary px-4 pb-4 pt-3 p-lg-5 app-main-pane">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

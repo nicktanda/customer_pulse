@@ -6,7 +6,7 @@ import {
 } from "@/lib/feedback-enums-display";
 import { formatAppDateTime } from "@/lib/format-app-date";
 import { FeedbackMetaBadges } from "@/components/feedback/FeedbackMetaBadges";
-import { reprocessFeedbackAction, updateFeedbackAction } from "@/app/app/feedback/actions";
+import { reprocessFeedbackAction, updateFeedbackAction } from "@/app/app/learn/feedback/actions";
 import { feedbacks } from "@customer-pulse/db/client";
 
 /** One feedback row from Drizzle — same shape as `select()` from `feedbacks`. */

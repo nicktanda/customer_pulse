@@ -182,7 +182,7 @@ export default async function DashboardPage() {
       ) : null}
 
       <section aria-labelledby="dash-at-a-glance-heading">
-        <h2 id="dash-at-a-glance-heading" className="h5 text-body-emphasis mb-0">
+        <h2 id="dash-at-a-glance-heading" className="h5 fw-semibold text-body-emphasis border-bottom border-secondary-subtle pb-2 mb-0">
           At a glance
         </h2>
         <p className="small text-body-secondary mt-1 mb-3">
@@ -196,14 +196,14 @@ export default async function DashboardPage() {
           <MetricTile
             label="Unprocessed (AI)"
             value={unprocessedRow?.c ?? 0}
-            href="/app/feedback?ai=pending"
+            href="/app/learn/feedback?ai=pending"
             linkHint="Open in Feedback"
           />
         </div>
       </section>
 
       <section aria-labelledby="dash-needs-attention-heading">
-        <h2 id="dash-needs-attention-heading" className="h5 text-body-emphasis mb-0">
+        <h2 id="dash-needs-attention-heading" className="h5 fw-semibold text-body-emphasis border-bottom border-secondary-subtle pb-2 mb-0">
           Needs attention
         </h2>
         <p className="small text-body-secondary mt-1 mb-3">
@@ -241,7 +241,7 @@ export default async function DashboardPage() {
                 Items waiting for AI classification show up here. Open the full list to work through them.
               </p>
               <p className="h4 mb-2 text-body-emphasis">{unprocessedRow?.c ?? 0}</p>
-              <Link href="/app/feedback?ai=pending" className="btn btn-sm btn-outline-primary">
+              <Link href="/app/learn/feedback?ai=pending" className="btn btn-sm btn-outline-primary">
                 View unprocessed
               </Link>
             </div>
@@ -251,7 +251,7 @@ export default async function DashboardPage() {
       </section>
 
       <section aria-labelledby="dash-volume-heading">
-        <h2 id="dash-volume-heading" className="h5 text-body-emphasis">
+        <h2 id="dash-volume-heading" className="h5 fw-semibold text-body-emphasis border-bottom border-secondary-subtle pb-2">
           Volume and mix
         </h2>
         <p className="small text-body-secondary mt-1 mb-3">
@@ -302,7 +302,7 @@ export default async function DashboardPage() {
       </section>
 
       <section aria-labelledby="dash-recent-heading">
-        <h2 id="dash-recent-heading" className="h5 text-body-emphasis mb-0">
+        <h2 id="dash-recent-heading" className="h5 fw-semibold text-body-emphasis border-bottom border-secondary-subtle pb-2 mb-0">
           Recent activity
         </h2>
         <p className="small text-body-secondary mt-1 mb-3">Latest items and the most recent sent pulse.</p>

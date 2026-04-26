@@ -12,8 +12,8 @@ import { UserRole } from "@customer-pulse/db/client";
 /** Same paths as dashboard data that demo seed creates or removes. */
 function revalidateAfterDemoDataChange() {
   revalidatePath("/app");
-  revalidatePath("/app/feedback");
-  revalidatePath("/app/insights");
+  revalidatePath("/app/learn/feedback");
+  revalidatePath("/app/learn/insights");
   revalidatePath("/app/reporting");
   revalidatePath("/app/pulse-reports");
   revalidatePath("/app/strategy");
