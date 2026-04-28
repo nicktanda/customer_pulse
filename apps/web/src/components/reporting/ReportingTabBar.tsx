@@ -1,48 +1,40 @@
-"use client";
-
-import Link from "next/link";
+import { AppTabBar, type AppTabItem } from "@/components/ui/AppTabBar";
 
 type ReportingTab = "overview" | "ask";
 
 interface ReportingTabBarProps {
-  /** Which tab is currently active — drives the aria-current and visual highlight. */
+  /** Which tab is currently active — drives `aria-current` and the active visual style. */
   activeTab: ReportingTab;
-  /** Current time range in days — preserved in the tab link hrefs. */
+  /** Current time range in days — preserved in every tab link’s `href`. */
   rangeDays: number;
 }
 
 /**
- * Bootstrap nav-tabs bar for the Reporting page.
- * Uses plain <Link> elements so switching tabs is a server navigation (URL-based),
- * which keeps the page as a Server Component and makes tabs bookmarkable.
+ * Reporting-specific tab row (Overview vs Ask AI) built on the shared `AppTabBar`.
+ * URLs stay `?tab=overview|ask&range=7|30|90` so bookmarks and shared links keep working.
  */
 export function ReportingTabBar({ activeTab, rangeDays }: ReportingTabBarProps) {
-  return (
-    <ul className="nav nav-tabs" role="tablist">
-      <li className="nav-item" role="presentation">
-        <Link
-          href={`/app/reporting?range=${rangeDays}&tab=overview`}
-          className={`nav-link${activeTab === "overview" ? " active" : ""}`}
-          aria-current={activeTab === "overview" ? "page" : undefined}
-          role="tab"
-        >
-          Overview
-        </Link>
-      </li>
-      <li className="nav-item" role="presentation">
-        <Link
-          href={`/app/reporting?range=${rangeDays}&tab=ask`}
-          className={`nav-link${activeTab === "ask" ? " active" : ""}`}
-          aria-current={activeTab === "ask" ? "page" : undefined}
-          role="tab"
-        >
-          {/* Small sparkle icon helps users notice the AI feature */}
+  const items: AppTabItem[] = [
+    {
+      id: "overview",
+      label: "Overview",
+      href: `/app/reporting?range=${rangeDays}&tab=overview`,
+    },
+    {
+      id: "ask",
+      label: (
+        <>
           Ask AI{" "}
-          <span className="ms-1" aria-hidden="true" style={{ fontSize: "0.75em", opacity: 0.7 }}>
+          {/* Small sparkle so the AI tab is easy to spot; decorative only for screen readers */}
+          <span className="app-tab-bar__accent-icon" aria-hidden="true">
             ✦
           </span>
-        </Link>
-      </li>
-    </ul>
-  );
+        </>
+      ),
+      href: `/app/reporting?range=${rangeDays}&tab=ask`,
+      accent: true,
+    },
+  ];
+
+  return <AppTabBar items={items} activeId={activeTab} ariaLabel="Reporting views" />;
 }

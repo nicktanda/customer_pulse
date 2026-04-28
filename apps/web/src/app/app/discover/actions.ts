@@ -3,17 +3,36 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import type { Database } from "@customer-pulse/db/client";
 import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
-import { insights } from "@customer-pulse/db/client";
+import { insights, projectUsers, teams } from "@customer-pulse/db/client";
 import { and, eq } from "drizzle-orm";
 import {
   createDiscoveryActivity,
   updateDiscoveryActivity,
   getActivityById,
   getActivitiesByInsight,
+  setInsightDiscoveryLeadId,
+  setInsightDiscoveryStage,
+  setInsightTeamId,
+  setProjectOstMapRoot,
+  createInsightWithInitialDiscoveryActivity,
+  appendOstMapSolution,
+  removeOstMapSolution,
+  updateOstMapSolution,
+  updateInsightTitle,
+  updateDiscoveryActivityTitle,
+  deleteDiscoveryActivity,
+  deleteInsightAndRelated,
 } from "@customer-pulse/db/queries/discovery";
+import { validateSurveyShape } from "@/lib/discovery-survey";
+import {
+  insightTypeLabelForPrompt,
+  INTERVIEW_DRAFT_ERROR_KEY,
+  isValidClaudeInterviewGuideResponse,
+} from "@/lib/discovery-interview-guide";
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 
@@ -35,6 +54,18 @@ async function requireEditor() {
     redirect("/app/discover");
   }
   return { userId, projectId };
+}
+
+/**
+ * True when this user is a member of the project (used to validate assignee / lead pickers).
+ */
+async function isProjectMember(db: Database, projectId: number, memberUserId: number) {
+  const [m] = await db
+    .select({ x: projectUsers.id })
+    .from(projectUsers)
+    .where(and(eq(projectUsers.projectId, projectId), eq(projectUsers.userId, memberUserId)))
+    .limit(1);
+  return Boolean(m);
 }
 
 // ─── Activity labels (mirrors enums — kept in sync with enums.ts) ─────────────
@@ -104,8 +135,19 @@ export async function createDiscoveryActivityAction(formData: FormData): Promise
 
   revalidatePath(`/app/discover/insights/${insightId}`);
   revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
 
-  // Redirect to the new activity — the page will offer to draft with AI
+  /**
+   * `return_to=discover` keeps the PM on the insight workspace after creating an activity
+   * so all four tools stay on one page.
+   */
+  const returnTo = String(formData.get("return_to") ?? "");
+  if (returnTo === "discover") {
+    redirect(`/app/discover/workspace?insight=${insightId}`);
+  }
+
   redirect(`/app/discover/activities/${newId}`);
 }
 
@@ -134,6 +176,57 @@ export async function saveDiscoveryFindingsAction(formData: FormData): Promise<v
   await updateDiscoveryActivity(db, activityId, projectId, { findings });
 
   revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  if (Number.isFinite(insightId)) {
+    revalidatePath(`/app/discover/insights/${insightId}`);
+  }
+}
+
+/**
+ * Server action: saves edited survey JSON (activity type 2 only) into ai_generated_content.
+ *
+ * Form fields:
+ *   activity_id   (required)
+ *   insight_id    (required) — revalidation
+ *   survey_json   (required) — JSON string matching validateSurveyShape rules
+ */
+export async function updateSurveyDraftAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const rawJson = String(formData.get("survey_json") ?? "");
+
+  if (!Number.isFinite(activityId)) return;
+
+  let body: unknown;
+  try {
+    body = JSON.parse(rawJson);
+  } catch {
+    return;
+  }
+
+  const validated = validateSurveyShape(body);
+  if (!validated.ok) return;
+
+  const db = await getRequestDb();
+  const activity = await getActivityById(db, activityId, projectId);
+  if (!activity || activity.activityType !== 2) return;
+
+  await updateDiscoveryActivity(db, activityId, projectId, {
+    aiGeneratedContent: {
+      ...validated.data,
+      human_edited: true,
+    } as Record<string, unknown>,
+    aiGenerated: true,
+  });
+
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
   if (Number.isFinite(insightId)) {
     revalidatePath(`/app/discover/insights/${insightId}`);
   }
@@ -153,22 +246,39 @@ export async function markActivityCompleteAction(formData: FormData): Promise<vo
 
   const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
   const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const returnTo = String(formData.get("return_to") ?? "");
 
   if (!Number.isFinite(activityId)) return;
 
   const db = await getRequestDb();
 
-  // Save any findings passed alongside the status change
-  const findings = String(formData.get("findings") ?? "").trim() || null;
+  const activity = await getActivityById(db, activityId, projectId);
+  if (!activity) return;
+
+  // Always persist whatever is in the findings textarea when marking complete (same as Save).
+  // This avoids losing work if the PM clicks "Mark complete" without clicking "Save findings" first.
+  const rawFindings = String(formData.get("findings") ?? "");
+  const findings = rawFindings.trim() || null;
   await updateDiscoveryActivity(db, activityId, projectId, {
     status: 3, // complete
-    ...(findings !== null ? { findings } : {}),
+    findings,
   });
 
   revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
   if (Number.isFinite(insightId)) {
     revalidatePath(`/app/discover/insights/${insightId}`);
     revalidatePath("/app/discover/insights");
+  }
+
+  // Assumption map: nudge if they completed with no learnings recorded (allowed, but we explain once).
+  if (activity.activityType === 3 && !findings) {
+    if (returnTo === "discover" && Number.isFinite(insightId)) {
+      redirect(`/app/discover/workspace?insight=${insightId}&note=empty_findings`);
+    }
+    redirect(`/app/discover/activities/${activityId}?note=empty_findings`);
   }
 }
 
@@ -191,9 +301,417 @@ export async function reopenActivityAction(formData: FormData): Promise<void> {
   await updateDiscoveryActivity(db, activityId, projectId, { status: 2 }); // in_progress
 
   revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
   if (Number.isFinite(insightId)) {
     revalidatePath(`/app/discover/insights/${insightId}`);
   }
+}
+
+/**
+ * Server action: sets a discovery activity's status from the Kanban board (1–4).
+ *
+ * Form fields:
+ *   activity_id  (required)
+ *   next_status  (required) — integer 1–4 matching DiscoveryActivityStatus
+ *
+ * Editors only; redirects if the user cannot edit the project. Never updates a row outside
+ * the current project (checked via getActivityById).
+ */
+export async function setDiscoveryActivityStatusAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const nextStatus = Number.parseInt(String(formData.get("next_status") ?? ""), 10);
+
+  if (!Number.isFinite(activityId)) {
+    return;
+  }
+  if (nextStatus !== 1 && nextStatus !== 2 && nextStatus !== 3 && nextStatus !== 4) {
+    return;
+  }
+
+  const db = await getRequestDb();
+  const activity = await getActivityById(db, activityId, projectId);
+  if (!activity) {
+    return;
+  }
+
+  await updateDiscoveryActivity(db, activityId, projectId, { status: nextStatus });
+
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${activity.insightId}`);
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+}
+
+/**
+ * Server action: sets the insight’s default discovery lead. Empty value clears it.
+ * Form: insight_id, discovery_lead_id (user id or blank).
+ */
+export async function setInsightDiscoveryLeadAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const raw = String(formData.get("discovery_lead_id") ?? "").trim();
+  if (!Number.isFinite(insightId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  if (raw === "") {
+    await setInsightDiscoveryLeadId(db, insightId, projectId, null);
+  } else {
+    const leadId = Number.parseInt(raw, 10);
+    if (!Number.isFinite(leadId) || leadId < 1) {
+      return;
+    }
+    if (!(await isProjectMember(db, projectId, leadId))) {
+      return;
+    }
+    await setInsightDiscoveryLeadId(db, insightId, projectId, leadId);
+  }
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/me");
+}
+
+/**
+ * Server action: sets the insight’s discovery **process** stage (framing → decision). Stage 4.
+ * Form: insight_id, discovery_stage (integer 1–5).
+ */
+export async function setInsightDiscoveryStageAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const stageRaw = String(formData.get("discovery_stage") ?? "").trim();
+  if (!Number.isFinite(insightId)) {
+    return;
+  }
+  const stage = Number.parseInt(stageRaw, 10);
+  if (!Number.isFinite(stage) || stage < 1 || stage > 5) {
+    return;
+  }
+  const db = await getRequestDb();
+  await setInsightDiscoveryStage(db, insightId, projectId, stage);
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/me");
+  for (const a of await getActivitiesByInsight(db, insightId, projectId)) {
+    revalidatePath(`/app/discover/activities/${a.id}`);
+  }
+}
+
+/**
+ * Server action: saves the OST map root (project goal) for the current project. Stage 5.
+ * Form: ost_root_text.
+ */
+export async function saveProjectOstMapRootAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const text = String(formData.get("ost_root_text") ?? "").trim();
+  const db = await getRequestDb();
+  await setProjectOstMapRoot(db, projectId, { text: text || undefined });
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: creates a new opportunity from the discovery map with one draft activity,
+ * so it appears on the map, board, and workspace without leaving this flow.
+ * Form: opportunity_title (non-empty, max 255).
+ */
+export async function createOpportunityFromMapAction(formData: FormData): Promise<void> {
+  const { userId, projectId } = await requireEditor();
+  const raw = String(formData.get("opportunity_title") ?? "").trim();
+  if (raw.length === 0 || raw.length > 255) {
+    return;
+  }
+  const db = await getRequestDb();
+  const { insightId, activityId } = await createInsightWithInitialDiscoveryActivity(db, {
+    projectId,
+    createdByUserId: userId,
+    title: raw,
+  });
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/discover");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath(`/app/discover/activities/${activityId}`);
+}
+
+/**
+ * Server action: appends a solution line for one opportunity on the OST map (`insights.metadata.ost_map_solutions`).
+ * Form: insight_id, solution_line.
+ */
+export async function addOstMapSolutionAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const line = String(formData.get("solution_line") ?? "");
+  if (!Number.isFinite(insightId) || line.trim().length === 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await appendOstMapSolution(db, insightId, projectId, line);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: removes a solution line by 0-based index. Form: insight_id, solution_index.
+ */
+export async function removeOstMapSolutionAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const index = Number.parseInt(String(formData.get("solution_index") ?? ""), 10);
+  if (!Number.isFinite(insightId) || !Number.isInteger(index) || index < 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await removeOstMapSolution(db, insightId, projectId, index);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: replaces one OST map solution line. Form: insight_id, solution_index, solution_line.
+ */
+export async function updateOstMapSolutionAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const index = Number.parseInt(String(formData.get("solution_index") ?? ""), 10);
+  const line = String(formData.get("solution_line") ?? "");
+  if (!Number.isFinite(insightId) || !Number.isInteger(index) || index < 0 || line.trim().length === 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await updateOstMapSolution(db, insightId, projectId, index, line);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: renames an opportunity (insight) from the map. Form: insight_id, insight_title.
+ */
+export async function updateInsightTitleOstMapAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const title = String(formData.get("insight_title") ?? "").trim();
+  if (!Number.isFinite(insightId) || title.length === 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await updateInsightTitle(db, insightId, projectId, title);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/learn/insights");
+  revalidatePath(`/app/learn/insights/${insightId}`);
+}
+
+/**
+ * Server action: renames a discovery activity from the map. Form: activity_id, insight_id, activity_title.
+ */
+export async function updateDiscoveryActivityTitleOstMapAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const title = String(formData.get("activity_title") ?? "").trim();
+  if (!Number.isFinite(activityId) || title.length === 0) {
+    return;
+  }
+  const db = await getRequestDb();
+  await updateDiscoveryActivityTitle(db, activityId, projectId, title);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  if (Number.isFinite(insightId)) {
+    revalidatePath(`/app/discover/insights/${insightId}`);
+  }
+  revalidatePath("/app/discover");
+}
+
+/**
+ * Server action: deletes a discovery activity. Form: activity_id, insight_id.
+ */
+export async function deleteDiscoveryActivityOstMapAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  if (!Number.isFinite(activityId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  await deleteDiscoveryActivity(db, activityId, projectId);
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/discover");
+  if (Number.isFinite(insightId)) {
+    revalidatePath(`/app/discover/insights/${insightId}`);
+    for (const a of await getActivitiesByInsight(db, insightId, projectId)) {
+      revalidatePath(`/app/discover/activities/${a.id}`);
+    }
+  }
+}
+
+/**
+ * Server action: deletes an opportunity and its links (for the map / discovery). Form: insight_id.
+ */
+export async function deleteOpportunityOstMapAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  if (!Number.isFinite(insightId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  const preActivities = await getActivitiesByInsight(db, insightId, projectId);
+  await deleteInsightAndRelated(db, insightId, projectId);
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/discover");
+  revalidatePath("/app/learn/insights");
+  revalidatePath(`/app/learn/insights/${insightId}`);
+  for (const a of preActivities) {
+    revalidatePath(`/app/discover/activities/${a.id}`);
+  }
+}
+
+/**
+ * Server action: adds a discovery activity under an insight from the map (stays in sync with the board).
+ * Form: insight_id, activity_title (optional), activity_type (1–7, default 1).
+ */
+export async function addDiscoveryActivityFromMapAction(formData: FormData): Promise<void> {
+  const { userId, projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const typeRaw = String(formData.get("activity_type") ?? "1");
+  const activityType = Number.parseInt(typeRaw, 10);
+  const titleRaw = String(formData.get("activity_title") ?? "").trim();
+  if (!Number.isFinite(insightId) || !Number.isFinite(activityType) || activityType < 1 || activityType > 7) {
+    return;
+  }
+  const title = titleRaw || defaultTitleForType(activityType);
+  const db = await getRequestDb();
+  const [insightRow] = await db
+    .select({ id: insights.id })
+    .from(insights)
+    .where(and(eq(insights.id, insightId), eq(insights.projectId, projectId)))
+    .limit(1);
+  if (!insightRow) {
+    return;
+  }
+  const newId = await createDiscoveryActivity(db, {
+    projectId,
+    insightId,
+    activityType,
+    title,
+    createdBy: userId,
+  });
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
+  revalidatePath("/app/discover");
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath(`/app/discover/activities/${newId}`);
+}
+
+/**
+ * Server action: sets the optional Strategy team for an insight (or clears it). Editors only.
+ * Form: insight_id, team_id (team row id or blank).
+ */
+export async function setInsightTeamIdAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const insightId = Number.parseInt(String(formData.get("insight_id") ?? ""), 10);
+  const raw = String(formData.get("team_id") ?? "").trim();
+  if (!Number.isFinite(insightId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  if (raw === "") {
+    await setInsightTeamId(db, insightId, projectId, null);
+  } else {
+    const teamId = Number.parseInt(raw, 10);
+    if (!Number.isFinite(teamId) || teamId < 1) {
+      return;
+    }
+    const [t] = await db
+      .select({ id: teams.id })
+      .from(teams)
+      .where(and(eq(teams.id, teamId), eq(teams.projectId, projectId)))
+      .limit(1);
+    if (!t) {
+      return;
+    }
+    await setInsightTeamId(db, insightId, projectId, teamId);
+  }
+  revalidatePath(`/app/discover/insights/${insightId}`);
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/map");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover/me");
+  for (const a of await getActivitiesByInsight(db, insightId, projectId)) {
+    revalidatePath(`/app/discover/activities/${a.id}`);
+  }
+}
+
+/**
+ * Server action: sets who is assigned to an activity, or clear to inherit the insight lead.
+ * Form: activity_id, assignee_id (user id or blank).
+ */
+export async function setDiscoveryActivityAssigneeAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireEditor();
+  const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
+  const raw = String(formData.get("assignee_id") ?? "").trim();
+  if (!Number.isFinite(activityId)) {
+    return;
+  }
+  const db = await getRequestDb();
+  const activity = await getActivityById(db, activityId, projectId);
+  if (!activity) {
+    return;
+  }
+  if (raw === "") {
+    await updateDiscoveryActivity(db, activityId, projectId, { assigneeId: null });
+  } else {
+    const assigneeId = Number.parseInt(raw, 10);
+    if (!Number.isFinite(assigneeId) || assigneeId < 1) {
+      return;
+    }
+    if (!(await isProjectMember(db, projectId, assigneeId))) {
+      return;
+    }
+    await updateDiscoveryActivity(db, activityId, projectId, { assigneeId });
+  }
+  revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath(`/app/discover/insights/${activity.insightId}`);
+  revalidatePath("/app/discover/insights");
+  revalidatePath("/app/discover/board");
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
 }
 
 // ─── AI drafting ──────────────────────────────────────────────────────────────
@@ -261,47 +779,59 @@ function buildDraftPrompts(
   activityType: number,
   insight: { title: string; description: string; insightType: number },
 ): { system: string; user: string } | null {
-  const context = `Insight title: ${insight.title}\nInsight description: ${insight.description}`;
+  const typeLine = `Insight type (category): ${insightTypeLabelForPrompt(insight.insightType)}`;
+  const context = `${typeLine}\nInsight title: ${insight.title}\nInsight description: ${insight.description}`;
 
   switch (activityType) {
     case 1: // interview_guide
       return {
         system:
           "You are a product manager helping to validate customer insights before building solutions. " +
-          "Your job is to create practical, open-ended interview guides that uncover the real problem behind a signal.",
+          "Your job is to create practical, open-ended interview guides that uncover the real problem behind a signal. " +
+          "Each question string should be ready to paste into a calendar description or document as plain prose — " +
+          "do not add \"1.\" or numbering inside the strings because the app will number them in a list on screen.",
         user:
           `${context}\n\n` +
-          "Generate a set of 6 open-ended interview questions that would help validate whether this insight reflects " +
-          "a real, widespread, and worthwhile problem to solve. Avoid leading questions. " +
+          "Generate 6 to 8 open-ended interview questions that would help validate whether this insight reflects " +
+          "a real, widespread, and worthwhile problem to solve. Avoid leading or loaded wording. " +
+          "Include 1 to 2 warm-up or context questions and 1 closing or reflection question where appropriate, " +
+          "with the rest focused on the problem, impact, and current behaviour. " +
           "Format your response as a JSON object with a single key 'questions' containing an array of strings. " +
-          "Each string is one question. Return only valid JSON, no markdown fences.",
+          "Each string is one full question, no markdown fences, only valid JSON.",
       };
 
     case 2: // survey
       return {
         system:
           "You are a product manager designing targeted surveys to validate customer insights. " +
-          "Keep surveys short (5 questions max), clear, and unbiased.",
+          "Output must be strictly valid JSON — no markdown fences or commentary.",
         user:
           `${context}\n\n` +
-          "Generate a 5-question survey to send to users who might be affected by this insight. " +
-          "Include a mix of Likert scale, multiple choice, and one open-ended question. " +
-          "Format as a JSON object with key 'questions', an array of objects each with 'question' (string) and 'type' " +
-          "('likert', 'multiple_choice', or 'open_ended') and optional 'options' array. " +
-          "Return only valid JSON, no markdown fences.",
+          "Generate EXACTLY 5 survey questions for people affected by this insight.\n\n" +
+          "Rules:\n" +
+          "1) Include at least one \"likert\" and at least one \"open_ended\" question; other items may be \"multiple_choice\" or more likert.\n" +
+          "2) For each likert, either explain the 1–5 scale in the question text OR set scale_min_label and scale_max_label (endpoints only).\n" +
+          "3) For each multiple_choice, include an \"options\" array with 3–5 distinct, unbiased choices.\n" +
+          "4) Keep wording neutral and scannable.\n\n" +
+          "Return ONLY: { \"questions\": [ { \"question\": string, \"type\": \"likert\"|\"multiple_choice\"|\"open_ended\", " +
+          "\"options\"?: string[], \"scale_min_label\"?: string, \"scale_max_label\"?: string } ] } with exactly 5 objects in \"questions\".",
       };
 
     case 3: // assumption_map
       return {
         system:
           "You are a product manager trained in assumption-based testing. " +
-          "Your job is to surface the hidden assumptions behind a product insight so teams can de-risk their decisions.",
+          "Your job is to surface the hidden assumptions behind a product insight so teams can de-risk their decisions. " +
+          "Prioritize assumptions by risk: list the most dangerous / uncertain assumptions first.",
         user:
           `${context}\n\n` +
-          "List 5 assumptions being made in this insight. For each assumption, explain why it matters " +
-          "and suggest one specific way to test or disprove it. " +
-          "Format as a JSON object with key 'assumptions', an array of objects each with 'assumption' (string), " +
-          "'why_it_matters' (string), and 'how_to_test' (string). " +
+          "Identify 5 to 7 assumptions that must hold true for a solution to this insight to work. " +
+          "For each: state the assumption in one clear sentence, explain why it matters if it is wrong, " +
+          "and give one concrete, falsifiable way to test it — be specific enough that a teammate could run the test, " +
+          "and name what result would prove the assumption false. " +
+          "For each item, set 'risk_level' to exactly one of: 'high', 'medium', or 'low' (business impact × uncertainty). " +
+          "Format as a JSON object with key 'assumptions', an array of objects, each with: " +
+          "'assumption' (string), 'why_it_matters' (string), 'how_to_test' (string), 'risk_level' (string: high|medium|low). " +
           "Return only valid JSON, no markdown fences.",
       };
 
@@ -309,13 +839,17 @@ function buildDraftPrompts(
       return {
         system:
           "You are a product manager conducting competitive research. " +
-          "Help teams understand how competitors handle the same customer problems.",
+          "Help teams understand how direct competitors and adjacent tools handle the same customer problems. " +
+          "Choose the most useful mix of 2 or 3 products — not always three if fewer are truly comparable.",
         user:
           `${context}\n\n` +
-          "Suggest 3 competitors or comparable products to research about this problem. " +
-          "For each, list 3 specific things to look for or questions to answer about how they address this. " +
-          "Format as a JSON object with key 'competitors', an array of objects each with " +
-          "'name' (string) and 'things_to_check' (array of strings). " +
+          "Suggest 2 or 3 named competitors or comparable products to research for this problem. " +
+          "When the insight is narrow, include a mix of direct competitors and closely adjacent tools if that helps. " +
+          "For each competitor, provide: a short 'why_relevant' (one line explaining why to include them), and " +
+          "3 to 5 concrete 'things_to_check' — bullets phrased as things to look for or questions to answer on " +
+          "their site, product, or positioning. " +
+          "Format as a JSON object with key 'competitors', an array of 2 or 3 objects, each with " +
+          "'name' (string), 'why_relevant' (string), and 'things_to_check' (array of strings, 3 to 5 items). " +
           "Return only valid JSON, no markdown fences.",
       };
 
@@ -352,6 +886,25 @@ function buildDraftPrompts(
     default:
       return null;
   }
+}
+
+/**
+ * Parses model output into JSON — handles raw JSON or ```json fenced blocks.
+ */
+function parseClaudeJsonResponse(responseText: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(responseText) as Record<string, unknown>;
+  } catch {
+    const fenceMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+    if (fenceMatch?.[1]) {
+      try {
+        return JSON.parse(fenceMatch[1]) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -394,32 +947,113 @@ export async function draftActivityWithAIAction(formData: FormData): Promise<voi
   const responseText = await callClaudeText(prompts.system, prompts.user);
   if (!responseText) return;
 
-  // Try to parse the JSON response from Claude
-  let parsed: Record<string, unknown> | null = null;
-  try {
-    parsed = JSON.parse(responseText) as Record<string, unknown>;
-  } catch {
-    // Claude sometimes wraps JSON in markdown fences — strip and retry
-    const fenceMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-    if (fenceMatch?.[1]) {
-      try {
-        parsed = JSON.parse(fenceMatch[1]) as Record<string, unknown>;
-      } catch {
-        console.error("[discover] Could not parse Claude's JSON response");
+  const parsed = parseClaudeJsonResponse(responseText);
+
+  // Survey (type 2): strict shape, one auto-retry, then a structured error for the UI if still wrong.
+  if (activity.activityType === 2) {
+    const insightContext = `Insight title: ${insightRow.title}\nInsight description: ${insightRow.description}`;
+
+    if (!parsed) {
+      await updateDiscoveryActivity(db, activityId, projectId, {
+        aiGeneratedContent: {
+          _draft_error: true,
+          error_kind: "json_parse",
+          detail: "We couldn't read the model response as JSON. Click Regenerate to try again.",
+          partial_raw: responseText.slice(0, 800),
+        },
+        aiGenerated: false,
+      });
+      revalidatePath(`/app/discover/activities/${activityId}`);
+      revalidatePath("/app/discover");
+      revalidatePath("/app/discover/workspace");
+      revalidatePath("/app/discover/me");
+      return;
+    }
+
+    let validated = validateSurveyShape(parsed);
+    if (!validated.ok) {
+      const fixUser =
+        `${insightContext}\n\n` +
+        `Your previous JSON was rejected: ${validated.reason}\n` +
+        `Return ONLY valid JSON (no markdown) with key "questions" containing exactly 5 objects. ` +
+        `Each object: "question" (string), "type" one of likert | multiple_choice | open_ended. ` +
+        `Include at least one likert and one open_ended. ` +
+        `For multiple_choice include "options" (array, 3–5 strings). ` +
+        `For likert, either describe the 1–5 scale in "question" or set scale_min_label and scale_max_label.\n\n` +
+        `Fix this JSON:\n${JSON.stringify(parsed).slice(0, 2800)}`;
+
+      const secondText = await callClaudeText(prompts.system, fixUser);
+      if (secondText) {
+        const secondParsed = parseClaudeJsonResponse(secondText);
+        if (secondParsed) {
+          validated = validateSurveyShape(secondParsed);
+        }
       }
     }
+
+    if (!validated.ok) {
+      await updateDiscoveryActivity(db, activityId, projectId, {
+        aiGeneratedContent: {
+          _draft_error: true,
+          error_kind: "invalid_survey",
+          detail: validated.reason,
+        },
+        aiGenerated: false,
+      });
+      revalidatePath(`/app/discover/activities/${activityId}`);
+      revalidatePath("/app/discover");
+      revalidatePath("/app/discover/workspace");
+      revalidatePath("/app/discover/me");
+      return;
+    }
+
+    await updateDiscoveryActivity(db, activityId, projectId, {
+      aiGeneratedContent: validated.data as unknown as Record<string, unknown>,
+      aiGenerated: true,
+      status: activity.status === 1 ? 2 : activity.status,
+    });
+    revalidatePath(`/app/discover/activities/${activityId}`);
+    revalidatePath("/app/discover");
+    revalidatePath("/app/discover/workspace");
+    revalidatePath("/app/discover/me");
+    return;
   }
 
   if (parsed) {
+    if (activity.activityType === 1) {
+      if (isValidClaudeInterviewGuideResponse(parsed)) {
+        const cleanQuestions = (parsed.questions as string[]).map((q) => String(q).trim());
+        await updateDiscoveryActivity(db, activityId, projectId, {
+          aiGeneratedContent: { questions: cleanQuestions },
+          aiGenerated: true,
+          status: activity.status === 1 ? 2 : activity.status,
+        });
+      } else {
+        await updateDiscoveryActivity(db, activityId, projectId, {
+          aiGeneratedContent: { [INTERVIEW_DRAFT_ERROR_KEY]: true },
+          aiGenerated: false,
+        });
+      }
+    } else {
+      await updateDiscoveryActivity(db, activityId, projectId, {
+        aiGeneratedContent: parsed,
+        aiGenerated: true,
+        // Move from draft to in_progress when AI content is drafted
+        status: activity.status === 1 ? 2 : activity.status,
+      });
+    }
+  } else if (responseText && activity.activityType === 1) {
+    // Claude returned text but it was not valid JSON, or the fence strip failed
     await updateDiscoveryActivity(db, activityId, projectId, {
-      aiGeneratedContent: parsed,
-      aiGenerated: true,
-      // Move from draft to in_progress when AI content is drafted
-      status: activity.status === 1 ? 2 : activity.status,
+      aiGeneratedContent: { [INTERVIEW_DRAFT_ERROR_KEY]: true },
+      aiGenerated: false,
     });
   }
 
   revalidatePath(`/app/discover/activities/${activityId}`);
+  revalidatePath("/app/discover");
+  revalidatePath("/app/discover/workspace");
+  revalidatePath("/app/discover/me");
 }
 
 // ─── AI findings summary ──────────────────────────────────────────────────────

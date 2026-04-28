@@ -14,7 +14,8 @@
     "./tenant-connection-manager": "./src/tenant-connection-manager.ts",
     "./neon-provisioner": "./src/neon-provisioner.ts",
     "./queries/specs": "./src/queries/specs.ts",
-    "./queries/discovery": "./src/queries/discovery.ts"
+    "./queries/discovery": "./src/queries/discovery.ts",
+    "./queries/project-members": "./src/queries/project-members.ts"
   },
   "scripts": {
     "build": "tsc",
