@@ -23,7 +23,7 @@ export function ProjectSwitcher({
   if (projects.length === 0) {
     return (
       <p className="mt-2 small rounded px-2 py-2 border border-secondary-subtle bg-body-secondary text-body-secondary mb-0">
-        No projects yet — create one under Projects.
+        You aren&apos;t in any projects yet. Ask an owner to invite you.
       </p>
     );
   }

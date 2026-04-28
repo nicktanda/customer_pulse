@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
 import { userHasProjectAccess } from "@/lib/project-access";
-import { DeleteProjectButton } from "../DeleteProjectButton";
 import { PageHeader, PageShell } from "@/components/ui";
 import { fetchProjectPageData } from "@/lib/project-page-data";
 import { ProjectDetailPanel } from "@/components/projects/ProjectDetailPanel";
@@ -48,7 +47,6 @@ export default async function ProjectShowPage({ params }: { params: Promise<{ id
                 <Link href={`/app/projects/${projectId}/edit`} className="btn btn-outline-secondary btn-sm">
                   Edit
                 </Link>
-                <DeleteProjectButton projectId={projectId} />
               </>
             ) : null}
           </>

@@ -56,21 +56,12 @@ export default async function ProjectsPage({
       <PageHeader
         title="Projects"
         description="Projects you belong to. Open one to switch context or manage the team."
-        actions={
-          <Link href="/app/projects/new" className="btn btn-primary btn-sm">
-            New project
-          </Link>
-        }
       />
 
       <ul className="list-unstyled mb-0 d-flex flex-column gap-2 mt-4">
         {rows.length === 0 ? (
           <li className="text-body-secondary small">
-            No projects yet.{" "}
-            <Link href="/app/projects/new" className="link-primary">
-              Create one
-            </Link>
-            .
+            You haven&apos;t been added to any projects yet. Ask an owner to invite you.
           </li>
         ) : (
           <ProjectListCards rows={rowsForCards} selectedId={detailData?.project.id ?? null} />

@@ -6,12 +6,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
 import { projects, projectUsers, projectInvitations, users } from "@customer-pulse/db/client";
-import {
-  userHasProjectAccess,
-  userIsProjectOwner,
-} from "@/lib/project-access";
-import { CURRENT_PROJECT_COOKIE } from "@/lib/current-project";
-import { cookies } from "next/headers";
+import { userIsProjectOwner } from "@/lib/project-access";
 import { slugifyName } from "./slug";
 
 async function requireUserId(): Promise<number> {
@@ -20,58 +15,6 @@ async function requireUserId(): Promise<number> {
     redirect("/login");
   }
   return Number(session.user.id);
-}
-
-export async function createProjectAction(formData: FormData): Promise<void> {
-  const userId = await requireUserId();
-  const name = String(formData.get("name") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim() || null;
-  if (!name) {
-    redirect("/app/projects/new?error=name");
-  }
-
-  const db = await getRequestDb();
-  const now = new Date();
-  let slug = slugifyName(name);
-  const [existing] = await db.select({ id: projects.id }).from(projects).where(eq(projects.slug, slug)).limit(1);
-  if (existing) {
-    slug = `${slug}-${Date.now().toString(36)}`;
-  }
-
-  const [proj] = await db
-    .insert(projects)
-    .values({
-      name,
-      description,
-      slug,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning({ id: projects.id });
-
-  if (!proj) {
-    redirect("/app/projects/new?error=save");
-  }
-
-  await db.insert(projectUsers).values({
-    projectId: proj.id,
-    userId,
-    isOwner: true,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  const cookieStore = await cookies();
-  cookieStore.set(CURRENT_PROJECT_COOKIE, String(proj.id), {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 400,
-  });
-
-  revalidatePath("/app");
-  revalidatePath("/app/projects");
-  redirect(`/app/projects/${proj.id}`);
 }
 
 export async function updateProjectAction(projectId: number, formData: FormData): Promise<void> {
@@ -106,26 +49,6 @@ export async function updateProjectAction(projectId: number, formData: FormData)
   revalidatePath("/app/projects");
   revalidatePath(`/app/projects/${projectId}`);
   redirect(`/app/projects/${projectId}`);
-}
-
-export async function deleteProjectAction(projectId: number, _formData?: FormData): Promise<void> {
-  const userId = await requireUserId();
-  if (!(await userIsProjectOwner(userId, projectId))) {
-    redirect("/app/projects");
-  }
-
-  const db = await getRequestDb();
-  await db.delete(projects).where(eq(projects.id, projectId));
-
-  const cookieStore = await cookies();
-  const cookie = cookieStore.get(CURRENT_PROJECT_COOKIE)?.value;
-  if (cookie === String(projectId)) {
-    cookieStore.delete(CURRENT_PROJECT_COOKIE);
-  }
-
-  revalidatePath("/app");
-  revalidatePath("/app/projects");
-  redirect("/app/projects");
 }
 
 export async function addProjectMemberAction(projectId: number, formData: FormData): Promise<void> {

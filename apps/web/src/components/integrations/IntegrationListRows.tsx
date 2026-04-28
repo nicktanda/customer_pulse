@@ -17,6 +17,8 @@ import {
   MessagesSquare,  // Intercom
   AlertTriangle,   // Sentry
   Headphones,      // Zendesk
+  GitBranch,       // GitHub
+  Sparkles,        // Anthropic
   PlugZap,         // fallback
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -44,6 +46,8 @@ const SOURCE_ICONS: Record<number, LucideIcon> = {
   9: MessagesSquare, // Intercom
   10: Headphones,    // Zendesk
   11: AlertTriangle, // Sentry
+  12: GitBranch,     // GitHub
+  13: Sparkles,      // Anthropic
 };
 
 export type IntegrationListRow = {

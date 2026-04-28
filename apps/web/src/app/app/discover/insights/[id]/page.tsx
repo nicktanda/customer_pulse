@@ -198,7 +198,7 @@ export default async function InsightDiscoveryPage({
       <PageHeader
         title={insight.title}
         description={`Discovery workspace · ${activities.length} ${activities.length === 1 ? "activity" : "activities"}`}
-        back={{ href: "/app/discover/insights", label: "Discovery" }}
+        back={{ href: "/app/discover/insights", label: "Insights" }}
         actions={
           <div className="d-flex gap-2 flex-wrap">
             <Link

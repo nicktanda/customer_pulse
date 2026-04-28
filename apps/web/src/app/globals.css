@@ -31,22 +31,26 @@
 
 :root,
 [data-bs-theme="light"] {
-  /* Primary — ember orange replaces Bootstrap blue */
-  --bs-primary:              #C4501A;
-  --bs-primary-rgb:          196, 80, 26;
-  --bs-primary-text-emphasis:#8B2A0F;
+  /*
+   * Primary — ember orange replaces Bootstrap blue.
+   * Darker than the brand --k-ember so body text/links hit ~6.5:1 on white
+   * (was 4.79:1 with #C4501A — AA-passing but visibly thin).
+   */
+  --bs-primary:              #A8400F;
+  --bs-primary-rgb:          168, 64, 15;
+  --bs-primary-text-emphasis:#6F2806;
   --bs-primary-bg-subtle:    #FCEAE2;
   --bs-primary-border-subtle:#E8B09A;
 
   /* Hyperlinks — ember, darker on hover */
-  --bs-link-color:           #C4501A;
-  --bs-link-color-rgb:       196, 80, 26;
-  --bs-link-hover-color:     #8B2A0F;
-  --bs-link-hover-color-rgb: 139, 42, 15;
+  --bs-link-color:           #A8400F;
+  --bs-link-color-rgb:       168, 64, 15;
+  --bs-link-hover-color:     #6F2806;
+  --bs-link-hover-color-rgb: 111, 40, 6;
   --bs-link-decoration:      none;
 
   /* Focus ring — ember glow */
-  --bs-focus-ring-color: rgba(196, 80, 26, 0.28);
+  --bs-focus-ring-color: rgba(168, 64, 15, 0.32);
 
   /* Success — real green so it reads as "good" not just "ember" */
   --bs-success:              #3d7a5a;
