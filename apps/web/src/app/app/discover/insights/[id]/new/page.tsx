@@ -7,6 +7,7 @@ import { insights } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userHasProjectAccess } from "@/lib/project-access";
 import { createDiscoveryActivityAction } from "../../../actions";
+import { ActivityTitleInput } from "./ActivityTitleInput";
 
 /**
  * Maps activity type integer to a label and description shown in the form.
@@ -142,21 +143,12 @@ export default async function NewDiscoveryActivityPage({
           </div>
         </div>
 
-        {/* Optional custom title */}
-        <div className="mb-3">
-          <label htmlFor="title" className="form-label fw-medium">
-            Title <span className="text-body-secondary fw-normal">(optional)</span>
-          </label>
-          <input
-            id="title"
-            name="title"
-            type="text"
-            className="form-control"
-            placeholder={info.label}
-            maxLength={255}
-          />
-          <div className="form-text">Leave blank to use the default name for this activity type.</div>
-        </div>
+        {/* Optional custom title — auto-suggested via AI */}
+        <ActivityTitleInput
+          insightId={insight.id}
+          activityType={activityType}
+          placeholder={info.label}
+        />
 
         <FormActions variant="plain">
           <button type="submit" className="btn btn-primary">

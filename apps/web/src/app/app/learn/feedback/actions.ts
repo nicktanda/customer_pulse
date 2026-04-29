@@ -101,6 +101,32 @@ export async function updateFeedbackAction(feedbackId: number, formData: FormDat
   redirect(back ?? `/app/learn/feedback/${feedbackId}`);
 }
 
+/**
+ * One-click "accept the AI's triage" action.
+ *
+ * Flips manually_reviewed=true without changing the AI-assigned category/priority/status.
+ * Used by the high-confidence path of the triage UI: when ai_confidence_score >= 0.75 we
+ * surface this instead of forcing the user through the full select form.
+ */
+export async function acceptAiSuggestionAction(feedbackId: number, formData: FormData): Promise<void> {
+  const { projectId } = await requireEditorAndProject();
+  const row = await loadFeedbackInProject(projectId, feedbackId);
+  if (!row) {
+    redirect("/app/learn/feedback");
+  }
+
+  const db = await getRequestDb();
+  await db
+    .update(feedbacks)
+    .set({ manuallyReviewed: true, updatedAt: new Date() })
+    .where(eq(feedbacks.id, feedbackId));
+
+  revalidatePath("/app/learn/feedback");
+  revalidatePath(`/app/learn/feedback/${feedbackId}`);
+  const back = parseSafeListReturnPath(formData.get("return_path"));
+  redirect(back ?? `/app/learn/feedback/${feedbackId}`);
+}
+
 export async function reprocessFeedbackAction(feedbackId: number, _formData?: FormData): Promise<void> {
   const { projectId } = await requireEditorAndProject();
   const row = await loadFeedbackInProject(projectId, feedbackId);
