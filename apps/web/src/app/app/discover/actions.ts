@@ -33,7 +33,9 @@ import {
   INTERVIEW_DRAFT_ERROR_KEY,
   isValidClaudeInterviewGuideResponse,
 } from "@/lib/discovery-interview-guide";
+import { discoveryInsightStageLabel } from "@/lib/discovery-insight-stage";
 import { draftFromContext } from "@/lib/ai-drafts";
+import { insightSeverityLabel, insightTypeLabel } from "@/lib/insight-enums-display";
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 
@@ -173,6 +175,136 @@ export async function suggestActivityTitleAction(
   return { title: result.draft.title, confidence: result.confidence };
 }
 
+/** Integers 1–7 from `DiscoveryActivityType` enum — only these may be created in the DB. */
+const VALID_DISCOVERY_ACTIVITY_TYPES = new Set([1, 2, 3, 4, 5, 6, 7]);
+
+/**
+ * Normalises model output: enforce valid types, sane string lengths (defence in depth beside the prompt).
+ */
+function parseDiscoveryPlanActivities(draft: {
+  activities?: unknown;
+}): { activityType: number; title: string; rationale: string }[] {
+  const rawList = draft.activities;
+  if (!Array.isArray(rawList)) return [];
+  const out: { activityType: number; title: string; rationale: string }[] = [];
+
+  for (const raw of rawList) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = raw as Record<string, unknown>;
+    const activityType = Number(row.activityType);
+    if (!Number.isFinite(activityType) || !VALID_DISCOVERY_ACTIVITY_TYPES.has(activityType)) {
+      continue;
+    }
+    const title =
+      typeof row.title === "string"
+        ? row.title.trim().slice(0, 120)
+        : String(row.title ?? "").trim().slice(0, 120);
+    const rationale =
+      typeof row.rationale === "string"
+        ? row.rationale.trim().slice(0, 800)
+        : String(row.rationale ?? "").trim().slice(0, 800);
+
+    const safeTitle = title.length > 0 ? title : defaultTitleForType(activityType);
+    const safeRationale = rationale.length > 0 ? rationale : "Supports deciding what solution to prioritise.";
+    out.push({ activityType, title: safeTitle, rationale: safeRationale });
+  }
+
+  return out.slice(0, 8);
+}
+
+/**
+ * Asks Claude for an ordered list of discovery activities that reduce uncertainty about **what to build**.
+ * Uses `ai_suggestions` (`discovery_plan`) for audit — same infra as other draft flows.
+ */
+export async function suggestDiscoveryActivitiesForInsightAction(insightId: number): Promise<{
+  ok: boolean;
+  activities?: { activityType: number; title: string; rationale: string }[];
+  confidence?: number;
+  suggestionId?: number | null;
+  error?: string;
+}> {
+  const { projectId } = await requireEditor();
+  const db = await getRequestDb();
+
+  const [row] = await db
+    .select({
+      id: insights.id,
+      title: insights.title,
+      description: insights.description,
+      insightType: insights.insightType,
+      severity: insights.severity,
+      discoveryStage: insights.discoveryStage,
+      affectedUsersCount: insights.affectedUsersCount,
+    })
+    .from(insights)
+    .where(and(eq(insights.id, insightId), eq(insights.projectId, projectId)))
+    .limit(1);
+
+  if (!row) {
+    return { ok: false, error: "not_found" };
+  }
+
+  const existing = await getActivitiesByInsight(db, insightId, projectId);
+
+  let existingLines: string;
+  if (existing.length === 0) {
+    existingLines =
+      "(none yet — propose a coherent plan so the team can converge on what solution to ship.)";
+  } else {
+    existingLines = existing
+      .map((a, i) => {
+        const typeName = defaultTitleForType(a.activityType);
+        return `${i + 1}. [type ${a.activityType} ${typeName}] ${a.title} (status draft/progress/etc.)`;
+      })
+      .join("\n");
+  }
+
+  const stageLabel = discoveryInsightStageLabel(row.discoveryStage ?? 1);
+
+  const context = `
+## Insight
+id: ${row.id}
+title: ${row.title}
+classification: ${insightTypeLabelForPrompt(row.insightType)}
+category label: ${insightTypeLabel(row.insightType)}
+severity label: ${insightSeverityLabel(row.severity)}
+discovery process stage: ${stageLabel} (integer ${row.discoveryStage ?? 1})
+estimated affected users (if known): ${row.affectedUsersCount}
+
+Description:
+${row.description ?? ""}
+
+## Activities already logged for this insight
+${existingLines}
+`.trim();
+
+  const result = await draftFromContext<{
+    activities?: { activityType: number; title: string; rationale: string }[];
+  }>({
+    projectId,
+    kind: "discovery_plan",
+    context,
+    target: { table: "insights", id: insightId },
+    maxTokens: 2800,
+  });
+
+  if (!result) {
+    return { ok: false, error: "ai_unavailable" };
+  }
+
+  const activities = parseDiscoveryPlanActivities(result.draft);
+  if (activities.length === 0) {
+    return { ok: false, error: "empty_plan" };
+  }
+
+  return {
+    ok: true,
+    activities,
+    confidence: result.confidence,
+    suggestionId: result.suggestionId,
+  };
+}
+
 export async function createDiscoveryActivityAction(formData: FormData): Promise<void> {
   const { userId, projectId } = await requireEditor();
 
@@ -221,11 +353,12 @@ export async function createDiscoveryActivityAction(formData: FormData): Promise
   if (returnTo === "discover") {
     redirect(`/app/discover/workspace?insight=${insightId}`);
   }
+  if (returnTo === "insight") {
+    redirect(`/app/discover/insights/${insightId}`);
+  }
 
   redirect(`/app/discover/activities/${newId}`);
 }
-
-// ─── Update findings ──────────────────────────────────────────────────────────
 
 /**
  * Server action: saves a PM's findings on a discovery activity.

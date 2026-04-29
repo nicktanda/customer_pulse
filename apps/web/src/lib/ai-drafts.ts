@@ -18,7 +18,9 @@ export type DraftKind =
   | "project_infer"
   | "roadmap_cluster"
   | "ost_opportunities"
-  | "tag_propose";
+  | "tag_propose"
+  /** Ordered list of discovery activity types + titles so the team can decide what solution to build. */
+  | "discovery_plan";
 
 export interface DraftEnvelope<T> {
   draft: T;
@@ -38,6 +40,25 @@ const SYSTEM_PROMPTS: Record<DraftKind, string> = {
   roadmap_cluster: `You bucket product ideas by effort/impact and propose roadmap items. Return JSON: {"items": [{"title": string, "description": string, "ideaIds": number[]}], "confidence": number 0-1, "sources":[]}.`,
   ost_opportunities: `You cluster product insights into 3-6 opportunity statements for an Opportunity Solution Tree. Return JSON: {"opportunities": [{"title": string, "insightIds": number[]}], "confidence": number 0-1, "sources":[]}.`,
   tag_propose: `You propose tags for customer feedback given existing human-applied examples. Return JSON: {"tags": [{"feedbackId": number, "tagName": string, "confidence": number}], "confidence": number 0-1, "sources":[]}.`,
+  discovery_plan: `You propose a discovery plan so the product team can decide WHAT SOLUTION TO BUILD (scope, viability, differentiation) — not generic research busywork.
+
+Use ONLY these activity types as integers in each item:
+1 = Interview guide (deep qualitative exploration with affected users),
+2 = Survey (structured quant or segment check at scale),
+3 = Assumption map (expose and test risky beliefs before building),
+4 = Competitor scan (alternatives buyers use today),
+5 = Data query (metrics/evidence gaps),
+6 = Desk research (secondary sources, no AI draft inside that activity itself),
+7 = Prototype hypothesis (what to falsify fast with prototypes).
+
+Return JSON ONLY:
+{"activities":[{"activityType":1-7,"title":string (max 100 chars),"rationale":string}],"confidence":number 0-1,"sources":[]}.
+
+Rules:
+- Order activities from "do first" to "do later" (dependencies matter).
+- Suggest **4–7** items mixing types so uncertainty about the **solution shape** decreases.
+- In each rationale, say what decision this unlocks for **building**.
+- Prefer types not already strongly covered below when that would be redundant.`,
 };
 
 export async function draftFromContext<T extends Record<string, unknown>>(opts: {
