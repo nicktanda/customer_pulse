@@ -8,7 +8,7 @@ import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
 import { insights, projectUsers, teams } from "@customer-pulse/db/client";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   createDiscoveryActivity,
   updateDiscoveryActivity,
@@ -33,6 +33,7 @@ import {
   INTERVIEW_DRAFT_ERROR_KEY,
   isValidClaudeInterviewGuideResponse,
 } from "@/lib/discovery-interview-guide";
+import { draftFromContext } from "@/lib/ai-drafts";
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 
@@ -99,6 +100,79 @@ function defaultTitleForType(type: number): string {
  *
  * On success: redirects to the new activity's detail page.
  */
+/**
+ * Item 4: drafts a more specific activity title from the insight + activity type.
+ * Returns JSON so a client component can pre-fill the input on mount.
+ */
+/**
+ * Item 3: drafts 3-6 opportunity statements by clustering the project's existing insights.
+ *
+ * Returns the suggestions; an OST modal lets the user accept individual opportunities, which
+ * become rows on the OST map (createOpportunityFromMapAction is reused for persistence).
+ */
+export async function seedOpportunitiesFromInsightsAction(): Promise<{
+  ok: boolean;
+  opportunities?: { title: string; insightIds: number[] }[];
+  confidence?: number;
+  suggestionId?: number | null;
+  error?: string;
+}> {
+  const { projectId } = await requireEditor();
+  const db = await getRequestDb();
+
+  const rows = await db
+    .select({ id: insights.id, title: insights.title, description: insights.description })
+    .from(insights)
+    .where(eq(insights.projectId, projectId))
+    .limit(80);
+
+  if (rows.length < 3) return { ok: false, error: "not_enough_insights" };
+
+  const context = rows
+    .map((i) => `[insight ${i.id}] ${i.title}: ${i.description.slice(0, 200)}`)
+    .join("\n");
+
+  const result = await draftFromContext<{ opportunities: { title: string; insightIds: number[] }[] }>({
+    projectId,
+    kind: "ost_opportunities",
+    context,
+    maxTokens: 1500,
+  });
+
+  if (!result) return { ok: false, error: "ai_unavailable" };
+  return {
+    ok: true,
+    opportunities: result.draft.opportunities,
+    confidence: result.confidence,
+    suggestionId: result.suggestionId,
+  };
+}
+
+export async function suggestActivityTitleAction(
+  insightId: number,
+  activityType: number,
+): Promise<{ title: string | null; confidence: number | null }> {
+  const { projectId } = await requireEditor();
+  const db = await getRequestDb();
+  const [row] = await db
+    .select({ title: insights.title, description: insights.description })
+    .from(insights)
+    .where(and(eq(insights.id, insightId), eq(insights.projectId, projectId)))
+    .limit(1);
+  if (!row) return { title: null, confidence: null };
+
+  const result = await draftFromContext<{ title: string }>({
+    projectId,
+    kind: "activity_draft",
+    context: `Insight: ${row.title}\n${row.description}\n\nActivity type: ${defaultTitleForType(activityType)}`,
+    target: { table: "insights", id: insightId },
+    maxTokens: 200,
+  });
+
+  if (!result) return { title: null, confidence: null };
+  return { title: result.draft.title, confidence: result.confidence };
+}
+
 export async function createDiscoveryActivityAction(formData: FormData): Promise<void> {
   const { userId, projectId } = await requireEditor();
 
@@ -681,6 +755,65 @@ export async function setInsightTeamIdAction(formData: FormData): Promise<void> 
  * Server action: sets who is assigned to an activity, or clear to inherit the insight lead.
  * Form: activity_id, assignee_id (user id or blank).
  */
+/**
+ * Item 9: suggests up to 3 assignees for a discovery insight, ranked by who has led similar
+ * insights recently. Pure heuristic (token overlap on titles) — no AI call. Returns empty when
+ * there's not enough history to be useful (cold-start guard).
+ */
+export async function suggestAssigneesForInsightAction(
+  insightId: number,
+): Promise<{ userId: number; name: string | null; email: string; reason: string }[]> {
+  const { projectId } = await requireEditor();
+  const db = await getRequestDb();
+
+  const { users } = await import("@customer-pulse/db/client");
+
+  const [target] = await db
+    .select({ title: insights.title })
+    .from(insights)
+    .where(and(eq(insights.id, insightId), eq(insights.projectId, projectId)))
+    .limit(1);
+  if (!target) return [];
+
+  const tokens = target.title
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 4);
+  if (tokens.length === 0) return [];
+
+  // Pull leads from prior insights and score in JS — small N (≤500), avoids SQL string-building.
+  const priorRows = await db
+    .select({ leadId: insights.discoveryLeadId, title: insights.title })
+    .from(insights)
+    .where(eq(insights.projectId, projectId))
+    .limit(500);
+
+  const counts = new Map<number, number>();
+  for (const row of priorRows) {
+    if (!row.leadId) continue;
+    const hay = row.title.toLowerCase();
+    const score = tokens.reduce((acc, t) => acc + (hay.includes(t) ? 1 : 0), 0);
+    if (score > 0) counts.set(row.leadId, (counts.get(row.leadId) ?? 0) + score);
+  }
+  if (counts.size < 1) return [];
+
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const userRows = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(sql`${users.id} = ANY(ARRAY[${sql.join(top.map(([id]) => sql`${id}`), sql`, `)}]::bigint[])`);
+
+  return top.map(([userId, score]) => {
+    const u = userRows.find((u) => u.id === userId);
+    return {
+      userId,
+      name: u?.name ?? null,
+      email: u?.email ?? "",
+      reason: `Led ${score} similar insight${score === 1 ? "" : "s"}`,
+    };
+  });
+}
+
 export async function setDiscoveryActivityAssigneeAction(formData: FormData): Promise<void> {
   const { projectId } = await requireEditor();
   const activityId = Number.parseInt(String(formData.get("activity_id") ?? ""), 10);
