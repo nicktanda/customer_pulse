@@ -160,7 +160,7 @@ function IdeaSection({
                   {generating ? (
                     <p className="mt-2 mb-0 text-body-secondary d-flex align-items-center gap-1" style={{ fontSize: "0.75rem" }}>
                       <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" style={{ width: "0.75rem", height: "0.75rem" }} />
-                      {generating.progressMessage ?? "Generating PR\u2026"}
+                      {generating.progressMessage ?? "Splicing new pattern\u2026"}
                     </p>
                   ) : openPr?.prUrl ? (
                     <p className="mt-2 mb-0" style={{ fontSize: "0.75rem" }}>

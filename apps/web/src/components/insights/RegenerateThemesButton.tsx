@@ -54,7 +54,7 @@ export function RegenerateThemesButton() {
               role="status"
               aria-hidden="true"
             />
-            Queuing…
+            Mutating themes…
           </>
         ) : status === "success" ? (
           "Queued ✓"

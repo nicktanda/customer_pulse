@@ -38,7 +38,7 @@ export function PrJobPoller({ hasPendingPrs }: { hasPendingPrs: boolean }) {
         role="status"
         aria-hidden="true"
       />
-      <span>PR generation in progress&hellip;</span>
+      <span>Splicing new pattern&hellip; PR forming.</span>
     </div>
   );
 }

@@ -113,7 +113,7 @@ export async function generatePrForIdeaAction(ideaId: number, _formData?: FormDa
       integrationId: gh.id,
       status: IDEA_PR_STATUS_PENDING,
       progressStep: 0,
-      progressMessage: "Queued for processing…",
+      progressMessage: "Incubating in queue…",
       filesChanged: [],
       createdAt: now,
       updatedAt: now,

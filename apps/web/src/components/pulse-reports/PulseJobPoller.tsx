@@ -61,7 +61,7 @@ export function PulseJobPoller({ initialReportCount }: { initialReportCount: num
         role="status"
         aria-hidden="true"
       />
-      <span>Generating pulse report&hellip;</span>
+      <span>Synthesizing pulse digest&hellip;</span>
     </div>
   );
 }

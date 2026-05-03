@@ -40,22 +40,12 @@ export function MobileTopBar() {
 
       {/* App wordmark — mirrors the sidebar logo so the brand is always visible */}
       <div className="d-flex align-items-center gap-2">
-        <span
-          aria-hidden="true"
-          style={{
-            width: "1rem",
-            height: "1rem",
-            borderRadius: "0.2rem",
-            background: "var(--k-ember)",
-            flexShrink: 0,
-            display: "inline-block",
-          }}
-        />
+        <span aria-hidden="true" className="xf-brand-mark" style={{ width: "1.05rem", height: "1.05rem" }} />
         <span
           className="fw-semibold text-uppercase"
-          style={{ color: "var(--k-ember)", letterSpacing: "0.07em", fontSize: "0.7rem" }}
+          style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.7rem" }}
         >
-          Customer Pulse
+          xenoform.ai
         </span>
       </div>
     </div>

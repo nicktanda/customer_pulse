@@ -111,7 +111,7 @@ export default async function OnboardingPage({
   return (
     <PageShell width="medium">
       <PageHeader
-        title="Welcome to Customer Pulse"
+        title="Welcome to xenoform.ai"
         description={
           <>
             Step {stepIndex + 1} of {stepList.length}:{" "}
@@ -326,7 +326,7 @@ function StepBody({ step, mt, savedProject, savedIntegrations, savedRecipient }:
       return (
         <form className="d-flex flex-column gap-3">
           <input type="hidden" name="_onboarding_step" value="complete" />
-          <p className="text-body-secondary mb-0">You are ready to use Customer Pulse.</p>
+          <p className="text-body-secondary mb-0">The organism is ready. xenoform.ai is online.</p>
           <FormActions>
             <button type="submit" formAction={onboardingGoBackAction} className="btn btn-outline-secondary">
               Back

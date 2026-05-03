@@ -1,6 +1,6 @@
-# Deploying Customer Pulse on Railway + Neon
+# Deploying xenoform.ai on Railway + Neon
 
-This guide walks through deploying Customer Pulse as a multi-tenant app using **Railway** (web + worker + Redis) and **Neon** (Postgres).
+This guide walks through deploying xenoform.ai as a multi-tenant app using **Railway** (web + worker + Redis) and **Neon** (Postgres).
 
 ## Architecture
 
@@ -36,7 +36,7 @@ This guide walks through deploying Customer Pulse as a multi-tenant app using **
 
 - A [Railway](https://railway.com) account (Pro plan for wildcard domains, $5/mo)
 - A [Neon](https://neon.tech) account (free tier works to start)
-- A domain you control (e.g. `customerpulse.app`)
+- A domain you control (e.g. `xenoform.ai`)
 - `railway` CLI installed: `npm i -g @railway/cli`
 
 ## Step 1: Set up Neon
@@ -82,9 +82,9 @@ railway init
 | `CONTROL_PLANE_DATABASE_URL` | *(Neon `control_plane` database connection string)* |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` *(Railway variable reference)* |
 | `AUTH_SECRET` | *(generate with `openssl rand -base64 32`)* |
-| `NEXTAUTH_URL` | `https://customerpulse.app` |
-| `AUTH_COOKIE_DOMAIN` | `.customerpulse.app` |
-| `APP_BASE_DOMAIN` | `customerpulse.app` |
+| `NEXTAUTH_URL` | `https://xenoform.ai` |
+| `AUTH_COOKIE_DOMAIN` | `.xenoform.ai` |
+| `APP_BASE_DOMAIN` | `xenoform.ai` |
 | `LOCKBOX_MASTER_KEY` | *(generate with `openssl rand -hex 32`)* |
 | `RESEND_API_KEY` | *(from resend.com, for email)* |
 | `ANTHROPIC_API_KEY` | *(optional — or set per-tenant via integrations UI)* |
@@ -119,8 +119,8 @@ Add these records to your domain registrar:
 ### Railway custom domain
 
 1. Go to **web** service → **Settings** → **Networking** → **Custom Domain**
-2. Add `customerpulse.app`
-3. Add `*.customerpulse.app` (wildcard)
+2. Add `xenoform.ai`
+3. Add `*.xenoform.ai` (wildcard)
 4. Railway provisions TLS certificates automatically
 
 ## Step 4: Run initial migrations
@@ -142,7 +142,7 @@ railway run -s web -- npx drizzle-kit push --config=packages/db/drizzle-control-
 
 ## Step 5: Create your first tenant
 
-Visit `https://customerpulse.app/signup`, create an account, and finish the onboarding wizard.
+Visit `https://xenoform.ai/signup`, create an account, and finish the onboarding wizard.
 
 What happens under the hood:
 
@@ -152,7 +152,7 @@ What happens under the hood:
    - Applies the tenant schema via `npx drizzle-kit push` (blocks ~5–10s on a cold Neon compute)
    - Inserts a `tenants` row + `tenant_memberships` row, mirrors the user into the tenant DB
    - Sets the `current_project_id` cookie on `.<APP_BASE_DOMAIN>` so the cookie follows the user across subdomains
-3. The browser is redirected to `https://<slug>.customerpulse.app/app`.
+3. The browser is redirected to `https://<slug>.xenoform.ai/app`.
 
 Because the schema push runs from the web container, the image must include `drizzle-kit` (already installed via `yarn install --frozen-lockfile` — don't switch to `--production`).
 
@@ -178,7 +178,7 @@ railway up -s worker
 ### Adding a new tenant
 
 New tenants are provisioned through the app's signup flow:
-1. User signs up at `customerpulse.app/signup`
+1. User signs up at `xenoform.ai/signup`
 2. App creates user in control plane
 3. Onboarding asks for organization name
 4. App provisions a new Neon database, runs migrations, creates the tenant record
@@ -222,9 +222,9 @@ railway run -s web -- yarn db:migrate:tenants
 | `DATABASE_URL` | Optional | Both | Fallback for single-tenant compat |
 | `REDIS_URL` | Yes | Both | Railway Redis URL |
 | `AUTH_SECRET` | Yes | Web | Auth.js session signing key |
-| `NEXTAUTH_URL` | Yes | Web | `https://customerpulse.app` |
-| `AUTH_COOKIE_DOMAIN` | Yes | Web | `.customerpulse.app` |
-| `APP_BASE_DOMAIN` | Yes | Web | `customerpulse.app` |
+| `NEXTAUTH_URL` | Yes | Web | `https://xenoform.ai` |
+| `AUTH_COOKIE_DOMAIN` | Yes | Web | `.xenoform.ai` |
+| `APP_BASE_DOMAIN` | Yes | Web | `xenoform.ai` |
 | `LOCKBOX_MASTER_KEY` | Yes | Both | 64 hex chars for credential encryption |
 | `RESEND_API_KEY` | Optional | Both | Email delivery |
 | `ANTHROPIC_API_KEY` | Optional | Both | AI features (or set per-tenant) |
