@@ -1,9 +1,7 @@
 import { auth } from "@/auth";
 import { eq } from "drizzle-orm";
 import {
-  FormActions,
   InlineAlert,
-  NarrowCardForm,
   PageHeader,
   PageShell,
   ProjectAccessDenied,
@@ -12,8 +10,7 @@ import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userHasProjectAccess } from "@/lib/project-access";
 import { insights } from "@customer-pulse/db/client";
-import { createSpecAction } from "../../actions";
-import { SpecSubmitButton } from "./SpecSubmitButton";
+import { SpecFormClient } from "./SpecFormClient";
 
 /**
  * New spec form — lets a PM manually create a spec with a title, description,
@@ -90,101 +87,11 @@ export default async function NewSpecPage({
         <InlineAlert variant="danger">Title is required.</InlineAlert>
       ) : null}
 
-      <NarrowCardForm action={createSpecAction} className="mt-4">
-        {/* Title */}
-        <div>
-          <label htmlFor="spec-title" className="form-label">
-            Title <span className="text-danger">*</span>
-          </label>
-          <input
-            id="spec-title"
-            name="title"
-            required
-            className="form-control"
-            placeholder="e.g. Allow users to export feedback as CSV"
-            defaultValue={prefillTitle}
-          />
-          <div className="form-text">A clear, outcome-focused title for the spec.</div>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label htmlFor="spec-description" className="form-label">
-            Description <span className="text-body-tertiary small">(optional)</span>
-          </label>
-          <textarea
-            id="spec-description"
-            name="description"
-            rows={4}
-            className="form-control"
-            placeholder="What problem does this solve? Who is it for?"
-          />
-        </div>
-
-        {/* Linked insights — the golden thread */}
-        <div>
-          <label className="form-label d-block">
-            Linked insights <span className="text-body-tertiary small">(optional)</span>
-          </label>
-
-          {projectInsights.length === 0 ? (
-            <p className="small text-body-secondary mb-0">
-              No insights found for this project yet. Insights are generated automatically from
-              customer feedback.
-            </p>
-          ) : (
-            <>
-              {/*
-               * Multi-select: each checkbox sends name="insight_ids" with the insight id as value.
-               * The server action collects all values via formData.getAll("insight_ids").
-               * Using checkboxes instead of a <select multiple> avoids the "hold Ctrl" UX issue.
-               */}
-              <div
-                className="border border-secondary-subtle rounded overflow-y-auto"
-                style={{ maxHeight: "16rem" }}
-              >
-                <ul className="list-group list-group-flush">
-                  {projectInsights.map((insight) => {
-                    const isPreSelected = fromInsightId === insight.id;
-                    return (
-                      <li key={insight.id} className="list-group-item">
-                        <div className="form-check mb-0">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            name="insight_ids"
-                            value={insight.id}
-                            id={`insight-${insight.id}`}
-                            defaultChecked={isPreSelected}
-                          />
-                          <label
-                            className="form-check-label small text-body"
-                            htmlFor={`insight-${insight.id}`}
-                          >
-                            {insight.title}
-                          </label>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-              <div className="form-text">
-                Select the insight(s) this spec addresses — this is the golden thread linking
-                customer evidence to your build work.
-              </div>
-            </>
-          )}
-        </div>
-
-        <FormActions variant="plain">
-          <SpecSubmitButton />
-          <p className="small text-body-secondary mb-0 mt-2">
-            Claude will draft user stories, acceptance criteria, and success
-            metrics automatically.
-          </p>
-        </FormActions>
-      </NarrowCardForm>
+      <SpecFormClient
+        projectInsights={projectInsights}
+        prefillTitle={prefillTitle}
+        fromInsightId={fromInsightId}
+      />
     </PageShell>
   );
 }

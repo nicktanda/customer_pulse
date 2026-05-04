@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
-import { projects, teams } from "@customer-pulse/db/client";
+import { insights, projects, teams, themes } from "@customer-pulse/db/client";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
+import { draftFromContext } from "@/lib/ai-drafts";
 
 /** Shared guard: must be logged in and on a project you belong to. */
 async function requireMember() {
@@ -131,6 +132,70 @@ export async function updateTeamAction(formData: FormData): Promise<void> {
     .where(eq(teams.id, parsed.data.id));
   revalidatePath("/app/strategy");
   redirect("/app/strategy?notice=team_updated");
+}
+
+/**
+ * Item 2: drafts business objectives + strategy from the project's top insights and themes.
+ * Returns the draft + a suggestionId for the audit log; the client component populates the textareas.
+ *
+ * Cap context to the 50 highest-priority insights and 30 themes — strategy synthesis doesn't need more,
+ * and larger contexts blow up token cost.
+ */
+export async function draftStrategyFromThemesAction(): Promise<{
+  ok: boolean;
+  objectives?: string;
+  strategy?: string;
+  suggestionId?: number | null;
+  confidence?: number;
+  error?: string;
+}> {
+  const { projectId } = await requireEditor();
+  const db = await getRequestDb();
+
+  const [topInsights, topThemes] = await Promise.all([
+    db
+      .select({ id: insights.id, title: insights.title, description: insights.description, severity: insights.severity })
+      .from(insights)
+      .where(eq(insights.projectId, projectId))
+      .orderBy(desc(insights.severity), desc(insights.affectedUsersCount))
+      .limit(50),
+    db
+      .select({ id: themes.id, name: themes.name, description: themes.description, priorityScore: themes.priorityScore })
+      .from(themes)
+      .where(eq(themes.projectId, projectId))
+      .orderBy(desc(themes.priorityScore))
+      .limit(30),
+  ]);
+
+  if (topInsights.length === 0 && topThemes.length === 0) {
+    return { ok: false, error: "no_context" };
+  }
+
+  const context = [
+    "Top insights for this project:",
+    ...topInsights.map((i) => `[insight ${i.id}] (sev=${i.severity}) ${i.title}: ${i.description}`),
+    "",
+    "Themes:",
+    ...topThemes.map((t) => `[theme ${t.id}] (priority=${t.priorityScore}) ${t.name}: ${t.description ?? ""}`),
+  ].join("\n");
+
+  const result = await draftFromContext<{ objectives: string; strategy: string }>({
+    projectId,
+    kind: "strategy_draft",
+    context,
+    target: { table: "projects", id: projectId },
+    maxTokens: 1500,
+  });
+
+  if (!result) return { ok: false, error: "ai_unavailable" };
+
+  return {
+    ok: true,
+    objectives: result.draft.objectives,
+    strategy: result.draft.strategy,
+    suggestionId: result.suggestionId,
+    confidence: result.confidence,
+  };
 }
 
 export async function deleteTeamAction(formData: FormData): Promise<void> {

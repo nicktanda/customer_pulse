@@ -17,6 +17,8 @@ import {
 import { insightSeverityLabel, insightTypeLabel } from "@/lib/insight-enums-display";
 import { generateDiscoverySummaryAction } from "../../actions";
 import { DISCOVERY_INSIGHT_STAGE_ORDER, discoveryInsightStageLabel } from "@/lib/discovery-insight-stage";
+import { AddActivityDropdown } from "@/components/discover/AddActivityDropdown";
+import { InsightDiscoveryPlanPanel } from "@/components/discover/InsightDiscoveryPlanPanel";
 
 /**
  * Maps the numeric DiscoveryActivityType integer to a human-readable label and icon character.
@@ -399,78 +401,14 @@ export default async function InsightDiscoveryPage({
         </div>
       ) : null}
 
+      {/* Editors: AI suggests an ordered discovery plan so Build has a clear path to a solution decision */}
+      {canEdit ? <InsightDiscoveryPlanPanel insightId={insightId} /> : null}
+
       {/* Activities list header */}
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h2 className="h6 fw-semibold mb-0 text-body-emphasis">Discovery activities</h2>
-        {/* Add activity dropdown — each type maps to a query param handled by /new */}
-        <div className="dropdown">
-          <button
-            className="btn btn-primary btn-sm dropdown-toggle"
-            type="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            + Add activity
-          </button>
-          <ul className="dropdown-menu dropdown-menu-end shadow-sm">
-            <li>
-              <Link
-                className="dropdown-item"
-                href={`/app/discover/insights/${insightId}/new?type=1`}
-              >
-                💬 Interview guide
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="dropdown-item"
-                href={`/app/discover/insights/${insightId}/new?type=2`}
-              >
-                📋 Survey
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="dropdown-item"
-                href={`/app/discover/insights/${insightId}/new?type=3`}
-              >
-                🗺 Assumption map
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="dropdown-item"
-                href={`/app/discover/insights/${insightId}/new?type=4`}
-              >
-                🔭 Competitor scan
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="dropdown-item"
-                href={`/app/discover/insights/${insightId}/new?type=5`}
-              >
-                📊 Data query
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="dropdown-item"
-                href={`/app/discover/insights/${insightId}/new?type=6`}
-              >
-                📚 Desk research
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="dropdown-item"
-                href={`/app/discover/insights/${insightId}/new?type=7`}
-              >
-                💡 Prototype hypothesis
-              </Link>
-            </li>
-          </ul>
-        </div>
+        {/* Add activity: client Dropdown — raw data-bs-toggle does not work (Bootstrap JS not loaded). */}
+        <AddActivityDropdown insightId={insightId} />
       </div>
 
       {/* Activities list or empty state */}

@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
 import { callClaudeJsonWeb } from "@/lib/claude";
+import { draftFromContext } from "@/lib/ai-drafts";
 import { insightTypeLabel, insightSeverityLabel } from "@/lib/insight-enums-display";
 import {
   createSpec,
@@ -244,4 +245,136 @@ export async function createSpecAction(formData: FormData): Promise<void> {
 
   revalidatePath("/app/build/specs");
   redirect(`/app/build/specs/${newId}`);
+}
+
+/**
+ * Item 5a: drafts spec title + description from selected insight ids on /app/build/specs/new.
+ * Returns JSON; the client component populates the title/description inputs.
+ */
+export async function draftSpecFromInsightsAction(insightIds: number[]): Promise<{
+  ok: boolean;
+  title?: string;
+  description?: string;
+  confidence?: number;
+  suggestionId?: number | null;
+  error?: string;
+}> {
+  const { projectId } = await requireEditor();
+  const ids = insightIds.filter((n) => Number.isFinite(n) && n > 0).slice(0, 5);
+  if (ids.length === 0) return { ok: false, error: "no_insights" };
+
+  const db = await getRequestDb();
+  const linked = await db
+    .select({ id: insights.id, title: insights.title, description: insights.description })
+    .from(insights)
+    .where(inArray(insights.id, ids));
+
+  if (linked.length === 0) return { ok: false, error: "not_found" };
+
+  const context = linked
+    .map((i) => `[insight ${i.id}] ${i.title}\n${i.description}`)
+    .join("\n\n");
+
+  const result = await draftFromContext<{ title: string; description: string }>({
+    projectId,
+    kind: "spec_draft",
+    context,
+  });
+
+  if (!result) return { ok: false, error: "ai_unavailable" };
+  return {
+    ok: true,
+    title: result.draft.title,
+    description: result.draft.description,
+    confidence: result.confidence,
+    suggestionId: result.suggestionId,
+  };
+}
+
+/**
+ * Cross-cut E: clusters existing ideas by effort/impact and proposes roadmap items.
+ *
+ * Pulls all open ideas, groups by (effort, impact) bucket, asks Claude to compose 3-5
+ * roadmap entries with linked idea ids. Used by the future "Suggest roadmap" button.
+ */
+export async function suggestRoadmapFromIdeasAction(): Promise<{
+  ok: boolean;
+  items?: { title: string; description: string; ideaIds: number[] }[];
+  confidence?: number;
+  suggestionId?: number | null;
+  error?: string;
+}> {
+  const { projectId } = await requireEditor();
+  const db = await getRequestDb();
+
+  const { ideas } = await import("@customer-pulse/db/client");
+  const ideaRows = await db
+    .select({
+      id: ideas.id,
+      title: ideas.title,
+      description: ideas.description,
+      effort: ideas.effortEstimate,
+      impact: ideas.impactEstimate,
+    })
+    .from(ideas)
+    .where(eq(ideas.projectId, projectId))
+    .limit(80);
+
+  if (ideaRows.length < 3) return { ok: false, error: "not_enough_ideas" };
+
+  const context = ideaRows
+    .map((i) => `[idea ${i.id}] (effort=${i.effort} impact=${i.impact}) ${i.title}: ${i.description.slice(0, 200)}`)
+    .join("\n");
+
+  const result = await draftFromContext<{
+    items: { title: string; description: string; ideaIds: number[] }[];
+  }>({
+    projectId,
+    kind: "roadmap_cluster",
+    context,
+    maxTokens: 2000,
+  });
+
+  if (!result) return { ok: false, error: "ai_unavailable" };
+  return {
+    ok: true,
+    items: result.draft.items,
+    confidence: result.confidence,
+    suggestionId: result.suggestionId,
+  };
+}
+
+/**
+ * Item 5b: given a free-text spec idea, suggests up to 5 existing insights that look related.
+ * Used by the "Suggest related insights" pill on the spec form. Pure heuristic for now —
+ * substring/keyword overlap. Avoids an AI call on every keystroke.
+ */
+export async function suggestInsightsForTextAction(text: string): Promise<{ ids: number[] }> {
+  const { projectId } = await requireEditor();
+  const tokens = text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 4);
+
+  if (tokens.length === 0) return { ids: [] };
+
+  const db = await getRequestDb();
+  const all = await db
+    .select({ id: insights.id, title: insights.title, description: insights.description })
+    .from(insights)
+    .where(eq(insights.projectId, projectId));
+
+  const scored = all.map((i) => {
+    const hay = `${i.title} ${i.description}`.toLowerCase();
+    const score = tokens.reduce((acc, t) => acc + (hay.includes(t) ? 1 : 0), 0);
+    return { id: i.id, score };
+  });
+
+  return {
+    ids: scored
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((s) => s.id),
+  };
 }
