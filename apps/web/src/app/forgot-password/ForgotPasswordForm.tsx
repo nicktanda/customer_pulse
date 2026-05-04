@@ -38,7 +38,15 @@ export function ForgotPasswordForm() {
   return (
     <div className="w-100" style={{ maxWidth: "28rem" }}>
       <div className="text-center text-sm-start mb-4">
-        <p className="small fw-semibold text-uppercase text-body-secondary mb-1">Customer Pulse</p>
+        <div className="d-inline-flex align-items-center gap-2 mb-2">
+          <span aria-hidden="true" className="xf-brand-mark" />
+          <p
+            className="small fw-semibold text-uppercase mb-0"
+            style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.72rem" }}
+          >
+            xenoform.ai
+          </p>
+        </div>
         <h1 className="h3 mb-2">Reset your password</h1>
         <p className="text-body-secondary small mb-0">
           Enter your email and we&apos;ll send you a link to reset your password.

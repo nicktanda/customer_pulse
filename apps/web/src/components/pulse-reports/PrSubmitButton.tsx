@@ -20,7 +20,7 @@ export function PrSubmitButton({ label, className, style }: { label: string; cla
             aria-hidden="true"
             style={{ width: "0.75rem", height: "0.75rem" }}
           />
-          Queuing&hellip;
+          Incubating&hellip;
         </span>
       ) : (
         label

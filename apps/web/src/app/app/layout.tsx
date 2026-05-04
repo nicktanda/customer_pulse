@@ -14,7 +14,6 @@ import { signOutAction } from "./actions";
 import { ensureCurrentProjectCookie } from "@/lib/current-project";
 import { ResponsiveSidebar } from "./ResponsiveSidebar";
 import { MobileTopBar } from "./MobileTopBar";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "@/components/SidebarNav";
 /** Each group is rendered with the same heading toggle + sub-links (`NavGroupSection` in `SidebarNav`). */
 function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
@@ -82,7 +81,7 @@ function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
 }
 
 function tenantAppUrl(slug: string, path = "/app"): string {
-  const baseDomain = process.env.APP_BASE_DOMAIN ?? "customerpulse.app";
+  const baseDomain = process.env.APP_BASE_DOMAIN ?? "xenoform.ai";
   // Local dev doesn't resolve subdomains — fall back to the `?tenant=` shortcut.
   if (process.env.NODE_ENV === "development" || baseDomain.startsWith("localhost")) {
     const proto = process.env.NEXTAUTH_URL?.split("://")[0] ?? "http";
@@ -174,9 +173,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     return (
       <div className="min-vh-100 bg-body-tertiary">
         <header className="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-secondary-subtle bg-body">
-          <p className="small fw-semibold text-uppercase text-body-secondary mb-0">Customer Pulse</p>
+          <div className="d-flex align-items-center gap-2">
+            <span aria-hidden="true" className="xf-brand-mark" />
+            <p
+              className="small fw-semibold text-uppercase mb-0"
+              style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.7rem" }}
+            >
+              xenoform.ai
+            </p>
+          </div>
           <div className="d-flex align-items-center gap-3">
-            <ThemeToggle />
             <span className="small text-body-secondary">{session.user.email}</span>
             <form action={signOutAction}>
               <button type="submit" className="btn btn-link btn-sm p-0 text-decoration-none">
@@ -196,23 +202,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="d-flex min-vh-100 app-layout-shell">
       <ResponsiveSidebar>
         <div className="d-flex align-items-center gap-2 pb-3 mb-3 border-bottom border-secondary-subtle">
-          {/* Small ember accent square — acts as an app logo mark */}
-          <span
-            aria-hidden="true"
-            style={{
-              width: "1.125rem",
-              height: "1.125rem",
-              borderRadius: "0.25rem",
-              background: "var(--k-ember)",
-              flexShrink: 0,
-              display: "inline-block",
-            }}
-          />
+          {/* Bio-mechanical accent plate — acts as the app logo mark */}
+          <span aria-hidden="true" className="xf-brand-mark" />
           <p
             className="small fw-semibold text-uppercase mb-0"
-            style={{ color: "var(--k-ember)", letterSpacing: "0.07em", fontSize: "0.7rem" }}
+            style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.72rem" }}
           >
-            Customer Pulse
+            xenoform.ai
           </p>
         </div>
         <SidebarNav groups={sidebarNavGroups(true)}>
@@ -228,7 +224,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ) : null}
         </SidebarNav>
         <div className="mt-auto pt-4 border-top border-secondary-subtle">
-          <ThemeToggle />
           <p className="small text-truncate text-body-secondary mb-1">
             <span className="fw-medium text-body">{session.user.email}</span>
           </p>
@@ -258,7 +253,15 @@ function TenantPicker({ memberships }: { memberships: { id: number; slug: string
   return (
     <div className="min-vh-100 bg-body-tertiary d-flex align-items-center justify-content-center px-3">
       <div style={{ maxWidth: "26rem" }} className="w-100">
-        <p className="small fw-semibold text-uppercase text-body-secondary mb-1">Customer Pulse</p>
+        <div className="d-flex align-items-center gap-2 mb-2">
+          <span aria-hidden="true" className="xf-brand-mark" />
+          <p
+            className="small fw-semibold text-uppercase mb-0"
+            style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.72rem" }}
+          >
+            xenoform.ai
+          </p>
+        </div>
         <h1 className="h4 mb-3">Pick a workspace</h1>
         <p className="small text-body-secondary mb-3">
           You belong to more than one workspace. Choose one to continue.

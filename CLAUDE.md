@@ -1,10 +1,12 @@
-# Customer Pulse — Claude Code project context
+# xenoform.ai — Claude Code project context
 
 This file is read by **Claude Code** so every session starts with accurate project facts. Update it when the stack or commands change.
 
+> Note: the on-disk repo and workspace package names still use `customer_pulse`/`customer-pulse` (formerly the product name). The user-facing brand is now **xenoform.ai**. Don't rename packages/folders unless explicitly asked.
+
 ## What this app is
 
-**Customer Pulse** ingests customer feedback from Linear, Google Forms, Slack, Jira, and a custom API, stores it in **PostgreSQL**, and uses the **Anthropic API** to classify and triage items. It sends a daily email digest (“Customer Pulse”). The app is a **TypeScript monorepo**: **Next.js** (App Router) for the web UI and HTTP APIs, **BullMQ** workers for background jobs, **Drizzle** for the DB schema, and **Auth.js** for login (JWT sessions; bcrypt-compatible with existing `users.encrypted_password` hashes).
+**xenoform.ai** ingests customer feedback from Linear, Google Forms, Slack, Jira, and a custom API, stores it in **PostgreSQL**, and uses the **Anthropic API** to classify and triage items. It sends a daily email digest (the "pulse"). The app is a **TypeScript monorepo**: **Next.js** (App Router) for the web UI and HTTP APIs, **BullMQ** workers for background jobs, **Drizzle** for the DB schema, and **Auth.js** for login (JWT sessions; bcrypt-compatible with existing `users.encrypted_password` hashes).
 
 ## Stack (high level)
 

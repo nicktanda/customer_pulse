@@ -1,6 +1,6 @@
-# Customer Pulse
+# xenoform.ai
 
-Customer feedback from Linear, Slack, Jira, Google Forms, and a custom API lands in **PostgreSQL**. Workers process feedback with the **Anthropic** API and send a daily **Customer Pulse** email digest.
+Customer feedback from Linear, Slack, Jira, Google Forms, and a custom API lands in **PostgreSQL**. Workers process feedback with the **Anthropic** API and send a daily **xenoform.ai** pulse digest.
 
 ## Stack
 
