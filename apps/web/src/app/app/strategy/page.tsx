@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { eq, asc } from "drizzle-orm";
 import { Target, Users, Plus, Save } from "lucide-react";
 import { auth } from "@/auth";
@@ -40,15 +39,7 @@ export default async function StrategyPage({
       <PageShell width="full">
         <PageHeader
           title="Strategy"
-          description={
-            <>
-              Select or{" "}
-              <Link href="/app/projects/new" className="link-primary">
-                create a project
-              </Link>{" "}
-              first.
-            </>
-          }
+          description="Select a project to continue."
         />
       </PageShell>
     );

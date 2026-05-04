@@ -16,7 +16,10 @@ import {
   SimplePeekPanelHeader,
 } from "@/components/ui";
 import { integrationsListHref } from "@/lib/integrations-list-query";
-import { INTEGRATION_SOURCE_LABELS } from "@/lib/integration-source-meta";
+import {
+  INTEGRATION_SOURCE_LABELS,
+  SPECIALIZED_INTEGRATION_HREFS,
+} from "@/lib/integration-source-meta";
 import { IntegrationDetailPanel } from "@/components/integrations/IntegrationDetailPanel";
 import { IntegrationListRows } from "@/components/integrations/IntegrationListRows";
 
@@ -36,7 +39,7 @@ export default async function IntegrationsPage({
   if (projectId == null) {
     return (
       <PageShell width="full">
-        <PageHeader title="Integrations" description="Select or create a project first." />
+        <PageHeader title="Integrations" description="Select a project to continue." />
       </PageShell>
     );
   }
@@ -56,7 +59,9 @@ export default async function IntegrationsPage({
   const closePanelHref = integrationsListHref({ ...(notice ? { notice } : {}) });
   const rowsForList = rows.map((r) => ({
     ...r,
-    detailHref: integrationsListHref({ ...(notice ? { notice } : {}), detail: r.id }),
+    detailHref:
+      SPECIALIZED_INTEGRATION_HREFS[r.sourceType] ??
+      integrationsListHref({ ...(notice ? { notice } : {}), detail: r.id }),
   }));
 
   let detailRow: (typeof integrations.$inferSelect) | null = null;
@@ -78,9 +83,15 @@ export default async function IntegrationsPage({
               <Link href="/app/integrations/new" className="btn btn-primary btn-sm">
                 New integration
               </Link>
+              <Link href="/app/integrations/anthropic" className="btn btn-outline-secondary btn-sm">
+                Anthropic
+              </Link>
+              <Link href="/app/integrations/github" className="btn btn-outline-secondary btn-sm">
+                GitHub
+              </Link>
               <form action={syncAllIntegrationsAction} className="d-inline">
                 <button type="submit" className="btn btn-outline-secondary btn-sm">
-                  Sync all (enqueue)
+                  Sync all
                 </button>
               </form>
             </>

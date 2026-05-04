@@ -36,15 +36,7 @@ export default async function DashboardPage() {
       <PageShell width="full">
         <PageHeader
           title="Dashboard"
-          description={
-            <>
-              You are not in any project yet.{" "}
-              <Link href="/app/projects/new" className="link-primary">
-                Create a project
-              </Link>{" "}
-              to get started.
-            </>
-          }
+          description="You are not in any project yet. Ask an owner to invite you."
         />
       </PageShell>
     );

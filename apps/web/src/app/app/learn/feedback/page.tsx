@@ -486,7 +486,7 @@ function FeedbackBulkAndResults({
           <p className="text-body-secondary small mb-0">
             {total === 0 ? (
               <>
-                No feedback in this project yet.{" "}
+                No feedback yet.{" "}
                 <Link href="/app/integrations" className="link-primary">
                   Connect an integration
                 </Link>{" "}

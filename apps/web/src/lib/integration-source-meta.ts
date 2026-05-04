@@ -16,9 +16,19 @@ export const INTEGRATION_SOURCE_LABELS: Record<number, string> = {
   10: "Zendesk",
   11: "Sentry",
   12: "GitHub",
+  13: "Anthropic",
 };
 
-export const INTEGRATION_SOURCE_OPTIONS = Object.entries(INTEGRATION_SOURCE_LABELS).map(([value, label]) => ({
-  value: Number(value),
-  label,
-}));
+/** Source types with bespoke configuration UIs (not the generic JSON-paste flow). */
+export const SPECIALIZED_INTEGRATION_HREFS: Record<number, string> = {
+  12: "/app/integrations/github",
+  13: "/app/integrations/anthropic",
+};
+
+/** Generic source options shown in the "New integration" dropdown — excludes specialized ones. */
+export const INTEGRATION_SOURCE_OPTIONS = Object.entries(INTEGRATION_SOURCE_LABELS)
+  .filter(([value]) => !SPECIALIZED_INTEGRATION_HREFS[Number(value)])
+  .map(([value, label]) => ({
+    value: Number(value),
+    label,
+  }));

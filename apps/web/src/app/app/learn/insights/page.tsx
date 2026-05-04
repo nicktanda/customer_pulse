@@ -191,7 +191,7 @@ export default async function InsightsPage({
         {rows.length === 0 ? (
           <li className="col-12 card border-secondary-subtle">
             <div className="card-body py-4 text-body-secondary small">
-              <p className="mb-2">No insights yet for this project.</p>
+              <p className="mb-2">No insights yet.</p>
               <p className="mb-0">
                 Once the worker runs insight discovery against your feedback, entries will appear here. Until then,
                 keep ingesting feedback via{" "}
