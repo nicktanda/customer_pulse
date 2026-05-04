@@ -6,7 +6,14 @@
  */
 import { eq } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
-import { ideas, ideaPullRequests, ideaInsights, insights, integrations } from "@customer-pulse/db/client";
+import {
+  ideas,
+  ideaPullRequests,
+  ideaInsights,
+  insights,
+  integrations,
+  projectSettings,
+} from "@customer-pulse/db/client";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { callClaude, callClaudeJson } from "../ai/call-claude.js";
 import { commitFile } from "./pr-creator.js";
@@ -74,12 +81,36 @@ Only use "needs_changes" for genuine gaps — minor scope limitations should sti
 
 Respond with ONLY the JSON object.`;
 
+const QA_REVIEW_SYSTEM = `You are a QA engineer manually verifying that a pull request does what it claims.
+
+You will receive the original idea/insight, the PR's stated summary, and the diff. Your job is to derive specific acceptance criteria from the idea and check each one against the actual code changes.
+
+Process:
+1. Derive 3-7 concrete acceptance criteria from the idea + insights. Each should be a single-line, testable statement (e.g. "Adds a 'Resend' button to the pulse report detail page", "Persists the resend timestamp in pulse_reports.resent_at").
+2. For each criterion, check the diff and assign:
+   - "PASS" — criterion is clearly met; cite file path + a key line/snippet as evidence.
+   - "FAIL" — criterion is not met or implementation is broken.
+   - "UNCERTAIN" — diff doesn't show enough to verify (e.g. relies on code outside the diff, or the change is in untested config).
+3. Be strict — if it can't be verified from the diff, that's UNCERTAIN, not PASS.
+
+Return a JSON object with exactly two fields:
+- "verdict": "approved" only if EVERY criterion is PASS. If any are FAIL or UNCERTAIN, "needs_changes".
+- "review": markdown string. Start with a one-line verdict (✅ Verified / ⚠️ Some criteria unverified / ❌ Failed criteria). Then a checklist:
+  \`\`\`
+  - [✅] <criterion> — <evidence: file path, snippet>
+  - [❌] <criterion> — <what's missing/broken>
+  - [❓] <criterion> — <why it can't be verified>
+  \`\`\`
+
+Only use "approved" when every box is ✅. Respond with ONLY the JSON object.`;
+
 const FIX_SYSTEM = `You are a senior software engineer. You will receive:
 1. The current PR diff
 2. Code review feedback
 3. PM review feedback
+4. QA review feedback (acceptance-criteria checklist)
 
-Generate code changes that address ALL feedback from both reviews. For each file, provide:
+Generate code changes that address ALL feedback from all three reviews. For each file, provide:
 - "path": file path relative to repo root
 - "content": the COMPLETE updated file content (not a diff)
 - "action": "create" for new files, "modify" for existing files
@@ -155,6 +186,27 @@ async function getPrDiff(
   } catch {
     return null;
   }
+}
+
+async function shouldAutoMerge(db: Database, projectId: number): Promise<boolean> {
+  const [settings] = await db
+    .select({ autoMerge: projectSettings.githubAutoMerge })
+    .from(projectSettings)
+    .where(eq(projectSettings.projectId, projectId))
+    .limit(1);
+  return Boolean(settings?.autoMerge);
+}
+
+async function enqueueAutoMerge(pullRequestId: number): Promise<void> {
+  const { Queue } = await import("bullmq");
+  const { getRedisConnection } = await import("../redis.js");
+  const { QUEUE_DEFAULT } = await import("../queue-names.js");
+  const q = new Queue(QUEUE_DEFAULT, { connection: getRedisConnection() });
+  await q.add(
+    "GithubAutoMergeJob",
+    { pullRequestId },
+    { delay: 15_000, removeOnComplete: 100, removeOnFail: 500 },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -239,10 +291,46 @@ async function runPmReview(
   };
 }
 
+async function runQaReview(
+  diff: string,
+  idea: { title: string; description: string; rationale: string | null },
+  linkedInsights: { title: string; description: string }[],
+  filesChanged: string,
+): Promise<ReviewResult> {
+  const result = await callClaudeJson<{ verdict: string; review: string }>({
+    system: QA_REVIEW_SYSTEM,
+    user: [
+      `## Original Insight(s)`,
+      ...linkedInsights.map((i) => `- **${i.title}**: ${i.description}`),
+      linkedInsights.length === 0 ? "_(no linked insights)_" : "",
+      "",
+      `## Idea`,
+      `**${idea.title}**`,
+      idea.description,
+      idea.rationale ? `\n**Rationale:** ${idea.rationale}` : "",
+      "",
+      `## Files Changed`,
+      filesChanged,
+      "",
+      `## Diff`,
+      "```diff",
+      diff,
+      "```",
+    ].join("\n"),
+    maxTokens: 2048,
+  });
+  if (!result) return { verdict: "approved", text: "_QA review could not be generated._" };
+  return {
+    verdict: result.verdict === "needs_changes" ? "needs_changes" : "approved",
+    text: result.review ?? "",
+  };
+}
+
 async function generateFixes(
   diff: string,
   codeReview: ReviewResult,
   pmReview: ReviewResult,
+  qaReview: ReviewResult,
 ): Promise<FixResult | null> {
   return callClaudeJson<FixResult>({
     system: FIX_SYSTEM,
@@ -257,6 +345,9 @@ async function generateFixes(
       "",
       "## PM Review Feedback",
       pmReview.text,
+      "",
+      "## QA Review Feedback",
+      qaReview.text,
     ].join("\n"),
     maxTokens: 8192,
   });
@@ -308,10 +399,11 @@ export async function reviewPullRequest(
       return;
     }
 
-    // Run both reviews in parallel
-    const [codeReview, pmReview] = await Promise.all([
+    // Run all three reviews in parallel
+    const [codeReview, pmReview, qaReview] = await Promise.all([
       runCodeReview(diff, idea.title),
       runPmReview(diff, idea, linkedInsights, filesChangedStr),
+      runQaReview(diff, idea, linkedInsights, filesChangedStr),
     ]);
 
     // Post reviews as comments
@@ -324,13 +416,31 @@ export async function reviewPullRequest(
       headers, creds.owner, creds.repo, pr.prNumber,
       `## 📋 PM Review${iterLabel}\n\n${pmReview.text}\n\n---\n_Automated review by xenoform.ai_`,
     );
+    await postPrComment(
+      headers, creds.owner, creds.repo, pr.prNumber,
+      `## 🧪 QA Review${iterLabel}\n\n${qaReview.text}\n\n---\n_Automated review by xenoform.ai_`,
+    );
 
-    console.log(`${tag} — code: ${codeReview.verdict}, pm: ${pmReview.verdict}`);
+    console.log(`${tag} — code: ${codeReview.verdict}, pm: ${pmReview.verdict}, qa: ${qaReview.verdict}`);
 
-    // Both approved → request human review before merge
-    if (codeReview.verdict === "approved" && pmReview.verdict === "approved") {
-      await requestHumanReview(headers, creds.owner, creds.repo, pr.prNumber);
-      console.log(`${tag} — both reviewers approved, requested human review`);
+    // All three approved → auto-merge if enabled, else request human review
+    if (
+      codeReview.verdict === "approved" &&
+      pmReview.verdict === "approved" &&
+      qaReview.verdict === "approved"
+    ) {
+      const autoMerge = await shouldAutoMerge(db, idea.projectId);
+      if (autoMerge) {
+        await enqueueAutoMerge(pullRequestId);
+        await postPrComment(
+          headers, creds.owner, creds.repo, pr.prNumber,
+          `## 🚀 Auto-merging\n\nAll three reviewers approved and auto-merge is enabled for this project. This PR will be squash-merged shortly.\n\n---\n_Automated by xenoform.ai_`,
+        );
+        console.log(`${tag} — all reviewers approved, auto-merge enqueued`);
+      } else {
+        await requestHumanReview(headers, creds.owner, creds.repo, pr.prNumber);
+        console.log(`${tag} — all reviewers approved, requested human review`);
+      }
       return;
     }
 
@@ -346,7 +456,7 @@ export async function reviewPullRequest(
 
     // Generate fix commit addressing the feedback
     console.log(`${tag} — generating fixes...`);
-    const fixes = await generateFixes(diff, codeReview, pmReview);
+    const fixes = await generateFixes(diff, codeReview, pmReview, qaReview);
     if (!fixes?.files?.length) {
       await postPrComment(
         headers, creds.owner, creds.repo, pr.prNumber,
