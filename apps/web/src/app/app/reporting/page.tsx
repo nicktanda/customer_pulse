@@ -90,15 +90,7 @@ export default async function ReportingPage({
       <PageShell width="full">
         <PageHeader
           title="Reporting"
-          description={
-            <>
-              Select or{" "}
-              <Link href="/app/projects/new" className="link-primary">
-                create a project
-              </Link>{" "}
-              first.
-            </>
-          }
+          description="Select a project to continue."
         />
       </PageShell>
     );

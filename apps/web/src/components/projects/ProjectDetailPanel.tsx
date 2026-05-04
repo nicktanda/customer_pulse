@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DeleteProjectButton } from "@/app/app/projects/DeleteProjectButton";
 import { MetricTile } from "@/components/ui";
 import type { ProjectPageData } from "@/lib/project-page-data";
 
@@ -13,7 +12,7 @@ export function ProjectDetailPanel({
 }: {
   data: ProjectPageData;
   projectId: number;
-  /** When true, show Switch / Team / Edit / Delete under the stats (used in the right-hand panel). */
+  /** When true, show Switch / Team / Edit under the stats (used in the right-hand panel). */
   showActions?: boolean;
 }) {
   const { project, isOwner, feedbackCount, integrationCount, insightCount, ideaCount } = data;
@@ -42,7 +41,6 @@ export function ProjectDetailPanel({
               <Link href={`/app/projects/${projectId}/edit`} className="btn btn-outline-secondary btn-sm">
                 Edit
               </Link>
-              <DeleteProjectButton projectId={projectId} />
             </>
           ) : null}
         </div>

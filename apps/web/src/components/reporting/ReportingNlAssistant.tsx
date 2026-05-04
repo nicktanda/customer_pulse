@@ -84,10 +84,10 @@ export function ReportingNlAssistant({ defaultRangeDays = 30 }: { defaultRangeDa
       const waitSeconds = Math.round((i + 1) * 1.5);
       const phaseHint =
         data.status === "running"
-          ? "Generating your answer"
+          ? "Forming response"
           : data.status === "pending"
-            ? "Queued"
-            : "Processing";
+            ? "Incubating"
+            : "Adapting";
       setProgressText(`${phaseHint}... (~${waitSeconds}s elapsed)`);
       await sleep(1500, signal);
     }
@@ -107,7 +107,7 @@ export function ReportingNlAssistant({ defaultRangeDays = 30 }: { defaultRangeDa
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
     setLoading(true);
-    setProgressText("Sending your question...");
+    setProgressText("Transmitting query...");
     try {
       const res = await fetch("/api/app/reporting/ask", {
         method: "POST",
@@ -122,7 +122,7 @@ export function ReportingNlAssistant({ defaultRangeDays = 30 }: { defaultRangeDa
       if (data.id == null) {
         throw new Error("No request id returned");
       }
-      setProgressText("Job started -- waiting for the worker...");
+      setProgressText("Organism activated — incubating response...");
       const final = await poll(data.id, signal);
       setResult(final);
       setProgressText("");
@@ -277,7 +277,7 @@ export function ReportingNlAssistant({ defaultRangeDays = 30 }: { defaultRangeDa
                     role="status"
                     aria-hidden="true"
                   />
-                  Working...
+                  Forming response...
                 </>
               ) : (
                 "Run"

@@ -28,7 +28,7 @@ export function SpecSubmitButton() {
             role="status"
             aria-hidden="true"
           />
-          Drafting with AI…
+          Sequencing draft…
         </>
       ) : (
         "Create spec"

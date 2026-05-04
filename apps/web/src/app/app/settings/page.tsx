@@ -1,7 +1,7 @@
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
-import { integrations, projectSettings, IntegrationSourceType, UserRole } from "@customer-pulse/db/client";
+import { projectSettings, UserRole } from "@customer-pulse/db/client";
 import {
   getCurrentProjectIdForUser,
   getCurrentProjectSummaryForUser,
@@ -9,11 +9,9 @@ import {
 } from "@/lib/current-project";
 import { ProjectSwitcher } from "../ProjectSwitcher";
 import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
-import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { projectHasDemoSeedData } from "@/lib/demo-project-seed";
-import { saveGithubSettingsAction, saveGeneralSettingsAction, saveAnthropicSettingsAction } from "./actions";
+import { saveGeneralSettingsAction } from "./actions";
 import { DemoModeSwitch } from "./DemoModeSwitch";
-import { GithubTestButton } from "./GithubTestButton";
 import {
   FormActions,
   InlineAlert,
@@ -50,7 +48,7 @@ export default async function SettingsPage({
       <PageShell width="medium" className="d-flex flex-column gap-5">
         <PageHeader
           title="Settings"
-          description="Create a project under Projects, then choose which workspace is active below."
+          description="You aren't in any projects yet. Ask an owner to invite you."
         />
         <section className="card shadow-sm border-secondary-subtle">
           <div className="card-body">
@@ -77,24 +75,6 @@ export default async function SettingsPage({
   const showDemoModeCard = canEdit && isAdmin;
 
   const db = await getRequestDb();
-  const [gh] = await db
-    .select()
-    .from(integrations)
-    .where(and(eq(integrations.projectId, projectId), eq(integrations.sourceType, IntegrationSourceType.github)))
-    .limit(1);
-
-  let ghPreview: { owner?: string; repo?: string; default_branch?: string } = {};
-  const masterKey = process.env.LOCKBOX_MASTER_KEY;
-  if (gh?.credentialsCiphertext && masterKey) {
-    try {
-      const raw = decryptCredentialsColumn(gh.credentialsCiphertext, masterKey);
-      ghPreview = JSON.parse(raw) as typeof ghPreview;
-    } catch {
-      ghPreview = {};
-    }
-  }
-
-  // Load project-level settings
   const [settings] = await db
     .select()
     .from(projectSettings)
@@ -102,14 +82,6 @@ export default async function SettingsPage({
     .limit(1);
   const currentSettings = settings ?? DEFAULT_SETTINGS;
 
-  // Load Anthropic integration
-  const [anthropicInt] = await db
-    .select()
-    .from(integrations)
-    .where(and(eq(integrations.projectId, projectId), eq(integrations.sourceType, 13)))
-    .limit(1);
-
-  // Demo mode is “on” when tagged demo feedback exists (same tag the seed uses in `raw_data`).
   const demoModeOn = showDemoModeCard ? await projectHasDemoSeedData(db, projectId) : false;
 
   return (
@@ -135,11 +107,7 @@ export default async function SettingsPage({
         </div>
       </section>
 
-      {notice === "github" ? <InlineAlert variant="success">GitHub integration saved.</InlineAlert> : null}
       {notice === "settings" ? <InlineAlert variant="success">General settings saved.</InlineAlert> : null}
-      {notice === "anthropic" ? <InlineAlert variant="success">Anthropic API key saved.</InlineAlert> : null}
-      {err === "github_token" ? <InlineAlert variant="danger">GitHub access token is required.</InlineAlert> : null}
-      {err === "anthropic_key" ? <InlineAlert variant="danger">Anthropic API key is required.</InlineAlert> : null}
       {notice === "demo_on" || notice === "demo" ? (
         <InlineAlert variant="success">
           Demo mode is on: synthetic data is loaded for this project. Refresh other open tabs if counts look stale.
@@ -242,118 +210,6 @@ export default async function SettingsPage({
         </div>
       </section>
 
-      <section className="card shadow-sm border-secondary-subtle">
-        <div className="card-body">
-          <h2 className="h5 text-body-emphasis">Anthropic API</h2>
-          <p className="small text-body-secondary mt-1">
-            Used for AI-powered feedback classification, insight discovery, and reporting. Stored as an encrypted integration.
-          </p>
-          {canEdit ? (
-            <form action={saveAnthropicSettingsAction} className="mt-3 d-flex flex-column gap-3">
-              <div>
-                <label htmlFor="anthropic-key" className="form-label">API key</label>
-                <input id="anthropic-key" name="api_key" type="password" autoComplete="off" required={!anthropicInt} className="form-control" placeholder={anthropicInt ? "Leave blank to keep existing key" : "sk-ant-…"} />
-                {anthropicInt ? (
-                  <p className="form-text small text-body-secondary mb-0">Key is saved. Enter a new one to replace it.</p>
-                ) : null}
-              </div>
-              <FormActions variant="plain">
-                <button type="submit" className="btn btn-primary btn-sm">Save Anthropic key</button>
-              </FormActions>
-            </form>
-          ) : (
-            <p className="small text-body-secondary mt-3 mb-0">{anthropicInt ? "Anthropic API key is configured." : "No API key set — ask a project admin to configure it."}</p>
-          )}
-        </div>
-      </section>
-
-      <section className="card shadow-sm border-secondary-subtle">
-        <div className="card-body">
-          <h2 className="h5 text-body-emphasis">GitHub</h2>
-          <p className="small text-body-secondary mt-1">
-            Used for PR automation and related features. Credentials are stored as an encrypted integration for this
-            project.
-          </p>
-          {canEdit ? (
-            <form action={saveGithubSettingsAction} className="mt-3 d-flex flex-column gap-3">
-              <div>
-                <label htmlFor="gh-token" className="form-label">
-                  Access token
-                </label>
-                <input
-                  id="gh-token"
-                  name="access_token"
-                  type="password"
-                  autoComplete="off"
-                  required={!gh}
-                  className="form-control"
-                  placeholder={gh ? "Leave blank to keep the existing token" : "ghp_…"}
-                />
-                {gh ? (
-                  <p className="form-text small text-body-secondary mb-0">
-                    Leave blank to keep your current token and only update owner, repo, or branch.
-                  </p>
-                ) : (
-                  <p className="form-text small text-body-secondary mb-0">
-                    Paste a personal access token with the scopes your automation needs.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label htmlFor="gh-owner" className="form-label">
-                  Owner
-                </label>
-                <input
-                  id="gh-owner"
-                  name="owner"
-                  defaultValue={ghPreview.owner ?? ""}
-                  className="form-control"
-                />
-              </div>
-              <div>
-                <label htmlFor="gh-repo" className="form-label">
-                  Repo
-                </label>
-                <input id="gh-repo" name="repo" defaultValue={ghPreview.repo ?? ""} className="form-control" />
-              </div>
-              <div>
-                <label htmlFor="gh-branch" className="form-label">
-                  Default branch
-                </label>
-                <input
-                  id="gh-branch"
-                  name="default_branch"
-                  defaultValue={ghPreview.default_branch ?? "main"}
-                  className="form-control"
-                />
-              </div>
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  name="enabled"
-                  value="true"
-                  defaultChecked={gh?.enabled ?? true}
-                  className="form-check-input"
-                  id="gh-enabled"
-                />
-                <label className="form-check-label" htmlFor="gh-enabled">
-                  Enabled
-                </label>
-              </div>
-              <FormActions variant="plain">
-                <button type="submit" className="btn btn-primary">
-                  Save GitHub
-                </button>
-              </FormActions>
-              <div className="mt-2">
-                <GithubTestButton />
-              </div>
-            </form>
-          ) : (
-            <p className="small text-body-secondary mt-3 mb-0">You do not have permission to change GitHub settings.</p>
-          )}
-        </div>
-      </section>
     </PageShell>
   );
 }

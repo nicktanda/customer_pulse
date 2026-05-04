@@ -2,16 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
-import { integrations } from "@customer-pulse/db/client";
+import { integrations, IntegrationSourceType } from "@customer-pulse/db/client";
+import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { getCurrentProjectIdForUser } from "@/lib/current-project";
 import { userCanEditProject } from "@/lib/project-access";
 import { upsertIntegrationCredentials } from "@/lib/integrations-upsert";
 import { Queue } from "bullmq";
 import { getRedis } from "@/lib/redis";
 import { QUEUE_DEFAULT } from "@/lib/queue-names";
+
+const ANTHROPIC_SOURCE_TYPE = 13;
 
 async function requireProjectEditor() {
   const session = await auth();
@@ -140,6 +143,81 @@ export async function syncIntegrationNowAction(integrationId: number, _formData?
   }
   revalidatePath("/app/integrations");
   redirect(`/app/integrations/${integrationId}?notice=sync`);
+}
+
+/** Persists GitHub credentials as a GitHub integration row. */
+export async function saveGithubIntegrationAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireProjectEditor();
+  const accessTokenInput = String(formData.get("access_token") ?? "").trim();
+  const owner = String(formData.get("owner") ?? "").trim();
+  const repo = String(formData.get("repo") ?? "").trim();
+  const defaultBranch = String(formData.get("default_branch") ?? "").trim() || "main";
+  const enabled = formData.get("enabled") === "on" || formData.get("enabled") === "true";
+
+  let accessToken = accessTokenInput;
+  if (!accessToken) {
+    const db = await getRequestDb();
+    const masterKey = process.env.LOCKBOX_MASTER_KEY;
+    const [existing] = await db
+      .select({ credentialsCiphertext: integrations.credentialsCiphertext })
+      .from(integrations)
+      .where(and(eq(integrations.projectId, projectId), eq(integrations.sourceType, IntegrationSourceType.github)))
+      .limit(1);
+    if (existing?.credentialsCiphertext && masterKey) {
+      try {
+        const raw = decryptCredentialsColumn(existing.credentialsCiphertext, masterKey);
+        const prev = JSON.parse(raw) as { access_token?: string };
+        if (typeof prev.access_token === "string" && prev.access_token.length > 0) {
+          accessToken = prev.access_token;
+        }
+      } catch {
+        /* keep accessToken empty → error below */
+      }
+    }
+  }
+
+  if (!accessToken) {
+    redirect("/app/integrations/github?error=token");
+  }
+
+  await upsertIntegrationCredentials(
+    projectId,
+    IntegrationSourceType.github,
+    "GitHub",
+    {
+      access_token: accessToken,
+      owner,
+      repo,
+      default_branch: defaultBranch,
+    },
+    { enabled },
+  );
+
+  revalidatePath("/app/integrations");
+  revalidatePath("/app/integrations/github");
+  redirect("/app/integrations/github?notice=saved");
+}
+
+/** Persists Anthropic API key as an integration credential (type 13). */
+export async function saveAnthropicIntegrationAction(formData: FormData): Promise<void> {
+  const { projectId } = await requireProjectEditor();
+  const apiKey = String(formData.get("api_key") ?? "").trim();
+
+  if (!apiKey) {
+    redirect("/app/integrations/anthropic?error=key");
+  }
+
+  await upsertIntegrationCredentials(
+    projectId,
+    ANTHROPIC_SOURCE_TYPE,
+    "Anthropic",
+    { api_key: apiKey },
+    { enabled: true },
+  );
+
+  revalidatePath("/app/integrations");
+  revalidatePath("/app/integrations/anthropic");
+  redirect("/app/integrations/anthropic?notice=saved");
 }
 
 export async function syncAllIntegrationsAction(_formData?: FormData): Promise<void> {

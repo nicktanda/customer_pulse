@@ -23,7 +23,7 @@ import { createDb } from "@customer-pulse/db/client";
 function onboardingDestination(slug?: string): string {
   // Mirror the logic in app/layout.tsx so MT users land on their tenant subdomain and
   // dev callers pick up `?tenant=slug` instead.
-  const baseDomain = process.env.APP_BASE_DOMAIN ?? "customerpulse.app";
+  const baseDomain = process.env.APP_BASE_DOMAIN ?? "xenoform.ai";
   if (!slug) return "/app/onboarding";
 
   if (process.env.NODE_ENV === "development" || baseDomain.startsWith("localhost")) {
