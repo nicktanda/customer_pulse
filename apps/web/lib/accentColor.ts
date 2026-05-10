@@ -5,12 +5,25 @@
 
 export const DEFAULT_ACCENT_COLOR = "#6366f1"; // Indigo-500 – brand default
 
+/**
+ * Shared localStorage key for the persisted accent colour.
+ * Exported so that all consumers reference a single source of truth.
+ */
+export const ACCENT_COLOR_STORAGE_KEY = "user_accent_color";
+
 export interface AccentColorSwatch {
   name: string;
   value: string;
 }
 
-/** Curated palette of 10 accessible accent colours */
+/**
+ * Curated palette of accessible accent colours.
+ *
+ * Note: not all swatches meet WCAG AA (4.5:1) against white when used as
+ * foreground text — Cyan, Emerald, Orange, Amber and Pink are intended
+ * primarily as background/highlight accents. The UI will display a contrast
+ * warning for any colour that fails the 4.5:1 threshold.
+ */
 export const ACCENT_COLOR_SWATCHES: AccentColorSwatch[] = [
   { name: "Indigo", value: "#6366f1" },
   { name: "Violet", value: "#8b5cf6" },
@@ -66,7 +79,10 @@ export function meetsWcagAA(hex: string): boolean {
 export function applyAccentColor(hex: string): void {
   if (typeof document === "undefined") return;
   document.documentElement.style.setProperty("--color-accent", hex);
-  // Derive a slightly-darker "pressed" shade for active states
+  // Derive a slightly-darker "pressed" shade for active states.
+  // Note: darkenHex uses a simple per-channel subtraction which is
+  // perceptually naive — near-black colours will clamp to #000. Acceptable
+  // for v1; a proper HSL-based approach would be more consistent.
   document.documentElement.style.setProperty(
     "--color-accent-dark",
     darkenHex(hex, 15)
@@ -75,6 +91,9 @@ export function applyAccentColor(hex: string): void {
 
 /**
  * Darken a hex colour by `amount` (0-255 per channel).
+ *
+ * ⚠️  Perceptually naive: subtracts a fixed value from each RGB channel.
+ * Near-black inputs will clamp to #000000. Suitable for v1 hover states.
  */
 function darkenHex(hex: string, amount: number): string {
   const clean = hex.replace("#", "");
