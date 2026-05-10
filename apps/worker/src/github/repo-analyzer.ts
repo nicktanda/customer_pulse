@@ -47,12 +47,18 @@ export async function analyzeRepo(
     .limit(1);
 
   if (existing && existing.commitSha === commitSha) {
-    return {
-      techStack: existing.techStack,
-      structure: existing.structure,
-      conventions: existing.conventions,
-      commitSha,
-    };
+    // Skip the cache if it predates the `existingDirs` field — without it
+    // the path-mismatch check has no data to compare against, so we'd
+    // rather pay the tree-fetch than silently degrade the safety net.
+    const cachedStructure = existing.structure as Record<string, unknown>;
+    if (Array.isArray(cachedStructure.existingDirs)) {
+      return {
+        techStack: existing.techStack,
+        structure: existing.structure,
+        conventions: existing.conventions,
+        commitSha,
+      };
+    }
   }
 
   // Fetch repo tree (recursive, top-level)
@@ -73,10 +79,24 @@ export async function analyzeRepo(
   const extensions = new Set(files.map((f) => f.split(".").pop()).filter(Boolean));
   techStack.extensions = [...extensions].slice(0, 20);
 
+  // Collect every existing directory path that an actual file lives in,
+  // up to 4 segments deep. Used by the deterministic path-mismatch check
+  // to verify auto-generated files don't introduce a new top-level layout
+  // (e.g. `apps/web/components/...` when `apps/web/src/components/...` is
+  // the convention).
+  const existingDirs = new Set<string>();
+  for (const f of files) {
+    const parts = f.split("/");
+    for (let depth = 1; depth < Math.min(parts.length, 5); depth++) {
+      existingDirs.add(parts.slice(0, depth).join("/"));
+    }
+  }
+
   const structure = {
     totalFiles: files.length,
     topDirs: [...new Set(files.map((f) => f.split("/")[0]).filter(Boolean))].slice(0, 20),
     sampleFiles: files.slice(0, 50),
+    existingDirs: [...existingDirs],
   };
 
   const conventions: Record<string, unknown> = {};
