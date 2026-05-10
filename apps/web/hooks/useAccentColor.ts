@@ -32,13 +32,14 @@ export function useAccentColor(
   // server rendered. If a `serverValue` is provided it always takes
   // precedence, preventing hydration mismatches for persisted preferences.
   const [accentColor, setColorState] = useState<string>(() => {
-    if (serverValue) return serverValue;
-    return readFromStorage() ?? DEFAULT_ACCENT_COLOR;
+    const stored = readFromStorage();
+    return serverValue ?? stored ?? DEFAULT_ACCENT_COLOR;
   });
 
-  const [contrastWarning, setContrastWarning] = useState<boolean>(() =>
-    !passesWcagAA(serverValue ?? readFromStorage() ?? DEFAULT_ACCENT_COLOR)
-  );
+  const [contrastWarning, setContrastWarning] = useState<boolean>(() => {
+    const stored = readFromStorage();
+    return !passesWcagAA(serverValue ?? stored ?? DEFAULT_ACCENT_COLOR);
+  });
 
   // Apply on mount and whenever the value changes
   useEffect(() => {
