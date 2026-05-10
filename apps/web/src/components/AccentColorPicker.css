@@ -1,0 +1,124 @@
+/* AccentColorPicker component styles */
+
+.accent-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.accent-picker__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.accent-picker__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.accent-picker__swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.accent-picker__swatch:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
+}
+
+.accent-picker__swatch:focus-visible {
+  outline: 2px solid var(--color-accent, #4F46E5);
+  outline-offset: 3px;
+}
+
+.accent-picker__swatch--selected {
+  border-color: #111827;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #111827;
+}
+
+.accent-picker__swatch--custom {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.accent-picker__free {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+}
+
+.accent-picker__free-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.accent-picker__free-input {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  background: none;
+}
+
+.accent-picker__free-input:focus-visible {
+  outline: 2px solid var(--color-accent, #4F46E5);
+  outline-offset: 2px;
+}
+
+.accent-picker__free-hex {
+  font-size: 0.8125rem;
+  font-family: monospace;
+  color: #374151;
+}
+
+.accent-picker__contrast {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.accent-picker__contrast--pass {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.accent-picker__contrast--fail {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.accent-picker__warning {
+  font-size: 0.8125rem;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+.accent-picker__saving {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0;
+}
