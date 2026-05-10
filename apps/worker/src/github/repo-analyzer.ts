@@ -219,3 +219,106 @@ export function findPathMismatches(
   }
   return findings;
 }
+
+/**
+ * Splits a unified diff into a map of `path → added-content` (i.e. the `+`
+ * lines for that file, with the leading `+` stripped). Used by the
+ * reachability check to look at what each file in the PR actually adds.
+ */
+function parseDiffByFile(diff: string): Map<string, string> {
+  const result = new Map<string, string>();
+  // First chunk before the initial `diff --git ` is empty; subsequent chunks
+  // each describe one file.
+  const sections = diff.split(/^diff --git /m);
+  for (const section of sections) {
+    if (!section) continue;
+    const pathMatch = section.match(/^\+\+\+ b\/(.+)$/m);
+    if (!pathMatch) continue;
+    const added: string[] = [];
+    for (const line of section.split("\n")) {
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        added.push(line.slice(1));
+      }
+    }
+    result.set(pathMatch[1], added.join("\n"));
+  }
+  return result;
+}
+
+const NEXTJS_AUTO_DISCOVERED = new Set([
+  "page.tsx", "page.ts", "page.jsx", "page.js",
+  "layout.tsx", "layout.ts", "layout.jsx", "layout.js",
+  "route.ts", "route.tsx", "route.js", "route.jsx",
+  "loading.tsx", "loading.ts",
+  "error.tsx", "error.ts",
+  "not-found.tsx", "not-found.ts",
+  "default.tsx", "default.ts",
+  "global-error.tsx", "global-error.ts",
+  "template.tsx", "template.ts",
+]);
+
+function isComponentLike(path: string): boolean {
+  if (!/\.(tsx|ts|jsx|js)$/.test(path)) return false;
+  const filename = path.split("/").pop() ?? "";
+  if (NEXTJS_AUTO_DISCOVERED.has(filename)) return false;
+  if (/\.(test|spec)\.[jt]sx?$/.test(filename)) return false;
+  if (filename === "index.ts" || filename === "index.tsx") return false;
+  return true;
+}
+
+/**
+ * Deterministic reachability check: flags newly-created component files
+ * that aren't imported, rendered, or referenced by any other file in the
+ * PR. Catches the failure mode where the model creates a component
+ * (e.g. AccentColorPicker.tsx) but never wires it into a page or layout
+ * — the feature exists in code but isn't reachable from any UI surface.
+ *
+ * Skips Next.js auto-discovered files (page.tsx, layout.tsx, route.ts,
+ * etc.) because the framework reaches them by file convention without
+ * an explicit import. Skips test files. Skips index.ts barrel files
+ * (they re-export rather than consume).
+ */
+export function findUnreachableComponents(
+  filesChanged: { path: string; action: string }[],
+  diff: string,
+): string[] {
+  if (!diff) return [];
+  const byPath = parseDiffByFile(diff);
+  const findings: string[] = [];
+
+  for (const f of filesChanged) {
+    if (f.action !== "create") continue;
+    if (!isComponentLike(f.path)) continue;
+
+    const baseName = (f.path.split("/").pop() ?? "").replace(/\.(tsx|ts|jsx|js)$/, "");
+    const dirName = f.path.split("/").slice(-2, -1)[0] ?? "";
+
+    let referenced = false;
+    for (const [otherPath, otherContent] of byPath) {
+      if (otherPath === f.path) continue;
+      // Heuristics — any of these signals consumption:
+      //   - import-style mention of the parent directory name
+      //   - JSX usage `<Name`
+      //   - named-import `{ Name`
+      //   - bare reference to the component identifier in a non-comment line
+      if (
+        otherContent.includes(`/${dirName}"`) ||
+        otherContent.includes(`/${dirName}'`) ||
+        otherContent.includes(`/${dirName}/`) ||
+        otherContent.includes(`<${baseName}`) ||
+        otherContent.includes(`{ ${baseName}`) ||
+        otherContent.includes(`, ${baseName}`) ||
+        otherContent.includes(`{${baseName}`) ||
+        new RegExp(`\\b${baseName}\\b`).test(otherContent)
+      ) {
+        referenced = true;
+        break;
+      }
+    }
+
+    if (!referenced) {
+      findings.push(`\`${f.path}\` — new component is never imported, rendered, or referenced by any other file in this PR. Add a Next.js \`page.tsx\` (or \`layout.tsx\`) under \`apps/web/src/app/...\` that renders it, or update an existing page/layout to use it. Otherwise users cannot reach the feature.`);
+    }
+  }
+  return findings;
+}

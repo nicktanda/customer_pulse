@@ -18,7 +18,7 @@ import {
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { callClaude, callClaudeJson } from "../ai/call-claude.js";
 import { commitFile } from "./pr-creator.js";
-import { analyzeRepo, findPathMismatches, type RepoContext } from "./repo-analyzer.js";
+import { analyzeRepo, findPathMismatches, findUnreachableComponents, type RepoContext } from "./repo-analyzer.js";
 
 interface GithubCreds {
   access_token: string;
@@ -91,18 +91,23 @@ Evaluate whether the changes actually solve the customer problem. Consider:
 1. **Relevance** — do the code changes address the core issue?
 2. **Completeness** — does this fully solve the problem or only partially?
 3. **User impact** — will customers notice an improvement?
+4. **Reachability** — can users actually reach the new feature? Code that exists in the repo but isn't wired into any page, layout, or route is invisible to customers and does NOT deliver user impact. Specifically check:
+   - For new React components, the diff must also include a Next.js \`page.tsx\` / \`layout.tsx\` / \`route.ts\` (under \`apps/web/src/app/...\`) that imports them, OR a modification to an existing page/layout/component that imports them.
+   - For new providers (e.g. Context providers), the diff must also wrap them around the app via a \`layout.tsx\` modification.
+   - For new server-side functions, the diff must also include a UI handler (form, button, etc.) or schedule that triggers them.
+   If new components/providers exist but nothing in the diff renders or imports them, that is a hard "needs_changes" — the user impact is zero until reachability is wired up. Do not approve PRs that ship orphaned code claiming to address a customer-facing idea.
 
 Return a JSON object with exactly two fields:
 - "verdict": "approved" if the PR addresses the insight, or "needs_changes" if it misses the core problem
 - "review": your review as a markdown string. Start with a one-line verdict (✅ Addresses the insight / ⚠️ Partially addresses / ❌ Does not address), then 2-4 bullet points explaining your reasoning.
 
-Only use "needs_changes" for genuine gaps — minor scope limitations should still be "approved" with notes.
+Only use "needs_changes" for genuine gaps — minor scope limitations should still be "approved" with notes. Orphaned/unreachable code IS a genuine gap.
 
 Respond with ONLY the JSON object.`;
 
-const QA_REVIEW_SYSTEM = `You are a QA engineer verifying that a pull request (a) does what it claims AND (b) fits cleanly into the project's existing structure.
+const QA_REVIEW_SYSTEM = `You are a QA engineer verifying that a pull request (a) does what it claims AND (b) fits cleanly into the project's existing structure AND (c) is actually reachable to users.
 
-You will receive the original idea/insight, the diff, a repo context summary (top-level directories, sample file paths, tech stack), and a "Deterministic Path Findings" block that has been pre-computed against the repo's actual directory tree. Your job is to derive acceptance criteria from the idea AND apply standard infrastructure-sanity criteria, then check each against the diff.
+You will receive the original idea/insight, the diff, a repo context summary (top-level directories, sample file paths, tech stack), a "Deterministic Path Findings" block, and a "Deterministic Reachability Findings" block — both pre-computed against the actual repo and PR diff. Your job is to derive acceptance criteria from the idea AND apply standard infrastructure + reachability criteria, then check each against the diff.
 
 Process:
 1. Derive 3-5 **Functional** acceptance criteria from the idea + insights. Each is a single-line, testable statement (e.g. "Adds a 'Resend' button to the pulse report detail page").
@@ -110,16 +115,21 @@ Process:
    - "New/modified file paths follow the project's existing layout (e.g. matches the \`src/\` prefix used by other files in the same package, or whichever convention the sample paths show)."
    - "New imports reference modules that exist in the repo (or are added in the diff)."
    - "No duplicate top-level directories created at a level that conflicts with the existing layout (e.g. don't add \`apps/web/app/\` if \`apps/web/src/app/\` already exists)."
-3. For every criterion (functional + infrastructure), check the diff and assign:
+3. Add the following **Reachability** criteria:
+   - "Every newly-created React component, hook, or provider is imported (and rendered) by at least one other file in the diff — typically a Next.js \`page.tsx\` / \`layout.tsx\` under \`apps/web/src/app/...\`, or an existing page modified to consume the new code."
+   - "If the idea is a user-facing feature, the diff includes a route the user can navigate to — either a new \`apps/web/src/app/<segment>/page.tsx\` or an update to a sidebar/menu/settings nav that surfaces the feature."
+4. For every criterion (functional + infrastructure + reachability), check the diff and assign:
    - "PASS" — clearly met; cite file path + key line/snippet as evidence.
    - "FAIL" — not met or implementation is broken.
    - "UNCERTAIN" — diff doesn't show enough to verify.
-4. Be strict on infrastructure: if any new file path conflicts with the conventions visible in the sample paths, that's a **FAIL** even when the feature itself is implemented.
-5. **HARD RULE**: if the "Deterministic Path Findings" block lists any items, they have already been verified by code against the actual repo tree. Each listed item is an automatic FAIL on the path-layout criterion — copy the finding into your Infrastructure section as a \`[❌]\`, do NOT explain them away as "fits Next.js conventions" or similar, and the overall verdict MUST be "needs_changes". Reword the criterion if needed but do not approve.
+5. Be strict on infrastructure: if any new file path conflicts with the conventions visible in the sample paths, that's a **FAIL** even when the feature itself is implemented.
+6. Be strict on reachability: a PR that ships components without wiring them into any page or layout is a **FAIL** regardless of how complete the components themselves are. The feature does not exist for users until it's reachable.
+7. **HARD RULE — paths**: if the "Deterministic Path Findings" block lists any items, they have already been verified by code against the actual repo tree. Each listed item is an automatic FAIL on the path-layout criterion — copy the finding into your Infrastructure section as a \`[❌]\`, do NOT explain them away as "fits Next.js conventions" or similar, and the overall verdict MUST be "needs_changes".
+8. **HARD RULE — reachability**: if the "Deterministic Reachability Findings" block lists any items, they have already been verified by code by scanning the diff for imports of each new component. Each listed item is an automatic FAIL on the reachability criterion — copy the finding into your Reachability section as a \`[❌]\`, do NOT explain them away as "the file structure makes it discoverable" or similar, and the verdict MUST be "needs_changes".
 
 Return a JSON object with exactly two fields:
-- "verdict": "approved" only if EVERY criterion (functional + infrastructure) is PASS. If any are FAIL or UNCERTAIN, "needs_changes".
-- "review": markdown. Start with a one-line verdict (✅ Verified / ⚠️ Some criteria unverified / ❌ Failed criteria). Then two sections, **Functional** and **Infrastructure**, each as a checklist:
+- "verdict": "approved" only if EVERY criterion (functional + infrastructure + reachability) is PASS. If any are FAIL or UNCERTAIN, "needs_changes".
+- "review": markdown. Start with a one-line verdict (✅ Verified / ⚠️ Some criteria unverified / ❌ Failed criteria). Then three sections, **Functional**, **Infrastructure**, and **Reachability**, each as a checklist:
   \`\`\`
   - [✅] <criterion> — <evidence: file path, snippet>
   - [❌] <criterion> — <what's missing/broken>
@@ -144,6 +154,12 @@ Generate code changes that address ALL feedback from every reviewer AND fix any 
   - "delete" — remove an existing file from the repo
 
 When fixing a wrong-path file, emit BOTH a "create" at the corrected path AND a "delete" at the old path. Do not just create the new copy and leave the original — that produces duplicates that will fail the next round of review. The same applies to renames or any reorganisation.
+
+When fixing a reachability/orphaned-component finding (e.g. "AccentColorPicker.tsx is never imported"), the fix is NOT to delete the component. Instead, "create" the missing wiring:
+- For a Next.js feature, add a \`page.tsx\` at \`apps/web/src/app/<segment>/page.tsx\` that imports and renders the component.
+- For a context provider, "modify" \`apps/web/src/app/layout.tsx\` (or the most relevant existing layout) to wrap children with the provider.
+- For an existing settings/dashboard area, "modify" the relevant existing page to consume the component.
+The goal is that, after the fix commit, at least one Next.js auto-discovered file (\`page.tsx\`/\`layout.tsx\`/\`route.ts\`) imports the orphaned component.
 
 Return a JSON object with:
 - "files": array of file changes
@@ -483,6 +499,7 @@ async function runQaReview(
   filesChanged: string,
   repoContext: RepoContext | null,
   pathMismatches: string[],
+  unreachableComponents: string[],
 ): Promise<ReviewResult> {
   const mismatchSection = pathMismatches.length > 0
     ? [
@@ -491,6 +508,13 @@ async function runQaReview(
         ...pathMismatches.map((m) => `- ${m}`),
       ].join("\n")
     : "_(no path mismatches detected)_";
+  const reachabilitySection = unreachableComponents.length > 0
+    ? [
+        "**The following components are created by this PR but never imported, rendered, or referenced by any other file in the diff. The diff has been scanned by code; these findings are NOT subjective. Treat each as a hard FAIL in the Reachability section — the verdict MUST be `needs_changes`.**",
+        "",
+        ...unreachableComponents.map((m) => `- ${m}`),
+      ].join("\n")
+    : "_(no unreachable components detected)_";
   const result = await callClaudeJson<{ verdict: string; review: string }>({
     system: QA_REVIEW_SYSTEM,
     user: [
@@ -508,6 +532,9 @@ async function runQaReview(
       "",
       `## Deterministic Path Findings`,
       mismatchSection,
+      "",
+      `## Deterministic Reachability Findings`,
+      reachabilitySection,
       "",
       `## Files Changed`,
       filesChanged,
@@ -617,6 +644,9 @@ export async function reviewPullRequest(
   if (pathMismatches.length > 0) {
     console.warn(`[pr-review] PR #${pr.prNumber} — path mismatches detected: ${pathMismatches.length}`);
   }
+  // Reachability findings depend on the diff, which changes per iteration
+  // (a fix-loop pass might add the missing page that wires up the
+  // component). Recomputed inside the loop alongside the diff fetch.
 
   for (let iteration = 1; ; iteration++) {
     const tag = `[pr-review] PR #${pr.prNumber} round ${iteration}`;
@@ -635,10 +665,15 @@ export async function reviewPullRequest(
     // Run all three reviews in parallel. CI failures are folded into the
     // code reviewer's input so its verdict accounts for them directly,
     // rather than being treated as a separate signal.
+    const unreachableComponents = findUnreachableComponents(filesChangedArr, diff);
+    if (unreachableComponents.length > 0) {
+      console.warn(`${tag} — unreachable components detected: ${unreachableComponents.length}`);
+    }
+
     const [codeReview, pmReview, qaReview] = await Promise.all([
       runCodeReview(diff, idea.title, ci.failures),
       runPmReview(diff, idea, linkedInsights, filesChangedStr),
-      runQaReview(diff, idea, linkedInsights, filesChangedStr, repoContext, pathMismatches),
+      runQaReview(diff, idea, linkedInsights, filesChangedStr, repoContext, pathMismatches, unreachableComponents),
     ]);
 
     // Post reviews as comments
