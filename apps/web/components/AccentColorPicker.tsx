@@ -52,6 +52,9 @@ export function AccentColorPicker({
   }
 
   function handleCustomCommit() {
+    // Prepend '#' if the user typed the raw hex without it.
+    // maxLength={7} on the input ensures raw input can only be 6 chars max
+    // when no '#' prefix is present, which is exactly the right length.
     const hex = customHex.startsWith("#") ? customHex : `#${customHex}`;
     if (!isValidHex(hex)) {
       setCustomError("Please enter a valid hex colour, e.g. #3b82f6");
@@ -67,10 +70,10 @@ export function AccentColorPicker({
    * in React (React's synthetic onChange maps to the native input event).
    * We update local preview state on every change but only call
    * onChange (which may trigger a network save) when the picker dialog is
-   * committed — detected by checking if the color input is no longer focused.
+   * committed — detected by the onBlur event.
    *
-   * To simplify: we use onChange for live preview and a separate onBlur
-   * to commit the final value via onChange prop.
+   * onChange: live preview (no save).
+   * onBlur: commit final value and trigger save via onChange prop.
    */
   function handleColorInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const hex = e.target.value;
