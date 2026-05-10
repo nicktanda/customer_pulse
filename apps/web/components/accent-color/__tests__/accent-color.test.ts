@@ -33,6 +33,15 @@ describe("contrastRatio", () => {
   it("returns null for invalid input", () => {
     expect(contrastRatio("invalid")).toBeNull();
   });
+
+  it("returns a reasonable ratio for two non-black/white colours", () => {
+    // #2563EB (brand blue) vs #F3F4F6 (light grey background)
+    const ratio = contrastRatio("#2563EB", "#F3F4F6");
+    expect(ratio).not.toBeNull();
+    // Should be a positive number less than 21
+    expect(ratio!).toBeGreaterThan(1);
+    expect(ratio!).toBeLessThan(21);
+  });
 });
 
 describe("isWcagAA", () => {
