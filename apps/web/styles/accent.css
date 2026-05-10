@@ -29,8 +29,11 @@ button[data-variant="primary"]:hover {
   border-color: var(--color-accent-hover);
 }
 
-/* Focus rings – applied via :focus-visible for keyboard users */
-:focus-visible {
+/*
+  Focus rings – scoped to .app-root to avoid overriding third-party widget
+  focus styles (e.g. date pickers, rich-text editors).
+*/
+.app-root :focus-visible {
   outline-color: var(--color-accent);
 }
 
