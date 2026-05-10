@@ -21,6 +21,13 @@ export interface UseAccentColorReturn {
  *   server-persisted preference is loaded).
  * - Applies the colour to the :root CSS custom property.
  * - Exposes a WCAG AA contrast warning flag (derived, not stored as state).
+ *
+ * NOTE: `serverValue` is captured only in the `useState` lazy initialiser
+ * (i.e. on the first render). Subsequent changes to `serverValue` — such as
+ * a session reload that yields a different value — will NOT automatically
+ * update the displayed colour. If this hook is used in a context where
+ * `serverValue` can change after mount, add a `useEffect` that calls
+ * `setAccentColor(serverValue)` whenever `serverValue` changes.
  */
 export function useAccentColor(
   serverValue?: string | null
