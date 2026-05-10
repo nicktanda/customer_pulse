@@ -17,7 +17,8 @@ export interface CodeGenerationResult {
   commit_message: string;
 }
 
-const MAX_PATH_RETRIES = 2;
+const MAX_VALIDATION_RETRIES = 2;
+const DOC_ONLY_EXTENSIONS = new Set(["md", "mdx", "txt", "rst"]);
 
 const SYSTEM_PROMPT = `You are a senior software engineer generating code changes for a product idea. You have context about the repository's tech stack and structure.
 
@@ -40,6 +41,11 @@ Important:
 - Don't delete existing functionality unless required
 - Keep changes focused and minimal
 
+SHIP CODE, NOT DOCS (hard requirement):
+- The PR MUST implement the feature with runnable code (\`.ts\`/\`.tsx\`/\`.js\`/\`.jsx\`/\`.css\`/\`.scss\`/\`.sql\`/\`.py\`/\`.go\`/\`.rb\`/\`.html\`, etc.).
+- A response containing ONLY documentation files (\`.md\`/\`.mdx\`/\`.txt\`/\`.rst\`) is NOT acceptable. Writing a design doc when the idea calls for a feature is a failure mode — actually build it.
+- Documentation may be included alongside code changes when it's directly part of the user-facing feature, but it cannot be the entire PR.
+
 PATH RULES (hard requirements):
 - Every \`path\` you emit MUST sit under a directory that already exists in the repository tree.
 - The user message lists the repo's allowed directory prefixes verbatim. Place new files only under one of those prefixes.
@@ -60,6 +66,20 @@ function buildAllowedPrefixes(repoContext: RepoContext): string[] {
       return segments === 2 || segments === 3;
     })
     .sort();
+}
+
+/**
+ * True when every emitted file is documentation only — no runnable code.
+ * Catches the failure mode where the model writes a design doc instead of
+ * implementing the feature (PR #68 shipped a 319-line markdown spec under
+ * `.claude/skills/...` and zero functional code).
+ */
+function isDocOnly(files: FileChange[]): boolean {
+  if (files.length === 0) return false;
+  return files.every((f) => {
+    const ext = f.path.split(".").pop()?.toLowerCase() ?? "";
+    return DOC_ONLY_EXTENSIONS.has(ext);
+  });
 }
 
 export async function generateCode(
@@ -87,10 +107,10 @@ export async function generateCode(
   const baseUser = `Repository context:\n${contextStr}\n\nIdea: "${ideaTitle}"\n${ideaDescription}${hintsStr}`;
   let retryFeedback = "";
 
-  // Self-validate the model's output against the deterministic path check
-  // and retry on mismatch — the same model that produced the wrong paths
-  // gets told exactly which paths failed and what the correct prefix is.
-  for (let attempt = 0; attempt <= MAX_PATH_RETRIES; attempt++) {
+  // Self-validate the model's output against deterministic checks (path
+  // mismatches + doc-only output) and retry on failure — the same model
+  // gets told exactly what failed so it can correct on the next attempt.
+  for (let attempt = 0; attempt <= MAX_VALIDATION_RETRIES; attempt++) {
     const result = await callClaudeJson<CodeGenerationResult>({
       system: SYSTEM_PROMPT,
       user: retryFeedback ? `${baseUser}\n\n${retryFeedback}` : baseUser,
@@ -98,26 +118,45 @@ export async function generateCode(
     });
     if (!result?.files?.length) return result;
 
+    const docOnly = isDocOnly(result.files);
     const mismatches = findPathMismatches(result.files, repoContext);
-    if (mismatches.length === 0) {
-      if (attempt > 0) console.log(`[code-gen] path validation passed after ${attempt} retr${attempt === 1 ? "y" : "ies"}`);
+
+    if (!docOnly && mismatches.length === 0) {
+      if (attempt > 0) console.log(`[code-gen] validation passed after ${attempt} retr${attempt === 1 ? "y" : "ies"}`);
       return result;
     }
 
-    if (attempt === MAX_PATH_RETRIES) {
-      console.warn(`[code-gen] path validation still failed after ${MAX_PATH_RETRIES} retries — returning result for QA to flag`);
+    if (attempt === MAX_VALIDATION_RETRIES) {
+      console.warn(`[code-gen] validation still failed after ${MAX_VALIDATION_RETRIES} retries (docOnly=${docOnly}, mismatches=${mismatches.length}) — returning result for QA to flag`);
       return result;
     }
 
-    console.log(`[code-gen] path validation failed (attempt ${attempt + 1}), retrying with corrections`);
-    retryFeedback = [
-      `## PRIOR ATTEMPT PLACED FILES AT WRONG PATHS`,
-      ``,
-      `Your previous response put these files outside the repo's existing layout:`,
-      ...mismatches.map((m) => `- ${m}`),
-      ``,
-      `Re-emit ALL files with corrected paths under the allowed directory prefixes listed above. Do not return any file at the wrong path.`,
-    ].join("\n");
+    const reasons: string[] = [];
+    if (docOnly) reasons.push("docs-only");
+    if (mismatches.length > 0) reasons.push(`${mismatches.length} path mismatch${mismatches.length === 1 ? "" : "es"}`);
+    console.log(`[code-gen] validation failed (attempt ${attempt + 1}, ${reasons.join(", ")}), retrying with corrections`);
+
+    const sections: string[] = [];
+    if (docOnly) {
+      sections.push([
+        `## PRIOR ATTEMPT WAS DOCUMENTATION ONLY`,
+        ``,
+        `Every file in your previous response was a documentation file (\`.md\`/\`.mdx\`/\`.txt\`/\`.rst\`). The idea calls for an implementation; a design doc alone does not ship the feature.`,
+        ``,
+        `Re-emit with the actual code changes that build the feature (e.g. React components, route handlers, styles, tests). You may include documentation alongside code, but at least one runnable code file is required.`,
+      ].join("\n"));
+    }
+    if (mismatches.length > 0) {
+      sections.push([
+        `## PRIOR ATTEMPT PLACED FILES AT WRONG PATHS`,
+        ``,
+        `Your previous response put these files outside the repo's existing layout:`,
+        ...mismatches.map((m) => `- ${m}`),
+        ``,
+        `Re-emit ALL files with corrected paths under the allowed directory prefixes listed above. Do not return any file at the wrong path.`,
+      ].join("\n"));
+    }
+    retryFeedback = sections.join("\n\n");
   }
 
   return null;
