@@ -4,6 +4,7 @@ import {
   isValidHex,
   ACCENT_COLOR_SWATCHES,
   DEFAULT_ACCENT_COLOR,
+  ACCENT_COLOR_STORAGE_KEY,
 } from "./accentColor";
 
 describe("isValidHex", () => {
@@ -54,6 +55,30 @@ describe("ACCENT_COLOR_SWATCHES", () => {
       expect(isValidHex(swatch.value)).toBe(true);
     });
   });
+
+  /**
+   * Documents which curated swatches do NOT meet WCAG AA (4.5:1) against white.
+   * These colours are used primarily as background/highlight accents and the UI
+   * shows a contrast warning when any of them is selected as the active accent.
+   * The swatches are intentionally kept in the palette for their visual value;
+   * users are informed of the accessibility trade-off at selection time.
+   */
+  it("documents swatches that do not meet WCAG AA against white (expected)", () => {
+    const expectedFailures = new Set([
+      "#06b6d4", // Cyan
+      "#10b981", // Emerald
+      "#f97316", // Orange
+      "#f59e0b", // Amber
+      "#ec4899", // Pink
+    ]);
+    ACCENT_COLOR_SWATCHES.forEach((swatch) => {
+      if (expectedFailures.has(swatch.value)) {
+        expect(meetsWcagAA(swatch.value)).toBe(false);
+      } else {
+        expect(meetsWcagAA(swatch.value)).toBe(true);
+      }
+    });
+  });
 });
 
 describe("DEFAULT_ACCENT_COLOR", () => {
@@ -63,5 +88,12 @@ describe("DEFAULT_ACCENT_COLOR", () => {
 
   it("meets WCAG AA against white", () => {
     expect(meetsWcagAA(DEFAULT_ACCENT_COLOR)).toBe(true);
+  });
+});
+
+describe("ACCENT_COLOR_STORAGE_KEY", () => {
+  it("is a non-empty string", () => {
+    expect(typeof ACCENT_COLOR_STORAGE_KEY).toBe("string");
+    expect(ACCENT_COLOR_STORAGE_KEY.length).toBeGreaterThan(0);
   });
 });
