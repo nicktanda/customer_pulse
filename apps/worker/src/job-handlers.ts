@@ -451,12 +451,21 @@ export async function runJob(job: Job): Promise<void> {
 
         if (failed.length > 0) {
           await postComment(
-            `## ❌ Auto-merge aborted: CI failed\n\nThe following checks did not pass:\n${failed.map((n) => `- \`${n}\``).join("\n")}\n\nPR will remain open for human review.\n\n---\n_Automated by xenoform.ai_`,
+            `## 🔁 CI failed — kicking off another fix iteration\n\nThe following checks did not pass:\n${failed.map((n) => `- \`${n}\``).join("\n")}\n\nThe review/fix loop will run again with these failures fed in as additional input. Auto-merge will retry once everything is green.\n\n---\n_Automated by xenoform.ai_`,
           );
-          await fetch(`${apiBase}/pulls/${pr.prNumber}/requested_reviewers`, {
-            method: "POST", headers, body: JSON.stringify({ reviewers: [creds.owner] }),
-          });
-          console.log(`[worker] GithubAutoMergeJob aborted: CI failed on PR #${pr.prNumber} (${failed.join(", ")})`);
+          // Enqueue another review pass; the loop in pr-reviewers.ts will fetch
+          // CI status itself, treat the failures as needs_changes, and generate
+          // a fix commit addressing them alongside any reviewer feedback.
+          const { Queue } = await import("bullmq");
+          const { getRedisConnection } = await import("./redis.js");
+          const { QUEUE_DEFAULT } = await import("./queue-names.js");
+          const q = new Queue(QUEUE_DEFAULT, { connection: getRedisConnection() });
+          await q.add(
+            "RereviewPullRequestJob",
+            { pullRequestId },
+            { removeOnComplete: 100, removeOnFail: 500 },
+          );
+          console.log(`[worker] GithubAutoMergeJob CI failed on PR #${pr.prNumber} (${failed.join(", ")}) — enqueued rereview`);
           return;
         }
 
@@ -502,6 +511,21 @@ export async function runJob(job: Job): Promise<void> {
         }
       } catch (err) {
         console.error(`[worker] GithubAutoMergeJob error:`, err instanceof Error ? err.message : err);
+      }
+      return;
+    }
+
+    case "RereviewPullRequestJob": {
+      // Re-runs the review/fix loop on an existing PR — used when CI fails
+      // post-approval so the failures get folded back into the fix loop
+      // instead of leaving the PR for a human.
+      const pullRequestId = Number((job.data as { pullRequestId?: number }).pullRequestId);
+      if (!Number.isFinite(pullRequestId)) return;
+      try {
+        await reviewPullRequest(db, pullRequestId);
+        console.log(`[worker] RereviewPullRequestJob completed pullRequestId=${pullRequestId}`);
+      } catch (err) {
+        console.error(`[worker] RereviewPullRequestJob error:`, err instanceof Error ? err.message : err);
       }
       return;
     }
