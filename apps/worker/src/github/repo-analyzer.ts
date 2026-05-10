@@ -118,3 +118,53 @@ export async function analyzeRepo(
 
   return { techStack, structure, conventions, commitSha };
 }
+
+/**
+ * Deterministic check: walks each newly-created file path and flags any
+ * whose directory prefix does not exist in the repo's known directory tree.
+ * When a sibling at one extra segment of depth does exist (e.g. `src/`),
+ * the finding names that sibling so the caller can suggest the correct
+ * placement. Returns one human-readable finding per offending file.
+ *
+ * Used by both the QA reviewer (as a hard-fail signal that the model
+ * cannot rationalise away) and the code generator (as a self-check that
+ * triggers a retry with the failing paths fed back into the prompt).
+ */
+export function findPathMismatches(
+  filesChanged: { path: string; action: string }[],
+  repoContext: RepoContext | null,
+): string[] {
+  if (!repoContext) return [];
+  const structure = repoContext.structure as { existingDirs?: string[] };
+  const existing = new Set(structure.existingDirs ?? []);
+  if (existing.size === 0) return [];
+
+  const findings: string[] = [];
+  const seenPaths = new Set<string>();
+  for (const f of filesChanged) {
+    if (f.action !== "create") continue;
+    if (seenPaths.has(f.path)) continue;
+    seenPaths.add(f.path);
+
+    const parts = f.path.split("/");
+    for (let depth = 2; depth <= Math.min(4, parts.length - 1); depth++) {
+      const prefix = parts.slice(0, depth).join("/");
+      if (existing.has(prefix)) continue;
+      const tail = parts[depth - 1];
+      const parent = parts.slice(0, depth - 1).join("/");
+      const sibling = [...existing].find((d) => {
+        const dParts = d.split("/");
+        return dParts.length === depth + 1
+          && dParts.slice(0, depth - 1).join("/") === parent
+          && dParts[depth] === tail;
+      });
+      if (sibling) {
+        findings.push(`\`${f.path}\` — prefix \`${prefix}\` does not exist; the repo has \`${sibling}\` (note the extra \`${sibling.split("/")[depth - 1]}\` segment). Files belong under the existing prefix.`);
+      } else {
+        findings.push(`\`${f.path}\` — prefix \`${prefix}\` is not present in the repo's existing directories. Verify this isn't a typo or a missing convention segment.`);
+      }
+      break;
+    }
+  }
+  return findings;
+}
