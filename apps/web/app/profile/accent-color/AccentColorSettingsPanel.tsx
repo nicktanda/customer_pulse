@@ -2,12 +2,15 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AccentColorPicker } from "../../../components/AccentColorPicker";
-import "../../../components/AccentColorPicker.css";
+// AccentColorPicker.css is imported inside AccentColorPicker.tsx itself
 import { DEFAULT_ACCENT_COLOR, isValidHexColor } from "../../../lib/accentColor";
 import { useAccentColor } from "../../../hooks/useAccentColor";
 import "./AccentColorSettingsPanel.css";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+/** Debounce delay (ms) before persisting a colour change to the server. */
+const SAVE_DEBOUNCE_MS = 400;
 
 /**
  * Client component that:
@@ -18,11 +21,33 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 export function AccentColorSettingsPanel() {
   const [serverColor, setServerColor] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+
   // Ref to track the status-reset timer so we can clear it on rapid changes
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to track the debounce timer
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to track in-flight save request so we can abort on unmount
+  const abortControllerRef = useRef<AbortController | null>(null);
+  // Ref to guard against setState calls after unmount
+  const mountedRef = useRef(true);
 
   const { accentColor, passesContrast, setAccentColor } =
     useAccentColor(serverColor);
+
+  // ------------------------------------------------------------------
+  // Mount / unmount tracking
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      // Cancel any in-flight save request
+      abortControllerRef.current?.abort();
+      // Clear any pending timers
+      if (statusTimerRef.current !== null) clearTimeout(statusTimerRef.current);
+      if (debounceTimerRef.current !== null) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
 
   // ------------------------------------------------------------------
   // Fetch user preference on mount
@@ -32,7 +57,9 @@ export function AccentColorSettingsPanel() {
 
     async function fetchPreference() {
       try {
-        const res = await fetch("/api/profile/accent-color");
+        const res = await fetch("/api/profile/accent-color", {
+          credentials: "same-origin",
+        });
         if (!res.ok) return;
         const data = (await res.json()) as { accentColor?: string };
         if (!cancelled && data.accentColor && isValidHexColor(data.accentColor)) {
@@ -50,53 +77,70 @@ export function AccentColorSettingsPanel() {
   }, []);
 
   // ------------------------------------------------------------------
-  // Persist preference when colour changes
+  // Persist preference when colour changes (called after debounce)
   // ------------------------------------------------------------------
   const saveToServer = useCallback(async (hex: string) => {
+    // Cancel any previous in-flight request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     // Clear any pending status-reset timer before starting a new save
     if (statusTimerRef.current !== null) {
       clearTimeout(statusTimerRef.current);
       statusTimerRef.current = null;
     }
 
-    setSaveStatus("saving");
+    if (mountedRef.current) setSaveStatus("saving");
+
     try {
       const res = await fetch("/api/profile/accent-color", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ accentColor: hex }),
+        signal: controller.signal,
       });
-      setSaveStatus(res.ok ? "saved" : "error");
-    } catch {
-      setSaveStatus("error");
+      if (mountedRef.current) {
+        setSaveStatus(res.ok ? "saved" : "error");
+      }
+    } catch (err) {
+      // AbortError is expected when a newer request supersedes this one
+      if (err instanceof Error && err.name === "AbortError") return;
+      if (mountedRef.current) setSaveStatus("error");
     } finally {
-      statusTimerRef.current = setTimeout(() => {
-        setSaveStatus("idle");
-        statusTimerRef.current = null;
-      }, 2500);
+      if (mountedRef.current) {
+        statusTimerRef.current = setTimeout(() => {
+          if (mountedRef.current) setSaveStatus("idle");
+          statusTimerRef.current = null;
+        }, 2500);
+      }
     }
   }, []);
 
-  // Clean up the timer when the component unmounts
-  useEffect(() => {
-    return () => {
-      if (statusTimerRef.current !== null) {
-        clearTimeout(statusTimerRef.current);
-      }
-    };
-  }, []);
-
+  // ------------------------------------------------------------------
+  // Debounced change handler
+  // ------------------------------------------------------------------
   const handleChange = useCallback(
     (hex: string) => {
       setAccentColor(hex);
-      saveToServer(hex);
+
+      // Debounce the server save to avoid hammering the API on every
+      // drag event from the native colour picker
+      if (debounceTimerRef.current !== null) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        saveToServer(hex);
+      }, SAVE_DEBOUNCE_MS);
     },
     [setAccentColor, saveToServer]
   );
 
   const handleReset = useCallback(() => {
-    // Use handleChange as the single path so local state + server stay in sync.
-    // resetAccentColor from the hook would duplicate the localStorage write.
+    // Route through handleChange as the single path so local state +
+    // server stay in sync and the debounce is applied consistently.
     handleChange(DEFAULT_ACCENT_COLOR);
   }, [handleChange]);
 
@@ -113,7 +157,8 @@ export function AccentColorSettingsPanel() {
         </div>
       </section>
 
-      {/* Picker */}
+      {/* Picker – reset button is intentionally removed from the picker
+          level; the single reset action lives in the panel below. */}
       <section className="accent-settings-panel__picker-section">
         <AccentColorPicker
           value={accentColor}
@@ -122,7 +167,9 @@ export function AccentColorSettingsPanel() {
         />
       </section>
 
-      {/* Contrast feedback */}
+      {/* Contrast feedback – consolidated here.
+          The picker shows a warning on fail; this panel shows confirmation
+          on pass so the user always gets clear feedback in one place. */}
       {passesContrast && (
         <p className="accent-settings-panel__contrast-ok">
           ✓ Contrast meets WCAG AA
@@ -140,7 +187,7 @@ export function AccentColorSettingsPanel() {
         )}
       </div>
 
-      {/* Reset */}
+      {/* Single reset action for the whole panel */}
       <div className="accent-settings-panel__reset-row">
         <button
           type="button"
