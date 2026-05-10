@@ -9,6 +9,11 @@
  * NOTE: These endpoints have no auth guard in the initial implementation
  * because they only write a client-side cookie preference.  If/when this
  * route is extended to write to the DB, an auth check MUST be added first.
+ *
+ * NOTE: The AccentColorProvider currently reads from localStorage only.
+ * This API route exists as the server-side/cross-device sync path that will
+ * be wired up in a follow-up migration.  Until then the cookie value and
+ * localStorage may diverge — the provider always wins.
  */
 
 import { NextRequest, NextResponse } from "next/server";
