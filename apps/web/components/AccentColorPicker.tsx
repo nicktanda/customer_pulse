@@ -8,13 +8,17 @@ import {
   isValidHexColor,
   passesWcagAA,
 } from "../lib/accentColor";
+import "./AccentColorPicker.css";
 
 export interface AccentColorPickerProps {
   /** Currently selected accent colour (hex). */
   value: string;
   /** Called when the user selects a new colour. */
   onChange: (hex: string) => void;
-  /** Whether to render the advanced free-pick input. Defaults to false. */
+  /**
+   * Whether to render the advanced free-pick input.
+   * Defaults to true.
+   */
   allowCustom?: boolean;
   className?: string;
 }
@@ -60,8 +64,9 @@ export function AccentColorPicker({
     }
   };
 
+  // Only compute ratio when we need to display the warning to avoid unnecessary work
   const passes = passesWcagAA(value);
-  const ratio = contrastRatio(value, "#ffffff");
+  const ratio = passes ? null : contrastRatio(value, "#ffffff");
 
   return (
     <div className={`accent-color-picker ${className}`}>
@@ -142,28 +147,23 @@ export function AccentColorPicker({
               />
             </div>
           )}
+
+          {/* Hint for invalid hex input */}
+          {showCustom && customInput.length > 1 && !isValidHexColor(customInput) && (
+            <p className="accent-color-picker__hex-hint">
+              Enter a 6-digit hex colour, e.g. #6366f1. 3-digit shorthand is not supported.
+            </p>
+          )}
         </div>
       )}
 
-      {/* WCAG contrast warning */}
-      {!passes && (
+      {/* WCAG contrast warning – only shown on fail; success feedback shown in parent panel */}
+      {!passes && ratio !== null && (
         <p className="accent-color-picker__warning" role="alert">
           ⚠️ This colour has a contrast ratio of {ratio.toFixed(2)}:1 against white,
           which does not meet WCAG AA (4.5:1). Text may be hard to read.
         </p>
       )}
-
-      {/* Reset link */}
-      <button
-        type="button"
-        className="accent-color-picker__reset"
-        onClick={() => {
-          onChange(DEFAULT_ACCENT_COLOR);
-          setCustomInput(DEFAULT_ACCENT_COLOR);
-        }}
-      >
-        Reset to default
-      </button>
     </div>
   );
 }
