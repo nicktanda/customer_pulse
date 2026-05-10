@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import {
   ACCENT_PALETTE,
   DEFAULT_ACCENT_COLOR,
@@ -25,6 +25,10 @@ export interface AccentColorPickerProps {
  * Renders a palette of curated swatches plus an optional free colour-picker
  * input. Displays an accessibility warning when the chosen colour fails
  * WCAG AA contrast against white.
+ *
+ * Browser support note: The preview badge and hex input focus ring use
+ * `color-mix(in srgb, ...)` which requires Safari ≥ 16.2 / Chrome ≥ 111.
+ * Older browsers will fall back to the opaque accent colour (no transparency).
  */
 export function AccentColorPicker({
   value,
@@ -32,9 +36,16 @@ export function AccentColorPicker({
   allowCustom = true,
   className = "",
 }: AccentColorPickerProps) {
-  const labelId = useId();
+  const groupId = useId();
+  const nativePickerId = useId();
   const [showCustom, setShowCustom] = useState(false);
+  // customInput tracks the text field; kept in sync with external value changes
   const [customInput, setCustomInput] = useState(value);
+
+  // Sync customInput when the parent changes value externally (e.g. server fetch)
+  useEffect(() => {
+    setCustomInput(value);
+  }, [value]);
 
   const handleSwatchClick = (hex: string) => {
     onChange(hex);
@@ -53,21 +64,30 @@ export function AccentColorPicker({
   const ratio = contrastRatio(value, "#ffffff");
 
   return (
-    <div className={`accent-color-picker ${className}`} role="group" aria-labelledby={labelId}>
-      <p id={labelId} className="accent-color-picker__label">
+    <div className={`accent-color-picker ${className}`}>
+      <p id={`${groupId}-label`} className="accent-color-picker__label">
         Accent colour
       </p>
 
-      {/* Palette swatches */}
-      <div className="accent-color-picker__swatches" role="listbox" aria-label="Accent colour palette">
+      {/*
+       * Palette swatches
+       * Using role="radiogroup" + role="radio" with aria-checked is the
+       * correct ARIA pattern for a set of mutually-exclusive choices that
+       * are not native <input type="radio"> elements.
+       */}
+      <div
+        className="accent-color-picker__swatches"
+        role="radiogroup"
+        aria-labelledby={`${groupId}-label`}
+      >
         {ACCENT_PALETTE.map((color) => {
           const isSelected = value.toLowerCase() === color.value.toLowerCase();
           return (
             <button
               key={color.value}
               type="button"
-              role="option"
-              aria-selected={isSelected}
+              role="radio"
+              aria-checked={isSelected}
               aria-label={color.label}
               title={color.label}
               className={`accent-color-picker__swatch${
@@ -94,10 +114,10 @@ export function AccentColorPicker({
 
           {showCustom && (
             <div className="accent-color-picker__custom-row">
-              {/* Native colour picker */}
+              {/* Native colour picker – unique id per instance via useId() */}
               <input
                 type="color"
-                id="accent-color-native"
+                id={nativePickerId}
                 value={isValidHexColor(customInput) ? customInput : DEFAULT_ACCENT_COLOR}
                 onChange={(e) => {
                   setCustomInput(e.target.value);
