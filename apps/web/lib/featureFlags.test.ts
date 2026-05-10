@@ -3,7 +3,9 @@ import { isFeatureEnabled } from "./featureFlags";
 const originalEnv = process.env;
 
 beforeEach(() => {
-  jest.resetModules();
+  // Reset process.env to a clean copy before each test.
+  // isFeatureEnabled reads process.env at call time so module reset
+  // is not required — but a fresh env copy ensures test isolation.
   process.env = { ...originalEnv };
 });
 
