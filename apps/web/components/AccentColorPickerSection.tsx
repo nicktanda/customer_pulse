@@ -9,7 +9,7 @@ export interface AccentColorPickerSectionProps {
   currentAccentColor?: string | null;
   /**
    * Server action / mutation to persist the colour.
-   * Return undefined on success, or an error message string on failure.
+   * Return undefined on success, or an object with an error message on failure.
    */
   onSave: (hex: string) => Promise<{ error?: string } | void>;
 }
@@ -19,15 +19,16 @@ export interface AccentColorPickerSectionProps {
  *
  * Wraps the AccentColorPicker with save-to-server logic and a feature flag
  * guard. Drop this into a profile settings page.
+ *
+ * The feature flag check (`isFeatureEnabled`) is placed after all hook calls
+ * to satisfy the Rules of Hooks — hooks must be called unconditionally and
+ * in the same order on every render. Because `isFeatureEnabled` reads a
+ * build-time constant, the early return is safe to place after the hooks.
  */
 export function AccentColorPickerSection({
   currentAccentColor,
   onSave,
 }: AccentColorPickerSectionProps) {
-  // ⚠️  Rules of Hooks: all hooks MUST be declared before any conditional
-  // return. `isFeatureEnabled` reads a build-time constant and is therefore
-  // safe to call after the hooks below, but the early-return MUST stay after
-  // all hook calls to avoid violating the Rules of Hooks.
   const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [savedColor, setSavedColor] = React.useState<string | null>(null);
