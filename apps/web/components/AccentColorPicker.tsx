@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useId, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import {
   ACCENT_COLOR_SWATCHES,
   DEFAULT_ACCENT_COLOR,
@@ -32,6 +32,7 @@ export function AccentColorPicker({
   const [customError, setCustomError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const inputId = useId();
+  const colorInputRef = useRef<HTMLInputElement>(null);
 
   // Keep the hex text input in sync when accentColor changes via swatch clicks
   // or external updates (e.g. server-persisted value loading).
@@ -62,13 +63,12 @@ export function AccentColorPicker({
   }
 
   /**
-   * The native <input type="color"> fires on every pointer-drag tick.
-   * We update local preview state on every change but only call onChange
-   * (which may trigger a network save) on pointer-up / commit via the
-   * `change` event — i.e. when the colour picker is closed or the user
-   * finishes dragging. The `input` event drives the live CSS preview only.
+   * The native <input type="color"> fires `input` on every pointer-drag tick
+   * and `change` when the picker dialog is closed / committed.
+   * We update local preview state on every `input` event but only call
+   * onChange (which may trigger a network save) on the `change` event.
    */
-  function handleColorInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleColorInputInput(e: React.ChangeEvent<HTMLInputElement>) {
     const hex = e.target.value;
     setCustomHex(hex);
     if (isValidHex(hex)) {
@@ -77,7 +77,7 @@ export function AccentColorPicker({
     }
   }
 
-  function handleColorInputCommit(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleColorInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const hex = e.target.value;
     setCustomHex(hex);
     if (isValidHex(hex)) {
@@ -153,11 +153,12 @@ export function AccentColorPicker({
             Pick a custom colour
           </label>
           <input
+            ref={colorInputRef}
             id={`${inputId}-native`}
             type="color"
             value={isValidHex(accentColor) ? accentColor : DEFAULT_ACCENT_COLOR}
+            onInput={handleColorInputInput as React.FormEventHandler<HTMLInputElement>}
             onChange={handleColorInputChange}
-            onBlur={handleColorInputCommit}
             className="accent-color-picker__native"
             title="Custom colour"
           />
