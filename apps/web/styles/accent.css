@@ -1,0 +1,72 @@
+/**
+ * Global accent colour tokens
+ *
+ * --color-accent       : user-selected accent (applied dynamically via JS)
+ * --color-accent-dark  : darkened variant for hover/active states
+ *
+ * These defaults are overridden at runtime by AccentColorProvider.
+ */
+:root {
+  --color-accent: #6366f1;
+  --color-accent-dark: #4f46e5;
+}
+
+/**
+ * Utility classes that consume the accent tokens.
+ * Use these instead of hard-coded colour values so that the
+ * user's preference is respected everywhere.
+ */
+
+/* Backgrounds */
+.bg-accent {
+  background-color: var(--color-accent);
+}
+
+.bg-accent-light {
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+/* Text */
+.text-accent {
+  color: var(--color-accent);
+}
+
+/* Borders */
+.border-accent {
+  border-color: var(--color-accent);
+}
+
+/* Focus rings (apply alongside outline-none on interactive elements) */
+.focus-accent:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Primary button reset */
+.btn-accent {
+  background-color: var(--color-accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-accent:hover {
+  background-color: var(--color-accent-dark);
+}
+
+.btn-accent:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.btn-accent:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Active / selected indicator (e.g. nav item) */
+.active-accent {
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-accent);
+}
