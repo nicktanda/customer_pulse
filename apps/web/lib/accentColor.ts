@@ -25,6 +25,12 @@ export const ACCENT_PALETTE: AccentColor[] = [
 export const DEFAULT_ACCENT_COLOR = ACCENT_PALETTE[0].value;
 
 /**
+ * Shared localStorage key for the user's accent colour preference.
+ * Used by both AccentColorProvider and useAccentColor to stay in sync.
+ */
+export const ACCENT_STORAGE_KEY = "user_accent_color";
+
+/**
  * Parse a hex colour string into RGB components.
  */
 export function hexToRgb(
@@ -69,6 +75,10 @@ export function contrastRatio(hex1: string, hex2: string): number {
 /**
  * Returns true if the accent colour meets WCAG AA (4.5:1) against white.
  * Most UI elements render on a white / near-white background.
+ *
+ * TODO: dark-mode backgrounds are not checked here. Colours like #0284C7 (sky)
+ * or #D97706 (amber) may fail on dark surfaces. A future improvement should
+ * accept a background colour parameter.
  */
 export function meetsWcagAA(accentHex: string): boolean {
   return contrastRatio(accentHex, "#FFFFFF") >= 4.5;
@@ -76,10 +86,12 @@ export function meetsWcagAA(accentHex: string): boolean {
 
 /**
  * Inject (or update) the --color-accent CSS custom property on :root.
+ * Validates the hex string before applying; silently ignores invalid input.
  * Safe to call in browser-only contexts.
  */
 export function applyAccentColor(hex: string): void {
   if (typeof document === "undefined") return;
+  if (!isValidHex(hex)) return;
   document.documentElement.style.setProperty("--color-accent", hex);
 
   // Derive a slightly darker shade for hover states
@@ -98,6 +110,8 @@ export function applyAccentColor(hex: string): void {
 
 /**
  * Validate a raw string as an acceptable hex colour.
+ * Only accepts the full 6-digit #RRGGBB format.
+ * Note: 3-digit shorthand (#RGB) is intentionally rejected for simplicity.
  */
 export function isValidHex(value: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(value);
