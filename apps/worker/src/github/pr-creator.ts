@@ -65,7 +65,7 @@ export async function createPullRequest(
     // Step 3: Review (validate changes aren't destructive)
     await updateProgress(db, pullRequestId, 3, "Reviewing generated code...");
     for (const file of codeResult.files) {
-      if (file.action === "modify" && file.content.length < 10) {
+      if (file.action === "modify" && (file.content?.length ?? 0) < 10) {
         throw new Error(`Suspicious modification: ${file.path} has very little content`);
       }
     }
@@ -159,6 +159,30 @@ export async function commitFile(
   file: FileChange,
   message: string,
 ): Promise<void> {
+  // Delete is a separate verb on the GitHub Contents API and requires the
+  // file's current SHA. Used by the auto-fix loop to remove wrong-path
+  // duplicates after relocating files.
+  if (file.action === "delete") {
+    const getRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${branch}`, { headers });
+    if (!getRes.ok) {
+      // Already gone (e.g. previous fix already removed it) — nothing to do.
+      if (getRes.status === 404) return;
+      throw new Error(`Delete ${file.path}: lookup HTTP ${getRes.status}`);
+    }
+    const getJson = (await getRes.json()) as { sha?: string };
+    if (!getJson.sha) throw new Error(`Delete ${file.path}: no SHA in lookup response`);
+    const delRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`, {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify({ message, branch, sha: getJson.sha }),
+    });
+    if (!delRes.ok) {
+      const errBody = await delRes.text();
+      throw new Error(`Delete ${file.path}: HTTP ${delRes.status} — ${errBody}`);
+    }
+    return;
+  }
+
   // Get current file SHA if modifying
   let sha: string | undefined;
   if (file.action === "modify") {
@@ -169,12 +193,13 @@ export async function commitFile(
     }
   }
 
+  const content = file.content ?? "";
   const putRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`, {
     method: "PUT",
     headers,
     body: JSON.stringify({
       message,
-      content: Buffer.from(file.content).toString("base64"),
+      content: Buffer.from(content).toString("base64"),
       branch,
       ...(sha ? { sha } : {}),
     }),

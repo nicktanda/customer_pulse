@@ -7,8 +7,9 @@ import { findPathMismatches, type RepoContext } from "./repo-analyzer.js";
 
 export interface FileChange {
   path: string;
-  content: string;
-  action: "create" | "modify";
+  /** Required for "create" and "modify"; ignored for "delete". */
+  content?: string;
+  action: "create" | "modify" | "delete";
 }
 
 export interface CodeGenerationResult {

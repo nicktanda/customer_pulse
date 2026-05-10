@@ -34,8 +34,9 @@ interface ReviewResult {
 
 interface FixFile {
   path: string;
-  content: string;
-  action: "create" | "modify";
+  /** Required for "create" and "modify"; omit/empty for "delete". */
+  content?: string;
+  action: "create" | "modify" | "delete";
 }
 
 interface FixResult {
@@ -136,8 +137,13 @@ const FIX_SYSTEM = `You are a senior software engineer. You will receive:
 
 Generate code changes that address ALL feedback from every reviewer AND fix any CI failures. For each file, provide:
 - "path": file path relative to repo root
-- "content": the COMPLETE updated file content (not a diff)
-- "action": "create" for new files, "modify" for existing files
+- "content": the COMPLETE updated file content (not a diff). Required for "create" and "modify"; omit (or empty string) for "delete".
+- "action": one of:
+  - "create" — new file
+  - "modify" — replace an existing file's contents
+  - "delete" — remove an existing file from the repo
+
+When fixing a wrong-path file, emit BOTH a "create" at the corrected path AND a "delete" at the old path. Do not just create the new copy and leave the original — that produces duplicates that will fail the next round of review. The same applies to renames or any reorganisation.
 
 Return a JSON object with:
 - "files": array of file changes
