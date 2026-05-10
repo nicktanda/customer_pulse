@@ -5,13 +5,8 @@
  * (or read from localStorage on first paint). The fallback value here is the
  * default brand colour so the UI looks correct before JS hydrates.
  *
- * Browser support note:
- * --color-accent-light and --color-accent-ring use `color-mix(in srgb, ...)`
- * which requires Safari ≥ 16.2, Chrome ≥ 111, or Firefox ≥ 113.
- * In older browsers the custom property resolves to `transparent` (the
- * fallback inside color-mix), so backgrounds using these tokens will be
- * invisible. This is a graceful degradation — the fully opaque accent colour
- * is still used for borders, text, and interactive elements.
+ * NOTE: If this file previously existed in your project, merge these additions
+ * carefully to avoid discarding existing global styles.
  */
 
 :root {
@@ -72,12 +67,18 @@
   outline-offset: 3px;
 }
 
-/* Link colour */
-a {
+/*
+ * NOTE: The rule below scopes accent-colour links to app-content areas only.
+ * We intentionally do NOT apply `--color-accent` to bare `a` tags globally
+ * to avoid conflicts with third-party UI components and existing stylesheets.
+ * Use `.accent-link` on individual anchor elements that should follow the
+ * accent colour.
+ */
+.accent-link {
   color: var(--color-accent);
 }
 
-a:hover {
+.accent-link:hover {
   opacity: 0.8;
 }
 
