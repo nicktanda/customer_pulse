@@ -1,0 +1,104 @@
+/*
+  Styles for <AccentColorPicker>.
+  Uses BEM-style class names to avoid specificity conflicts.
+*/
+
+.accent-color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.accent-color-picker__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151; /* gray-700 */
+  margin: 0;
+}
+
+/* Swatches row */
+.accent-color-picker__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.accent-color-picker__swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  padding: 0;
+}
+
+.accent-color-picker__swatch:hover {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
+}
+
+.accent-color-picker__swatch--selected {
+  border-color: #111827; /* gray-900 */
+  box-shadow: 0 0 0 2px #111827;
+}
+
+/* Free picker row */
+.accent-color-picker__free-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.accent-color-picker__free-pick-label {
+  font-size: 0.875rem;
+  color: #6b7280; /* gray-500 */
+}
+
+.accent-color-picker__color-input {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db; /* gray-300 */
+  cursor: pointer;
+  padding: 0.125rem;
+  background: none;
+}
+
+.accent-color-picker__color-input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.accent-color-picker__hex-value {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+/* WCAG warning */
+.accent-color-picker__contrast-warning {
+  font-size: 0.8125rem;
+  color: #92400e; /* amber-800 */
+  background-color: #fef3c7; /* amber-100 */
+  border: 1px solid #fcd34d; /* amber-300 */
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+/* Reset button */
+.accent-color-picker__reset {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.accent-color-picker__reset:hover {
+  color: #374151;
+}
