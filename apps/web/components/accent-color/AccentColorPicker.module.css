@@ -166,11 +166,24 @@
   outline-offset: 2px;
 }
 
+/* Hard error — colour was NOT applied */
 .errorMsg {
   width: 100%;
   margin: 0;
   font-size: 0.75rem;
   color: #b45309;
+}
+
+/* Soft warning — colour WAS applied but has low contrast */
+.warnMsg {
+  width: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  color: #92400e;
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
 }
 
 .srOnly {
