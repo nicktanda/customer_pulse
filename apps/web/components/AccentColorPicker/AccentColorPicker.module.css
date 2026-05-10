@@ -1,0 +1,299 @@
+/* AccentColorPicker styles
+   All colours that are not part of the accent-colour feature use
+   static tokens so the component is self-contained and regression-safe.
+*/
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 28rem;
+}
+
+/* ── Labels ──────────────────────────────────────────────────────── */
+
+.label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.description {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* ── Palette grid ────────────────────────────────────────────────── */
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+  outline: none;
+}
+
+.swatch:hover:not(:disabled) {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+}
+
+.swatch:focus-visible {
+  box-shadow: 0 0 0 3px #6366f1;
+}
+
+.swatchSelected {
+  border-color: #111827;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #111827;
+}
+
+.swatch:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* ── Advanced toggle ─────────────────────────────────────────────── */
+
+.advancedToggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6366f1;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.advancedToggle:hover:not(:disabled) {
+  color: #4f46e5;
+}
+
+.advancedToggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Advanced panel ──────────────────────────────────────────────── */
+
+.advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.advancedLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.advancedRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nativePicker {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.125rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.nativePicker:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.hexInput {
+  flex: 1;
+  height: 2.5rem;
+  padding: 0 0.625rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-family: monospace;
+  color: #111827;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.hexInput:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.hexInputError {
+  border-color: #ef4444;
+}
+
+.hexInputError:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.errorText {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #b91c1c;
+}
+
+/* ── WCAG contrast indicator ─────────────────────────────────────── */
+
+.contrastBlock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.contrastRatio {
+  font-size: 0.8125rem;
+  color: #374151;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.badgePass {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badgeFail {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.contrastWarning {
+  width: 100%;
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #92400e;
+}
+
+/* ── Preview chips ───────────────────────────────────────────────── */
+
+.preview {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.previewButton {
+  display: inline-block;
+  padding: 0.375rem 0.875rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background-color 0.15s;
+}
+
+.previewFocus {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  color: #374151;
+  background: #ffffff;
+  transition: outline-color 0.15s;
+}
+
+/* ── Actions ─────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.resetButton {
+  padding: 0.4375rem 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.resetButton:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.resetButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveButton {
+  padding: 0.4375rem 1rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: var(--color-accent, #6366f1);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.saveButton:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.saveButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.saveButton:focus-visible,
+.resetButton:focus-visible,
+.advancedToggle:focus-visible,
+.swatch:focus-visible {
+  outline: 2px solid var(--color-accent, #6366f1);
+  outline-offset: 2px;
+}
