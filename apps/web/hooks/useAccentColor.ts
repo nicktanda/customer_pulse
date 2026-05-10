@@ -31,14 +31,19 @@ export function useAccentColor(
   // so `readFromStorage()` may return a value that differs from what the
   // server rendered. If a `serverValue` is provided it always takes
   // precedence, preventing hydration mismatches for persisted preferences.
+  //
+  // readFromStorage() is called once and shared across both initialisers
+  // to avoid two separate localStorage.getItem calls.
   const [accentColor, setColorState] = useState<string>(() => {
     const stored = readFromStorage();
-    return serverValue ?? stored ?? DEFAULT_ACCENT_COLOR;
+    const initial = serverValue ?? stored ?? DEFAULT_ACCENT_COLOR;
+    return initial;
   });
 
   const [contrastWarning, setContrastWarning] = useState<boolean>(() => {
     const stored = readFromStorage();
-    return !passesWcagAA(serverValue ?? stored ?? DEFAULT_ACCENT_COLOR);
+    const initial = serverValue ?? stored ?? DEFAULT_ACCENT_COLOR;
+    return !passesWcagAA(initial);
   });
 
   // Apply on mount and whenever the value changes
