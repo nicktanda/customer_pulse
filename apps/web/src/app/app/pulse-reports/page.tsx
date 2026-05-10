@@ -37,6 +37,8 @@ export default async function PulseReportsPage({
   const sp = await searchParams;
   const notice = typeof sp.notice === "string" ? sp.notice : null;
   const err = typeof sp.error === "string" ? sp.error : null;
+  const beforeParsed = Number.parseInt(typeof sp.before === "string" ? sp.before : "", 10);
+  const before = Number.isFinite(beforeParsed) && beforeParsed >= 0 ? beforeParsed : null;
   const page = Math.max(1, Number.parseInt(typeof sp.page === "string" ? sp.page : "1", 10) || 1);
   const detailParsed = Number.parseInt(typeof sp.detail === "string" ? sp.detail : "", 10);
   const detailId = Number.isFinite(detailParsed) && detailParsed > 0 ? detailParsed : null;
@@ -78,7 +80,12 @@ export default async function PulseReportsPage({
   };
 
   const closePanelHref = pulseReportsListHref({ page: listState.page });
-  const rowsForList = rows.map((r) => ({
+  // While the "Generating…" placeholder is up, hide rows newer than the
+  // baseline so the user can't click the in-flight one before it's ready.
+  // Rows are ordered by createdAt desc, so the newest rows are at the front.
+  const isGenerating = notice === "pulse" && before !== null;
+  const newRowCount = isGenerating ? Math.max(0, total - before) : 0;
+  const rowsForList = rows.slice(newRowCount).map((r) => ({
     ...r,
     detailHref: pulseReportsListHref({ page: listState.page, detail: r.id }),
   }));
@@ -124,7 +131,7 @@ export default async function PulseReportsPage({
       />
 
       {notice === "pulse" ? (
-        <PulseJobPoller initialReportCount={total} />
+        <PulseJobPoller initialReportCount={total} baselineCount={before} />
       ) : null}
       {err === "nogithub" ? (
         <InlineAlert variant="danger" className="mt-3">
@@ -138,7 +145,20 @@ export default async function PulseReportsPage({
       ) : null}
 
       <ul className="list-group shadow-sm mt-4">
-        {rows.length === 0 ? (
+        {isGenerating ? (
+          <li
+            className="list-group-item text-body-secondary small d-flex align-items-center gap-2"
+            aria-busy="true"
+          >
+            <span
+              className="spinner-border spinner-border-sm text-info"
+              role="status"
+              aria-hidden="true"
+            />
+            <span>Generating new pulse report&hellip;</span>
+          </li>
+        ) : null}
+        {rowsForList.length === 0 && !isGenerating ? (
           <li className="list-group-item text-body-secondary small">No reports yet.</li>
         ) : (
           <PulseReportListRows rows={rowsForList} selectedId={detailData?.row.id ?? null} />

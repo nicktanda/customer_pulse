@@ -11,7 +11,7 @@ import { integrations } from "@customer-pulse/db/client";
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { getWorkerDb } from "../db.js";
 
-const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_MODEL = "claude-sonnet-4-6";
 const RATE_LIMIT_MS = 500;
 
 let lastCallTime = 0;

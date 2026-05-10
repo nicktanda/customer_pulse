@@ -58,7 +58,7 @@ export async function generateCode(
   const result = await callClaudeJson<CodeGenerationResult>({
     system: SYSTEM_PROMPT,
     user: `Repository context:\n${contextStr}\n\nIdea: "${ideaTitle}"\n${ideaDescription}${hintsStr}`,
-    maxTokens: 8192,
+    maxTokens: 64000,
   });
 
   return result;

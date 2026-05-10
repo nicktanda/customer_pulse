@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
 import {
@@ -41,6 +41,14 @@ async function requireEditor() {
 /** Enqueues the daily pulse mailer job for the current project (worker `mailers` queue). */
 export async function enqueueSendDailyPulseAction(_formData?: FormData): Promise<void> {
   const { projectId } = await requireEditor();
+  // Snapshot the row count before enqueuing so the page can tell, on every
+  // re-render, whether the new report has landed yet (count > before) and
+  // hide the "Generating…" placeholder row at exactly that moment.
+  const db = await getRequestDb();
+  const [{ c: before } = { c: 0 }] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(pulseReports)
+    .where(eq(pulseReports.projectId, projectId));
   try {
     const q = new Queue(QUEUE_MAILERS, { connection: getRedis() });
     await q.add("SendDailyPulseJob", { projectId }, { removeOnComplete: 200, removeOnFail: 500 });
@@ -49,7 +57,7 @@ export async function enqueueSendDailyPulseAction(_formData?: FormData): Promise
     console.error("[pulse-reports] Failed to enqueue SendDailyPulseJob:", err);
   }
   revalidatePath("/app/pulse-reports");
-  redirect("/app/pulse-reports?notice=pulse");
+  redirect(`/app/pulse-reports?notice=pulse&before=${before}`);
 }
 
 /** Re-sends an already-sent report. */

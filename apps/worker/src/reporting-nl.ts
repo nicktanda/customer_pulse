@@ -130,7 +130,7 @@ async function callAnthropic(system: string, user: string, maxTokens: number): P
   if (!apiKey) {
     return "No Anthropic API key configured — add one in Settings or during onboarding.";
   }
-  const model = process.env.ANTHROPIC_MODEL ?? "claude-3-5-haiku-20241022";
+  const model = process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001";
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {

@@ -100,7 +100,7 @@ export async function runJob(job: Job): Promise<void> {
               "anthropic-version": "2023-06-01",
             },
             body: JSON.stringify({
-              model: process.env.ANTHROPIC_MODEL ?? "claude-3-5-haiku-20241022",
+              model: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001",
               max_tokens: 512,
               messages: [
                 {
@@ -224,7 +224,7 @@ export async function runJob(job: Job): Promise<void> {
               method: "POST",
               headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
               body: JSON.stringify({
-                model: process.env.ANTHROPIC_MODEL ?? "claude-3-5-haiku-20241022",
+                model: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001",
                 max_tokens: 300,
                 messages: [{ role: "user", content: `Identify 2-3 key trends or themes from this customer feedback. Be concise (2-3 sentences max):\n\n${top20}` }],
               }),
@@ -382,8 +382,12 @@ export async function runJob(job: Job): Promise<void> {
     }
 
     case "GithubAutoMergeJob": {
-      const pullRequestId = Number((job.data as { pullRequestId?: number }).pullRequestId);
+      const data = job.data as { pullRequestId?: number; waitedSeconds?: number };
+      const pullRequestId = Number(data.pullRequestId);
       if (!Number.isFinite(pullRequestId)) return;
+      const waitedSeconds = Number.isFinite(data.waitedSeconds) ? Number(data.waitedSeconds) : 0;
+      const RECHECK_DELAY_MS = 60_000; // re-poll CI every 60s while pending
+      const MAX_WAIT_SECONDS = 30 * 60; // give CI up to 30 min to finish
 
       const [pr] = await db.select().from(ideaPullRequests).where(eq(ideaPullRequests.id, pullRequestId)).limit(1);
       if (!pr || pr.status !== 1 || !pr.prNumber) return; // only merge open PRs
@@ -396,16 +400,106 @@ export async function runJob(job: Job): Promise<void> {
       const decrypted = decryptCredentialsColumn(integration.credentialsCiphertext, masterKey);
       const creds = JSON.parse(decrypted) as { access_token: string; owner: string; repo: string };
       const headers = { Authorization: `token ${creds.access_token}`, Accept: "application/vnd.github.v3+json", "Content-Type": "application/json" };
+      const apiBase = `https://api.github.com/repos/${creds.owner}/${creds.repo}`;
+
+      const postComment = (body: string) =>
+        fetch(`${apiBase}/issues/${pr.prNumber}/comments`, {
+          method: "POST", headers, body: JSON.stringify({ body }),
+        });
 
       try {
-        // Check if PR is mergeable
-        const prRes = await fetch(`https://api.github.com/repos/${creds.owner}/${creds.repo}/pulls/${pr.prNumber}`, { headers });
+        // Check if PR is mergeable + grab head SHA for CI lookup
+        const prRes = await fetch(`${apiBase}/pulls/${pr.prNumber}`, { headers });
         if (!prRes.ok) return;
-        const prData = (await prRes.json()) as { mergeable?: boolean; state?: string };
+        const prData = (await prRes.json()) as { mergeable?: boolean; state?: string; head?: { sha?: string } };
         if (prData.state !== "open" || !prData.mergeable) return;
+        const headSha = prData.head?.sha;
+        if (!headSha) return;
 
-        // Merge
-        const mergeRes = await fetch(`https://api.github.com/repos/${creds.owner}/${creds.repo}/pulls/${pr.prNumber}/merge`, {
+        // CI gate: aggregate check-runs (GitHub Actions etc.) + combined commit status (CircleCI, Buildkite, etc.)
+        const [checkRunsRes, statusRes] = await Promise.all([
+          fetch(`${apiBase}/commits/${headSha}/check-runs`, { headers }),
+          fetch(`${apiBase}/commits/${headSha}/status`, { headers }),
+        ]);
+        const checkRuns = checkRunsRes.ok
+          ? ((await checkRunsRes.json()) as { check_runs?: { name: string; status: string; conclusion: string | null }[] }).check_runs ?? []
+          : [];
+        const status = statusRes.ok
+          ? (await statusRes.json()) as { state: "success" | "failure" | "error" | "pending"; statuses?: { context: string; state: string }[]; total_count?: number }
+          : null;
+
+        const failed: string[] = [];
+        let pending = false;
+        for (const c of checkRuns) {
+          if (c.status !== "completed") {
+            pending = true;
+          } else if (c.conclusion && !["success", "skipped", "neutral"].includes(c.conclusion)) {
+            failed.push(c.name);
+          }
+        }
+        const statusTotal = status?.total_count ?? 0;
+        if (statusTotal > 0) {
+          if (status!.state === "pending") {
+            pending = true;
+          } else if (status!.state === "failure" || status!.state === "error") {
+            for (const s of status!.statuses ?? []) {
+              if (s.state === "failure" || s.state === "error") failed.push(s.context);
+            }
+          }
+        }
+        const ciConfigured = checkRuns.length > 0 || statusTotal > 0;
+
+        if (failed.length > 0) {
+          await postComment(
+            `## 🔁 CI failed — kicking off another fix iteration\n\nThe following checks did not pass:\n${failed.map((n) => `- \`${n}\``).join("\n")}\n\nThe review/fix loop will run again with these failures fed in as additional input. Auto-merge will retry once everything is green.\n\n---\n_Automated by xenoform.ai_`,
+          );
+          // Enqueue another review pass; the loop in pr-reviewers.ts will fetch
+          // CI status itself, treat the failures as needs_changes, and generate
+          // a fix commit addressing them alongside any reviewer feedback.
+          const { Queue } = await import("bullmq");
+          const { getRedisConnection } = await import("./redis.js");
+          const { QUEUE_DEFAULT } = await import("./queue-names.js");
+          const q = new Queue(QUEUE_DEFAULT, { connection: getRedisConnection() });
+          await q.add(
+            "RereviewPullRequestJob",
+            { pullRequestId },
+            { removeOnComplete: 100, removeOnFail: 500 },
+          );
+          console.log(`[worker] GithubAutoMergeJob CI failed on PR #${pr.prNumber} (${failed.join(", ")}) — enqueued rereview`);
+          return;
+        }
+
+        if (pending) {
+          const newWait = waitedSeconds + RECHECK_DELAY_MS / 1000;
+          if (newWait > MAX_WAIT_SECONDS) {
+            await postComment(
+              `## ⏰ Auto-merge timed out waiting for CI\n\nWaited ${Math.floor(MAX_WAIT_SECONDS / 60)} minutes but CI checks are still running. PR will remain open for human review.\n\n---\n_Automated by xenoform.ai_`,
+            );
+            await fetch(`${apiBase}/pulls/${pr.prNumber}/requested_reviewers`, {
+              method: "POST", headers, body: JSON.stringify({ reviewers: [creds.owner] }),
+            });
+            console.log(`[worker] GithubAutoMergeJob timed out waiting for CI on PR #${pr.prNumber}`);
+            return;
+          }
+          // Re-enqueue self after another minute
+          const { Queue } = await import("bullmq");
+          const { getRedisConnection } = await import("./redis.js");
+          const { QUEUE_DEFAULT } = await import("./queue-names.js");
+          const q = new Queue(QUEUE_DEFAULT, { connection: getRedisConnection() });
+          await q.add(
+            "GithubAutoMergeJob",
+            { pullRequestId, waitedSeconds: newWait },
+            { delay: RECHECK_DELAY_MS, removeOnComplete: 100, removeOnFail: 500 },
+          );
+          console.log(`[worker] GithubAutoMergeJob PR #${pr.prNumber} CI pending, waited=${newWait}s, re-checking`);
+          return;
+        }
+
+        // CI green (or no CI configured) — merge
+        if (ciConfigured) {
+          await postComment(`## ✅ CI passed, merging now\n\nAll checks succeeded. Squash-merging this PR.\n\n---\n_Automated by xenoform.ai_`);
+        }
+        const mergeRes = await fetch(`${apiBase}/pulls/${pr.prNumber}/merge`, {
           method: "PUT",
           headers,
           body: JSON.stringify({ merge_method: "squash" }),
@@ -417,6 +511,21 @@ export async function runJob(job: Job): Promise<void> {
         }
       } catch (err) {
         console.error(`[worker] GithubAutoMergeJob error:`, err instanceof Error ? err.message : err);
+      }
+      return;
+    }
+
+    case "RereviewPullRequestJob": {
+      // Re-runs the review/fix loop on an existing PR — used when CI fails
+      // post-approval so the failures get folded back into the fix loop
+      // instead of leaving the PR for a human.
+      const pullRequestId = Number((job.data as { pullRequestId?: number }).pullRequestId);
+      if (!Number.isFinite(pullRequestId)) return;
+      try {
+        await reviewPullRequest(db, pullRequestId);
+        console.log(`[worker] RereviewPullRequestJob completed pullRequestId=${pullRequestId}`);
+      } catch (err) {
+        console.error(`[worker] RereviewPullRequestJob error:`, err instanceof Error ? err.message : err);
       }
       return;
     }
