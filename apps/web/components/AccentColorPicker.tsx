@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import {
   ACCENT_COLOR_SWATCHES,
   DEFAULT_ACCENT_COLOR,
@@ -28,16 +28,19 @@ export function AccentColorPicker({
   const { accentColor, contrastWarning, setAccentColor, resetToDefault } =
     useAccentColor(initialValue);
 
-  // customHex mirrors accentColor so the text input stays in sync
-  // when the user picks a swatch, and also holds in-progress typed values.
   const [customHex, setCustomHex] = useState(accentColor);
   const [customError, setCustomError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const inputId = useId();
 
+  // Keep the hex text input in sync when accentColor changes via swatch clicks
+  // or external updates (e.g. server-persisted value loading).
+  useEffect(() => {
+    setCustomHex(accentColor);
+  }, [accentColor]);
+
   function handleSwatchClick(hex: string) {
     setAccentColor(hex);
-    setCustomHex(hex);
     onChange?.(hex);
   }
 
@@ -58,7 +61,23 @@ export function AccentColorPicker({
     onChange?.(hex);
   }
 
+  /**
+   * The native <input type="color"> fires on every pointer-drag tick.
+   * We update local preview state on every change but only call onChange
+   * (which may trigger a network save) on pointer-up / commit via the
+   * `change` event — i.e. when the colour picker is closed or the user
+   * finishes dragging. The `input` event drives the live CSS preview only.
+   */
   function handleColorInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const hex = e.target.value;
+    setCustomHex(hex);
+    if (isValidHex(hex)) {
+      // Apply locally for live preview without calling onChange (no save yet)
+      setAccentColor(hex);
+    }
+  }
+
+  function handleColorInputCommit(e: React.ChangeEvent<HTMLInputElement>) {
     const hex = e.target.value;
     setCustomHex(hex);
     if (isValidHex(hex)) {
@@ -70,13 +89,13 @@ export function AccentColorPicker({
   return (
     <div className="accent-color-picker" role="group" aria-label="Accent colour">
       {/* Swatch palette */}
-      <div className="accent-color-picker__swatches" role="radiogroup" aria-label="Preset colours">
+      <div className="accent-color-picker__swatches" role="listbox" aria-label="Preset colours">
         {ACCENT_COLOR_SWATCHES.map((swatch) => (
           <button
             key={swatch.value}
             type="button"
-            role="radio"
-            aria-checked={accentColor === swatch.value}
+            role="option"
+            aria-selected={accentColor === swatch.value}
             aria-label={swatch.label}
             title={swatch.label}
             className={[
@@ -138,6 +157,7 @@ export function AccentColorPicker({
             type="color"
             value={isValidHex(accentColor) ? accentColor : DEFAULT_ACCENT_COLOR}
             onChange={handleColorInputChange}
+            onBlur={handleColorInputCommit}
             className="accent-color-picker__native"
             title="Custom colour"
           />
@@ -193,7 +213,6 @@ export function AccentColorPicker({
           className="accent-color-picker__reset"
           onClick={() => {
             resetToDefault();
-            setCustomHex(DEFAULT_ACCENT_COLOR);
             onChange?.(DEFAULT_ACCENT_COLOR);
           }}
         >
