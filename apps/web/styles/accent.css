@@ -31,8 +31,13 @@
   background-color: var(--color-accent-dark);
 }
 
-/* Focus rings */
-:focus-visible {
+/**
+ * Focus ring: scoped to .btn-primary only to avoid overriding existing
+ * accessible focus indicators on form inputs, modal traps, and third-party
+ * widgets. Components that opt in to the accent-coloured focus ring should
+ * add this selector or use the --color-accent variable directly.
+ */
+.btn-primary:focus-visible {
   outline-color: var(--color-accent);
 }
 
