@@ -39,11 +39,17 @@ export function AccentColorPickerSection({
     setSaveError(null);
     setSavedColor(null);
     startTransition(async () => {
-      const result = await onSave(hex);
-      if (result?.error) {
-        setSaveError(result.error);
-      } else {
-        setSavedColor(hex);
+      try {
+        const result = await onSave(hex);
+        if (result?.error) {
+          setSaveError(result.error);
+        } else {
+          setSavedColor(hex);
+        }
+      } catch (err) {
+        setSaveError(
+          err instanceof Error ? err.message : "Failed to save accent colour."
+        );
       }
     });
   }
