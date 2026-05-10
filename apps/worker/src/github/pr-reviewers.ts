@@ -101,7 +101,7 @@ Respond with ONLY the JSON object.`;
 
 const QA_REVIEW_SYSTEM = `You are a QA engineer verifying that a pull request (a) does what it claims AND (b) fits cleanly into the project's existing structure.
 
-You will receive the original idea/insight, the diff, and a repo context summary (top-level directories, sample file paths, tech stack). Your job is to derive acceptance criteria from the idea AND apply standard infrastructure-sanity criteria, then check each against the diff.
+You will receive the original idea/insight, the diff, a repo context summary (top-level directories, sample file paths, tech stack), and a "Deterministic Path Findings" block that has been pre-computed against the repo's actual directory tree. Your job is to derive acceptance criteria from the idea AND apply standard infrastructure-sanity criteria, then check each against the diff.
 
 Process:
 1. Derive 3-5 **Functional** acceptance criteria from the idea + insights. Each is a single-line, testable statement (e.g. "Adds a 'Resend' button to the pulse report detail page").
@@ -114,6 +114,7 @@ Process:
    - "FAIL" — not met or implementation is broken.
    - "UNCERTAIN" — diff doesn't show enough to verify.
 4. Be strict on infrastructure: if any new file path conflicts with the conventions visible in the sample paths, that's a **FAIL** even when the feature itself is implemented.
+5. **HARD RULE**: if the "Deterministic Path Findings" block lists any items, they have already been verified by code against the actual repo tree. Each listed item is an automatic FAIL on the path-layout criterion — copy the finding into your Infrastructure section as a \`[❌]\`, do NOT explain them away as "fits Next.js conventions" or similar, and the overall verdict MUST be "needs_changes". Reword the criterion if needed but do not approve.
 
 Return a JSON object with exactly two fields:
 - "verdict": "approved" only if EVERY criterion (functional + infrastructure) is PASS. If any are FAIL or UNCERTAIN, "needs_changes".
@@ -217,7 +218,15 @@ async function getCiStatus(
       if (c.status !== "completed") {
         pending = true;
       } else if (c.conclusion && !["success", "skipped", "neutral"].includes(c.conclusion)) {
-        const summary = [c.output?.summary, c.output?.text].filter(Boolean).join("\n").slice(0, 2000) || `(no detail; conclusion=${c.conclusion})`;
+        let summary = [c.output?.summary, c.output?.text].filter(Boolean).join("\n").slice(0, 2000);
+        // GitHub Actions doesn't populate `output.summary`/`output.text` by
+        // default, so most check-runs come back with empty diagnostics.
+        // When that happens, fall back to the workflow run's job logs —
+        // tail the last few KB so the fixer has the actual error text.
+        if (!summary) {
+          const tail = await fetchJobLogTail(headers, owner, repo, headSha, c.name);
+          summary = tail ?? `(no detail; conclusion=${c.conclusion})`;
+        }
         failures.push({ name: c.name, summary });
       }
     }
@@ -236,6 +245,57 @@ async function getCiStatus(
     return { failures, pending, hasAnyChecks: checkRuns.length > 0 || statusTotal > 0 };
   } catch {
     return { failures: [], pending: false, hasAnyChecks: false };
+  }
+}
+
+/**
+ * Fetches the tail of a failing GitHub Actions job's logs for a given commit
+ * + check name. Falls back to null on any non-2xx, missing run/job, or
+ * non-text response. Caps output at 4KB — the actual error is almost
+ * always in the last few hundred lines.
+ */
+async function fetchJobLogTail(
+  headers: Record<string, string>,
+  owner: string,
+  repo: string,
+  sha: string,
+  checkName: string,
+): Promise<string | null> {
+  try {
+    const runsRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${sha}&per_page=10`,
+      { headers },
+    );
+    if (!runsRes.ok) return null;
+    const { workflow_runs: runs = [] } = (await runsRes.json()) as {
+      workflow_runs?: { id: number; conclusion: string | null }[];
+    };
+
+    for (const run of runs) {
+      if (run.conclusion !== "failure") continue;
+      const jobsRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/jobs?per_page=50`,
+        { headers },
+      );
+      if (!jobsRes.ok) continue;
+      const { jobs = [] } = (await jobsRes.json()) as {
+        jobs?: { id: number; name: string; conclusion: string | null }[];
+      };
+      const job = jobs.find((j) => j.name === checkName && j.conclusion === "failure");
+      if (!job) continue;
+
+      const logRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/actions/jobs/${job.id}/logs`,
+        { headers },
+      );
+      if (!logRes.ok) continue;
+      const text = await logRes.text();
+      const tail = text.split("\n").slice(-150).join("\n");
+      return tail.length > 4000 ? tail.slice(-4000) : tail;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
@@ -409,13 +469,78 @@ function summarizeRepoContext(ctx: RepoContext): string {
   ].join("\n");
 }
 
+/**
+ * Deterministic check that complements QA's prompt-based "infrastructure
+ * sanity" criterion. Walks each new file path in the diff; for every
+ * directory prefix it sits in (depths 2-4), checks whether that exact
+ * prefix exists in the repo's known directories. If not, but a sibling
+ * prefix exists (e.g. new file is at `apps/web/components/X` while the
+ * repo has `apps/web/src/components/Y`), the new path is flagged as a
+ * mismatch — this is the exact bug that broke PRs #58 and #63.
+ *
+ * Output is a list of human-readable findings the QA prompt is instructed
+ * to treat as automatic FAILs (so the model can't rationalise them away).
+ */
+function findPathMismatches(
+  filesChanged: { path: string; action: string }[],
+  repoContext: RepoContext | null,
+): string[] {
+  if (!repoContext) return [];
+  const structure = repoContext.structure as { existingDirs?: string[] };
+  const existing = new Set(structure.existingDirs ?? []);
+  if (existing.size === 0) return [];
+
+  const findings: string[] = [];
+  const seenPaths = new Set<string>();
+  for (const f of filesChanged) {
+    if (f.action !== "create") continue;
+    if (seenPaths.has(f.path)) continue;
+    seenPaths.add(f.path);
+
+    const parts = f.path.split("/");
+    // Walk depths 2..4 looking for the deepest prefix that exists. If the
+    // depth-2 prefix is missing but a sibling at the same level under a
+    // wrapper segment (e.g. `src/`) does exist, that's almost certainly
+    // the wrong-directory bug.
+    for (let depth = 2; depth <= Math.min(4, parts.length - 1); depth++) {
+      const prefix = parts.slice(0, depth).join("/");
+      if (existing.has(prefix)) continue;
+      // Look for a same-tail prefix one level deeper (e.g. `apps/web/src/components`
+      // when this prefix is `apps/web/components`).
+      const tail = parts[depth - 1];
+      const parent = parts.slice(0, depth - 1).join("/");
+      const sibling = [...existing].find((d) => {
+        const dParts = d.split("/");
+        return dParts.length === depth + 1
+          && dParts.slice(0, depth - 1).join("/") === parent
+          && dParts[depth] === tail;
+      });
+      if (sibling) {
+        findings.push(`\`${f.path}\` — prefix \`${prefix}\` does not exist; the repo has \`${sibling}\` (note the extra \`${sibling.split("/")[depth - 1]}\` segment). Files belong under the existing prefix.`);
+      } else {
+        findings.push(`\`${f.path}\` — prefix \`${prefix}\` is not present in the repo's existing directories. Verify this isn't a typo or a missing convention segment.`);
+      }
+      break; // one finding per file is enough
+    }
+  }
+  return findings;
+}
+
 async function runQaReview(
   diff: string,
   idea: { title: string; description: string; rationale: string | null },
   linkedInsights: { title: string; description: string }[],
   filesChanged: string,
   repoContext: RepoContext | null,
+  pathMismatches: string[],
 ): Promise<ReviewResult> {
+  const mismatchSection = pathMismatches.length > 0
+    ? [
+        "**The following deterministic path-mismatch findings have already been verified against the repo's actual directory tree and MUST be treated as hard FAILs in the Infrastructure section. They cannot be rationalised away — if they're listed, the verdict is `needs_changes`.**",
+        "",
+        ...pathMismatches.map((m) => `- ${m}`),
+      ].join("\n")
+    : "_(no path mismatches detected)_";
   const result = await callClaudeJson<{ verdict: string; review: string }>({
     system: QA_REVIEW_SYSTEM,
     user: [
@@ -430,6 +555,9 @@ async function runQaReview(
       "",
       `## Repo Context`,
       repoContext ? summarizeRepoContext(repoContext) : "_(repo context unavailable — be conservative on infrastructure criteria)_",
+      "",
+      `## Deterministic Path Findings`,
+      mismatchSection,
       "",
       `## Files Changed`,
       filesChanged,
@@ -528,6 +656,18 @@ export async function reviewPullRequest(
     console.warn(`[pr-review] PR #${pr.prNumber} — repo analysis unavailable:`, err instanceof Error ? err.message : err);
   }
 
+  // Deterministic check against the actual repo tree — catches the
+  // wrong-directory bug (e.g. files at `apps/web/components/...` when the
+  // repo uses `apps/web/src/components/...`) without relying on the QA
+  // model to do literal path comparison correctly.
+  const filesChangedArr = Array.isArray(pr.filesChanged)
+    ? (pr.filesChanged as { path: string; action: string }[])
+    : [];
+  const pathMismatches = findPathMismatches(filesChangedArr, repoContext);
+  if (pathMismatches.length > 0) {
+    console.warn(`[pr-review] PR #${pr.prNumber} — path mismatches detected: ${pathMismatches.length}`);
+  }
+
   for (let iteration = 1; ; iteration++) {
     const tag = `[pr-review] PR #${pr.prNumber} round ${iteration}`;
 
@@ -548,7 +688,7 @@ export async function reviewPullRequest(
     const [codeReview, pmReview, qaReview] = await Promise.all([
       runCodeReview(diff, idea.title, ci.failures),
       runPmReview(diff, idea, linkedInsights, filesChangedStr),
-      runQaReview(diff, idea, linkedInsights, filesChangedStr, repoContext),
+      runQaReview(diff, idea, linkedInsights, filesChangedStr, repoContext, pathMismatches),
     ]);
 
     // Post reviews as comments
