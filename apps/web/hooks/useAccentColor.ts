@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   DEFAULT_ACCENT_COLOR,
+  ACCENT_COLOR_STORAGE_KEY,
   applyAccentColor,
   isValidHex,
 } from "@/lib/accentColor";
-
-const STORAGE_KEY = "user_accent_color";
 
 /**
  * Hook that manages the active accent colour.
@@ -13,22 +12,32 @@ const STORAGE_KEY = "user_accent_color";
  * - Reads from localStorage on mount and applies it immediately.
  * - Exposes a setter that validates, applies, and persists the new colour.
  * - Falls back to DEFAULT_ACCENT_COLOR when nothing is stored.
+ *
+ * Note: initialises with DEFAULT_ACCENT_COLOR on the server and hydrates
+ * from localStorage in a useEffect, which may cause a brief flash of the
+ * default colour before the stored preference is applied. Mount
+ * AccentColorProvider as high in the tree as possible to minimise this.
  */
 export function useAccentColor() {
   const [accentColor, setAccentColorState] = useState<string>(
     DEFAULT_ACCENT_COLOR
   );
 
-  // Hydrate from storage on first render
+  // Hydrate from storage on first render (client-side only)
   useEffect(() => {
-    const stored =
-      typeof localStorage !== "undefined"
-        ? localStorage.getItem(STORAGE_KEY)
-        : null;
-    const initial =
-      stored && isValidHex(stored) ? stored : DEFAULT_ACCENT_COLOR;
-    setAccentColorState(initial);
-    applyAccentColor(initial);
+    try {
+      const stored =
+        typeof window !== "undefined"
+          ? localStorage.getItem(ACCENT_COLOR_STORAGE_KEY)
+          : null;
+      const initial =
+        stored && isValidHex(stored) ? stored : DEFAULT_ACCENT_COLOR;
+      setAccentColorState(initial);
+      applyAccentColor(initial);
+    } catch {
+      // Ignore storage errors (e.g. private browsing)
+      applyAccentColor(DEFAULT_ACCENT_COLOR);
+    }
   }, []);
 
   const setAccentColor = useCallback((hex: string) => {
@@ -36,7 +45,7 @@ export function useAccentColor() {
     setAccentColorState(hex);
     applyAccentColor(hex);
     try {
-      localStorage.setItem(STORAGE_KEY, hex);
+      localStorage.setItem(ACCENT_COLOR_STORAGE_KEY, hex);
     } catch {
       // Ignore storage errors (e.g. private browsing quota)
     }
@@ -45,7 +54,7 @@ export function useAccentColor() {
   const resetAccentColor = useCallback(() => {
     setAccentColor(DEFAULT_ACCENT_COLOR);
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACCENT_COLOR_STORAGE_KEY);
     } catch {
       // ignore
     }
