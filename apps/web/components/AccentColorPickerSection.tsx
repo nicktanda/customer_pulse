@@ -2,7 +2,6 @@
 
 import React, { useTransition } from "react";
 import { AccentColorPicker } from "./AccentColorPicker";
-import { isFeatureEnabled } from "../lib/featureFlags";
 
 export interface AccentColorPickerSectionProps {
   /** Current persisted accent colour for this user */
@@ -17,13 +16,16 @@ export interface AccentColorPickerSectionProps {
 /**
  * AccentColorPickerSection
  *
- * Wraps the AccentColorPicker with save-to-server logic and a feature flag
- * guard. Drop this into a profile settings page.
+ * Wraps the AccentColorPicker with save-to-server logic.
+ * The feature flag guard is handled by the parent Server Component
+ * (ProfileSettingsPage) so this component is only mounted when the flag is on.
  *
- * The feature flag check (`isFeatureEnabled`) is placed after all hook calls
- * to satisfy the Rules of Hooks — hooks must be called unconditionally and
- * in the same order on every render. Because `isFeatureEnabled` reads a
- * build-time constant, the early return is safe to place after the hooks.
+ * NOTE: This component is a Client Component ("use client") and receives
+ * `onSave` as a prop. In Next.js App Router, passing a server action as a prop
+ * to a Client Component is supported when the prop flows from a Server
+ * Component — which is the case here (ProfileSettingsPage is a Server
+ * Component). The server action must be defined in a file with "use server"
+ * or declared inline with the "use server" directive.
  */
 export function AccentColorPickerSection({
   currentAccentColor,
@@ -32,9 +34,6 @@ export function AccentColorPickerSection({
   const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [savedColor, setSavedColor] = React.useState<string | null>(null);
-
-  // Feature flag check — placed after hooks to satisfy the Rules of Hooks.
-  if (!isFeatureEnabled("accentColorPicker")) return null;
 
   function handleChange(hex: string) {
     setSaveError(null);
