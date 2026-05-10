@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AccentColorPicker } from "../../../components/AccentColorPicker";
 import "../../../components/AccentColorPicker.css";
 import { DEFAULT_ACCENT_COLOR, isValidHexColor } from "../../../lib/accentColor";
@@ -18,9 +18,10 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 export function AccentColorSettingsPanel() {
   const [serverColor, setServerColor] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [, startTransition] = useTransition();
+  // Ref to track the status-reset timer so we can clear it on rapid changes
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { accentColor, passesContrast, setAccentColor, resetAccentColor } =
+  const { accentColor, passesContrast, setAccentColor } =
     useAccentColor(serverColor);
 
   // ------------------------------------------------------------------
@@ -51,33 +52,53 @@ export function AccentColorSettingsPanel() {
   // ------------------------------------------------------------------
   // Persist preference when colour changes
   // ------------------------------------------------------------------
+  const saveToServer = useCallback(async (hex: string) => {
+    // Clear any pending status-reset timer before starting a new save
+    if (statusTimerRef.current !== null) {
+      clearTimeout(statusTimerRef.current);
+      statusTimerRef.current = null;
+    }
+
+    setSaveStatus("saving");
+    try {
+      const res = await fetch("/api/profile/accent-color", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accentColor: hex }),
+      });
+      setSaveStatus(res.ok ? "saved" : "error");
+    } catch {
+      setSaveStatus("error");
+    } finally {
+      statusTimerRef.current = setTimeout(() => {
+        setSaveStatus("idle");
+        statusTimerRef.current = null;
+      }, 2500);
+    }
+  }, []);
+
+  // Clean up the timer when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (statusTimerRef.current !== null) {
+        clearTimeout(statusTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleChange = useCallback(
     (hex: string) => {
       setAccentColor(hex);
-
-      startTransition(async () => {
-        setSaveStatus("saving");
-        try {
-          const res = await fetch("/api/profile/accent-color", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ accentColor: hex }),
-          });
-          setSaveStatus(res.ok ? "saved" : "error");
-        } catch {
-          setSaveStatus("error");
-        } finally {
-          setTimeout(() => setSaveStatus("idle"), 2500);
-        }
-      });
+      saveToServer(hex);
     },
-    [setAccentColor]
+    [setAccentColor, saveToServer]
   );
 
   const handleReset = useCallback(() => {
-    resetAccentColor();
+    // Use handleChange as the single path so local state + server stay in sync.
+    // resetAccentColor from the hook would duplicate the localStorage write.
     handleChange(DEFAULT_ACCENT_COLOR);
-  }, [handleChange, resetAccentColor]);
+  }, [handleChange]);
 
   return (
     <div className="accent-settings-panel">
