@@ -17,15 +17,29 @@ async function getCurrentUserAccentColor(): Promise<string | null> {
   return null;
 }
 
-/** Stub server action: replace with real DB write */
+/**
+ * Stub server action: replace with real DB write.
+ *
+ * @throws {Error} Not implemented — this stub must be replaced before shipping
+ *   to production. Currently no colour is persisted; the preference will be
+ *   lost on page refresh (localStorage fallback via useAccentColor is the
+ *   only client-side persistence until this is wired up).
+ */
 async function saveAccentColor(
   hex: string
 ): Promise<{ error?: string } | void> {
   "use server";
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[saveAccentColor] persisting", hex);
+
+  if (process.env.NODE_ENV === "production") {
+    // Fail loudly in production so this isn't silently shipped as a no-op.
+    throw new Error(
+      "[saveAccentColor] Not implemented: backend persistence has not been wired up. " +
+        "See TODO in apps/web/app/settings/profile/page.tsx."
+    );
   }
-  // e.g. await db.user.update({ where: { id: userId }, data: { accentColor: hex } });
+
+  // Development / test: log and return so the UI can exercise the flow.
+  console.log("[saveAccentColor] stub – persisting", hex);
 }
 
 export default async function ProfileSettingsPage() {
