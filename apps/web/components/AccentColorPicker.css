@@ -149,6 +149,11 @@
 
 .accent-color-picker__hex-input:focus {
   border-color: var(--color-accent, #6366f1);
+  /*
+   * color-mix() is used here for the focus-ring glow.
+   * Supported in Chrome 111+, Firefox 113+, Safari 16.2+.
+   * Older browsers will simply show a flat border — acceptable degradation.
+   */
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent, #6366f1) 20%, transparent);
 }
 
