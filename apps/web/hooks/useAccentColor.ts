@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   applyAccentColor,
+  ACCENT_STORAGE_KEY,
   DEFAULT_ACCENT_COLOR,
   isValidHex,
   meetsWcagAA,
 } from "../lib/accentColor";
 import { FLAG_ACCENT_COLOR, isFlagEnabled } from "../lib/featureFlags";
-
-const STORAGE_KEY = "user_accent_color";
 
 export interface UseAccentColorReturn {
   /** Feature is active for this user */
@@ -27,38 +26,33 @@ export function useAccentColor(): UseAccentColorReturn {
 
   const [accentColor, setAccentColorState] = useState<string>(() => {
     if (typeof window === "undefined") return DEFAULT_ACCENT_COLOR;
-    return localStorage.getItem(STORAGE_KEY) ?? DEFAULT_ACCENT_COLOR;
+    return localStorage.getItem(ACCENT_STORAGE_KEY) ?? DEFAULT_ACCENT_COLOR;
   });
 
   const [hasContrastWarning, setHasContrastWarning] = useState<boolean>(
     !meetsWcagAA(accentColor)
   );
 
-  // Apply stored preference on mount
-  useEffect(() => {
-    if (!isEnabled) return;
-    applyAccentColor(accentColor);
-  }, [isEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: initial CSS injection is handled by AccentColorProvider in the root
+  // layout so we avoid a double-apply and the stale-closure risk of an effect
+  // here that would need accentColor in its dependency array.
 
-  const setAccentColor = useCallback(
-    (hex: string) => {
-      if (!isValidHex(hex)) return;
-      setAccentColorState(hex);
-      setHasContrastWarning(!meetsWcagAA(hex));
-      applyAccentColor(hex);
-      try {
-        localStorage.setItem(STORAGE_KEY, hex);
-      } catch {
-        // storage unavailable – ignore
-      }
-    },
-    []
-  );
+  const setAccentColor = useCallback((hex: string) => {
+    if (!isValidHex(hex)) return;
+    setAccentColorState(hex);
+    setHasContrastWarning(!meetsWcagAA(hex));
+    applyAccentColor(hex);
+    try {
+      localStorage.setItem(ACCENT_STORAGE_KEY, hex);
+    } catch {
+      // storage unavailable – ignore
+    }
+  }, []);
 
   const resetAccentColor = useCallback(() => {
     setAccentColor(DEFAULT_ACCENT_COLOR);
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACCENT_STORAGE_KEY);
     } catch {
       // ignore
     }
