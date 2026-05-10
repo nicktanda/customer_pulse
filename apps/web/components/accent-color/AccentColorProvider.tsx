@@ -24,9 +24,9 @@ export function AccentColorProvider({ children }: { children: React.ReactNode })
   const [isFeatureEnabled] = useState(() => isFlagEnabled("accent-color"));
 
   // Hydrate from localStorage on mount.
-  // NOTE: The /api/user/accent-color cookie-based route is a parallel
-  // persistence path intended for future server-side/cross-device sync.
-  // Currently only localStorage is the source of truth for the provider.
+  // The /api/user/accent-color cookie-based route is a parallel persistence
+  // path intended for future cross-device sync. Until that migration lands,
+  // localStorage is the single source of truth read here.
   useEffect(() => {
     if (!isFeatureEnabled) return;
     const stored = getStoredAccentColor();
