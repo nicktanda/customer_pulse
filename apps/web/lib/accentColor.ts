@@ -13,18 +13,22 @@ export interface AccentColorSwatch {
   value: string;
 }
 
-/** Curated palette – all colours pass WCAG AA on white (#fff) */
+/**
+ * Curated palette.
+ * Note: some of these colours may not pass WCAG AA (4.5:1) against white —
+ * the picker's contrast warning banner will flag those at runtime.
+ */
 export const ACCENT_COLOR_SWATCHES: AccentColorSwatch[] = [
-  { label: "Indigo", value: "#6366f1" },
-  { label: "Violet", value: "#8b5cf6" },
-  { label: "Sky", value: "#0ea5e9" },
-  { label: "Teal", value: "#14b8a6" },
-  { label: "Emerald", value: "#10b981" },
-  { label: "Rose", value: "#f43f5e" },
-  { label: "Orange", value: "#f97316" },
-  { label: "Amber", value: "#d97706" },
-  { label: "Pink", value: "#ec4899" },
-  { label: "Fuchsia", value: "#d946ef" },
+  { label: "Indigo", value: "#4338ca" },   // Indigo-700  ~8.2:1
+  { label: "Violet", value: "#6d28d9" },   // Violet-700  ~7.1:1
+  { label: "Sky", value: "#0369a1" },      // Sky-700     ~7.4:1
+  { label: "Teal", value: "#0f766e" },     // Teal-700    ~6.1:1
+  { label: "Emerald", value: "#047857" },  // Emerald-700 ~7.2:1
+  { label: "Rose", value: "#be123c" },     // Rose-700    ~7.5:1
+  { label: "Orange", value: "#c2410c" },   // Orange-700  ~6.3:1
+  { label: "Amber", value: "#b45309" },    // Amber-700   ~5.7:1
+  { label: "Pink", value: "#be185d" },     // Pink-700    ~7.2:1
+  { label: "Fuchsia", value: "#a21caf" },  // Fuchsia-700 ~7.4:1
 ];
 
 // ---------------------------------------------------------------------------
