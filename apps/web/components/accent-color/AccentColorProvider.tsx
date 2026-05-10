@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { applyAccentColor, DEFAULT_ACCENT_COLOR, isValidHex } from "@/lib/accent-color";
 import { isFlagEnabled } from "@/lib/feature-flags";
-import { getStoredAccentColor, storeAccentColor } from "@/lib/user-preferences";
+import { getStoredAccentColor, storeAccentColor, clearAccentColor } from "@/lib/user-preferences";
 
 interface AccentColorContextValue {
   accentColor: string;
@@ -23,7 +23,10 @@ export function AccentColorProvider({ children }: { children: React.ReactNode })
   const [accentColor, setAccentColorState] = useState<string>(DEFAULT_ACCENT_COLOR);
   const [isFeatureEnabled] = useState(() => isFlagEnabled("accent-color"));
 
-  // Hydrate from storage on mount.
+  // Hydrate from localStorage on mount.
+  // NOTE: The /api/user/accent-color cookie-based route is a parallel
+  // persistence path intended for future server-side/cross-device sync.
+  // Currently only localStorage is the source of truth for the provider.
   useEffect(() => {
     if (!isFeatureEnabled) return;
     const stored = getStoredAccentColor();
@@ -42,8 +45,10 @@ export function AccentColorProvider({ children }: { children: React.ReactNode })
   );
 
   const resetAccentColor = useCallback(() => {
-    setAccentColor(DEFAULT_ACCENT_COLOR);
-  }, [setAccentColor]);
+    setAccentColorState(DEFAULT_ACCENT_COLOR);
+    applyAccentColor(DEFAULT_ACCENT_COLOR);
+    clearAccentColor();
+  }, []);
 
   return (
     <AccentColorContext.Provider
