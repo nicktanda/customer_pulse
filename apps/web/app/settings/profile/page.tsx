@@ -7,16 +7,12 @@ import { isFeatureEnabled } from "../../../lib/featureFlags";
  * Renders user profile settings including the accent colour picker
  * (when the feature flag NEXT_PUBLIC_FF_ACCENT_COLOR_PICKER is enabled).
  *
- * TODO: Replace the stub `getCurrentUserAccentColor` and `saveAccentColor`
- * with real data-fetching / server-action implementations once the backend
- * persistence layer is added.
- *
- * PRE-MERGE CHECKLIST:
- * - [ ] Implement `getCurrentUserAccentColor` using real session/DB lookup
- * - [ ] Implement `saveAccentColor` with real DB write
- * - [ ] Wire `AccentColorProvider` into the root layout (see AccentColorProvider.tsx)
- * - [ ] Only enable NEXT_PUBLIC_FF_ACCENT_COLOR_PICKER in production AFTER
- *       the persistence layer is complete — the current stub throws in production
+ * TODO (tracked in GitHub issue #XXX):
+ * - Implement `getCurrentUserAccentColor` using real session/DB lookup
+ * - Implement `saveAccentColor` with real DB write
+ * - Wire `AccentColorProvider` into the root layout (see AccentColorProvider.tsx)
+ * - Only enable NEXT_PUBLIC_FF_ACCENT_COLOR_PICKER in production AFTER
+ *   the persistence layer is complete — the current stub throws in production
  */
 
 /** Stub: replace with real session / DB lookup */
