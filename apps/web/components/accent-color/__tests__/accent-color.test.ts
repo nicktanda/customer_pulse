@@ -3,6 +3,7 @@ import {
   isWcagAA,
   isValidHex,
   ACCENT_PALETTE,
+  DEFAULT_ACCENT_COLOR,
 } from "@/lib/accent-color";
 
 describe("isValidHex", () => {
@@ -30,8 +31,13 @@ describe("contrastRatio", () => {
     expect(ratio).toBeCloseTo(1, 1);
   });
 
-  it("returns null for invalid input", () => {
+  it("returns null for invalid foreground input (single-arg form uses default white background)", () => {
+    // "invalid" has no leading # so hexToRgb returns null → contrastRatio returns null.
     expect(contrastRatio("invalid")).toBeNull();
+  });
+
+  it("returns null for invalid background input", () => {
+    expect(contrastRatio("#000000", "invalid")).toBeNull();
   });
 
   it("returns a reasonable ratio for two non-black/white colours", () => {
@@ -69,5 +75,21 @@ describe("ACCENT_PALETTE", () => {
     ACCENT_PALETTE.forEach((color) => {
       expect(isWcagAA(color.value)).toBe(true);
     });
+  });
+});
+
+describe("DEFAULT_ACCENT_COLOR", () => {
+  it("is a valid 6-digit hex string", () => {
+    expect(isValidHex(DEFAULT_ACCENT_COLOR)).toBe(true);
+  });
+
+  it("passes WCAG AA against white", () => {
+    expect(isWcagAA(DEFAULT_ACCENT_COLOR)).toBe(true);
+  });
+
+  it("is independent of palette order (explicit named constant)", () => {
+    // DEFAULT_ACCENT_COLOR must equal the brand blue value regardless of
+    // where it appears in ACCENT_PALETTE.
+    expect(DEFAULT_ACCENT_COLOR).toBe("#2563EB");
   });
 });
