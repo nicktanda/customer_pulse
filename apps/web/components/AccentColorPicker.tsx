@@ -5,7 +5,6 @@ import {
   ACCENT_COLOR_SWATCHES,
   DEFAULT_ACCENT_COLOR,
   isValidHex,
-  passesWcagAA,
 } from "../lib/accentColor";
 import { useAccentColor } from "../hooks/useAccentColor";
 
@@ -29,13 +28,16 @@ export function AccentColorPicker({
   const { accentColor, contrastWarning, setAccentColor, resetToDefault } =
     useAccentColor(initialValue);
 
-  const [customHex, setCustomHex] = useState("");
+  // customHex mirrors accentColor so the text input stays in sync
+  // when the user picks a swatch, and also holds in-progress typed values.
+  const [customHex, setCustomHex] = useState(accentColor);
   const [customError, setCustomError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const inputId = useId();
 
   function handleSwatchClick(hex: string) {
     setAccentColor(hex);
+    setCustomHex(hex);
     onChange?.(hex);
   }
 
@@ -68,13 +70,13 @@ export function AccentColorPicker({
   return (
     <div className="accent-color-picker" role="group" aria-label="Accent colour">
       {/* Swatch palette */}
-      <div className="accent-color-picker__swatches" role="listbox" aria-label="Preset colours">
+      <div className="accent-color-picker__swatches" role="radiogroup" aria-label="Preset colours">
         {ACCENT_COLOR_SWATCHES.map((swatch) => (
           <button
             key={swatch.value}
             type="button"
-            role="option"
-            aria-selected={accentColor === swatch.value}
+            role="radio"
+            aria-checked={accentColor === swatch.value}
             aria-label={swatch.label}
             title={swatch.label}
             className={[
@@ -191,6 +193,7 @@ export function AccentColorPicker({
           className="accent-color-picker__reset"
           onClick={() => {
             resetToDefault();
+            setCustomHex(DEFAULT_ACCENT_COLOR);
             onChange?.(DEFAULT_ACCENT_COLOR);
           }}
         >
