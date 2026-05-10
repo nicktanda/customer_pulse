@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_ACCENT_COLOR,
   applyAccentColor,
@@ -20,7 +20,7 @@ export interface UseAccentColorReturn {
  * - Reads from / writes to localStorage (client-side fallback before the
  *   server-persisted preference is loaded).
  * - Applies the colour to the :root CSS custom property.
- * - Exposes a WCAG AA contrast warning flag.
+ * - Exposes a WCAG AA contrast warning flag (derived, not stored as state).
  */
 export function useAccentColor(
   serverValue?: string | null
@@ -32,19 +32,18 @@ export function useAccentColor(
   // server rendered. If a `serverValue` is provided it always takes
   // precedence, preventing hydration mismatches for persisted preferences.
   //
-  // readFromStorage() is called once and shared across both initialisers
-  // to avoid two separate localStorage.getItem calls.
+  // readFromStorage() is called once inside the initialiser to avoid
+  // multiple separate localStorage.getItem calls.
   const [accentColor, setColorState] = useState<string>(() => {
     const stored = readFromStorage();
-    const initial = serverValue ?? stored ?? DEFAULT_ACCENT_COLOR;
-    return initial;
+    return serverValue ?? stored ?? DEFAULT_ACCENT_COLOR;
   });
 
-  const [contrastWarning, setContrastWarning] = useState<boolean>(() => {
-    const stored = readFromStorage();
-    const initial = serverValue ?? stored ?? DEFAULT_ACCENT_COLOR;
-    return !passesWcagAA(initial);
-  });
+  // contrastWarning is derived from accentColor — no need for separate state.
+  const contrastWarning = useMemo(
+    () => !passesWcagAA(accentColor),
+    [accentColor]
+  );
 
   // Apply on mount and whenever the value changes
   useEffect(() => {
@@ -54,7 +53,6 @@ export function useAccentColor(
   const setAccentColor = useCallback((hex: string) => {
     if (!isValidHex(hex)) return;
     setColorState(hex);
-    setContrastWarning(!passesWcagAA(hex));
     try {
       localStorage.setItem(STORAGE_KEY, hex);
     } catch {
