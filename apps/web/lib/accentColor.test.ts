@@ -3,6 +3,7 @@ import {
   hexToRgb,
   isValidHex,
   meetsWcagAA,
+  applyAccentColor,
 } from "./accentColor";
 
 describe("hexToRgb", () => {
@@ -48,5 +49,34 @@ describe("isValidHex", () => {
     expect(isValidHex("#FFF")).toBe(false);
     expect(isValidHex("4F46E5")).toBe(false);
     expect(isValidHex("")).toBe(false);
+  });
+});
+
+describe("applyAccentColor", () => {
+  it("sets --color-accent on document.documentElement for a valid hex", () => {
+    applyAccentColor("#4F46E5");
+    expect(
+      document.documentElement.style.getPropertyValue("--color-accent")
+    ).toBe("#4F46E5");
+  });
+
+  it("also sets --color-accent-hover to a darker shade", () => {
+    applyAccentColor("#4F46E5");
+    const hover = document.documentElement.style.getPropertyValue(
+      "--color-accent-hover"
+    );
+    expect(hover).toMatch(/^#[0-9a-f]{6}$/);
+    // hover should be darker — each channel should be <= the original
+    expect(hover).not.toBe("#4F46E5");
+  });
+
+  it("does not update the property for an invalid hex", () => {
+    // Set a known good value first
+    applyAccentColor("#059669");
+    // Attempt to apply invalid value
+    applyAccentColor("not-a-colour");
+    expect(
+      document.documentElement.style.getPropertyValue("--color-accent")
+    ).toBe("#059669");
   });
 });
