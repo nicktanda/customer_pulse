@@ -16,7 +16,7 @@ interface AccentColorSettingsProps {
 export default function AccentColorSettings({
   initialValue,
 }: AccentColorSettingsProps) {
-  const { accentColor, setAccentColor, saveAccentColor, isSaving } =
+  const { accentColor, setAccentColor, saveAccentColor, isSaving, saveError } =
     useAccentColor(initialValue);
 
   return (
@@ -25,6 +25,7 @@ export default function AccentColorSettings({
       onChange={setAccentColor}
       onSave={saveAccentColor}
       isSaving={isSaving}
+      saveError={saveError}
     />
   );
 }
