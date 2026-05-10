@@ -114,6 +114,7 @@ export function resetAccentColor(): void {
 
 /**
  * Basic hex validation.
+ * Accepts 3-digit (#abc) and 6-digit (#aabbcc) hex strings.
  */
 export function isValidHex(value: string): boolean {
   return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(value);
