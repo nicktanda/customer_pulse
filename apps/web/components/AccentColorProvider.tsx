@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { applyAccentColor, DEFAULT_ACCENT_COLOR } from "../lib/accentColor";
+import {
+  applyAccentColor,
+  ACCENT_STORAGE_KEY,
+  DEFAULT_ACCENT_COLOR,
+} from "../lib/accentColor";
 import { FLAG_ACCENT_COLOR, isFlagEnabled } from "../lib/featureFlags";
-
-const STORAGE_KEY = "user_accent_color";
 
 /**
  * Mount this once in the root layout (client component).
@@ -18,7 +20,7 @@ export function AccentColorProvider({
 }) {
   useEffect(() => {
     if (!isFlagEnabled(FLAG_ACCENT_COLOR, "accent_color")) return;
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(ACCENT_STORAGE_KEY);
     applyAccentColor(stored ?? DEFAULT_ACCENT_COLOR);
   }, []);
 
