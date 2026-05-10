@@ -63,12 +63,16 @@ export function AccentColorPicker({
   }
 
   /**
-   * The native <input type="color"> fires `input` on every pointer-drag tick
-   * and `change` when the picker dialog is closed / committed.
-   * We update local preview state on every `input` event but only call
-   * onChange (which may trigger a network save) on the `change` event.
+   * The native <input type="color"> fires `change` on every pointer-drag tick
+   * in React (React's synthetic onChange maps to the native input event).
+   * We update local preview state on every change but only call
+   * onChange (which may trigger a network save) when the picker dialog is
+   * committed — detected by checking if the color input is no longer focused.
+   *
+   * To simplify: we use onChange for live preview and a separate onBlur
+   * to commit the final value via onChange prop.
    */
-  function handleColorInputInput(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleColorInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const hex = e.target.value;
     setCustomHex(hex);
     if (isValidHex(hex)) {
@@ -77,9 +81,8 @@ export function AccentColorPicker({
     }
   }
 
-  function handleColorInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleColorInputBlur(e: React.FocusEvent<HTMLInputElement>) {
     const hex = e.target.value;
-    setCustomHex(hex);
     if (isValidHex(hex)) {
       setAccentColor(hex);
       onChange?.(hex);
@@ -157,8 +160,8 @@ export function AccentColorPicker({
             id={`${inputId}-native`}
             type="color"
             value={isValidHex(accentColor) ? accentColor : DEFAULT_ACCENT_COLOR}
-            onInput={handleColorInputInput as React.FormEventHandler<HTMLInputElement>}
             onChange={handleColorInputChange}
+            onBlur={handleColorInputBlur}
             className="accent-color-picker__native"
             title="Custom colour"
           />
