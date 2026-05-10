@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useId, useState, useEffect } from "react";
 import {
   ACCENT_COLOR_PALETTE,
   DEFAULT_ACCENT_COLOR,
@@ -20,6 +20,8 @@ export interface AccentColorPickerProps {
   onSave: (hex: string) => Promise<void>;
   /** Whether a save is in progress. */
   isSaving?: boolean;
+  /** Non-null error message from the last failed save attempt. */
+  saveError?: string | null;
   /** Disable the whole component. */
   disabled?: boolean;
 }
@@ -38,6 +40,7 @@ export const AccentColorPicker: React.FC<AccentColorPickerProps> = ({
   onChange,
   onSave,
   isSaving = false,
+  saveError = null,
   disabled = false,
 }) => {
   const id = useId();
@@ -45,20 +48,24 @@ export const AccentColorPicker: React.FC<AccentColorPickerProps> = ({
   const [inputValue, setInputValue] = useState(value);
   const [inputError, setInputError] = useState<string | null>(null);
 
+  // Keep the hex text input in sync when `value` changes externally
+  // (e.g. the user clicks a palette swatch while the advanced panel is open).
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
   const ratio = contrastRatio(value, "#ffffff");
   const wcagAA = passesWcagAA(value);
   const wcagAALarge = passesWcagAALarge(value);
 
   const handleSwatchClick = (hex: string) => {
     if (disabled) return;
-    setInputValue(hex);
     setInputError(null);
     onChange(hex);
   };
 
   const handleNativePicker = (e: React.ChangeEvent<HTMLInputElement>) => {
     const hex = e.target.value;
-    setInputValue(hex);
     setInputError(null);
     onChange(hex);
   };
@@ -81,7 +88,6 @@ export const AccentColorPicker: React.FC<AccentColorPickerProps> = ({
 
   const handleReset = () => {
     if (disabled) return;
-    setInputValue(DEFAULT_ACCENT_COLOR);
     setInputError(null);
     onChange(DEFAULT_ACCENT_COLOR);
   };
@@ -176,6 +182,7 @@ export const AccentColorPicker: React.FC<AccentColorPickerProps> = ({
       )}
 
       {/* ── WCAG contrast indicator ──────────────────────────────────── */}
+      {/* aria-live="polite" on the container is sufficient; no role="alert" on children */}
       <div className={styles.contrastBlock} aria-live="polite">
         <span className={styles.contrastRatio}>
           Contrast vs white:{" "}
@@ -198,7 +205,7 @@ export const AccentColorPicker: React.FC<AccentColorPickerProps> = ({
           AA Large {wcagAALarge ? "✓" : "✗"}
         </span>
         {!wcagAA && (
-          <p className={styles.contrastWarning} role="alert">
+          <p className={styles.contrastWarning}>
             ⚠️ This colour may be hard to read for some users. Consider choosing
             a darker shade.
           </p>
@@ -225,6 +232,13 @@ export const AccentColorPicker: React.FC<AccentColorPickerProps> = ({
           Focus ring
         </span>
       </div>
+
+      {/* ── Save error feedback ──────────────────────────────────────── */}
+      {saveError && (
+        <p className={styles.errorText} role="alert">
+          Could not save your preference: {saveError}
+        </p>
+      )}
 
       {/* ── Actions ─────────────────────────────────────────────────── */}
       <div className={styles.actions}>
