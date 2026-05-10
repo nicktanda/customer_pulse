@@ -7,10 +7,25 @@
  *
  * The inline style override set by accentColor.ts takes precedence over
  * this declaration, enabling per-user theming without JS bundle overhead.
+ *
+ * Browser support note:
+ * --color-accent-hover / --color-accent-active / --color-accent-subtle /
+ * --color-accent-ring use `color-mix(in srgb, ...)` which requires
+ * Chrome 111+, Firefox 113+, Safari 16.2+. Static hex fallback values
+ * (using the default Indigo-500 palette) are declared first for older
+ * browsers; modern browsers will override them with the dynamic variants.
  */
 
 :root {
   --color-accent: #6366f1; /* Indigo-500 – matches DEFAULT_ACCENT_COLOR */
+
+  /* Fallbacks for browsers that do not support color-mix() */
+  --color-accent-hover: #4f46e5;       /* Indigo-600 */
+  --color-accent-active: #4338ca;      /* Indigo-700 */
+  --color-accent-subtle: #eef2ff;      /* Indigo-50  */
+  --color-accent-ring: rgba(99, 102, 241, 0.4);
+
+  /* Dynamic variants – override fallbacks in supporting browsers */
   --color-accent-hover: color-mix(in srgb, var(--color-accent) 85%, #000 15%);
   --color-accent-active: color-mix(in srgb, var(--color-accent) 75%, #000 25%);
   --color-accent-subtle: color-mix(in srgb, var(--color-accent) 10%, transparent 90%);
