@@ -22,8 +22,10 @@ async function saveAccentColor(
   hex: string
 ): Promise<{ error?: string } | void> {
   "use server";
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[saveAccentColor] persisting", hex);
+  }
   // e.g. await db.user.update({ where: { id: userId }, data: { accentColor: hex } });
-  console.log("[saveAccentColor] persisting", hex);
 }
 
 export default async function ProfileSettingsPage() {
