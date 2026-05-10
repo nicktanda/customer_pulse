@@ -1,4 +1,5 @@
 import { AccentColorPickerSection } from "../../../components/AccentColorPickerSection";
+import { isFeatureEnabled } from "../../../lib/featureFlags";
 
 /**
  * Profile Settings Page
@@ -9,6 +10,13 @@ import { AccentColorPickerSection } from "../../../components/AccentColorPickerS
  * TODO: Replace the stub `getCurrentUserAccentColor` and `saveAccentColor`
  * with real data-fetching / server-action implementations once the backend
  * persistence layer is added.
+ *
+ * PRE-MERGE CHECKLIST:
+ * - [ ] Implement `getCurrentUserAccentColor` using real session/DB lookup
+ * - [ ] Implement `saveAccentColor` with real DB write
+ * - [ ] Wire `AccentColorProvider` into the root layout (see AccentColorProvider.tsx)
+ * - [ ] Only enable NEXT_PUBLIC_FF_ACCENT_COLOR_PICKER in production AFTER
+ *       the persistence layer is complete — the current stub throws in production
  */
 
 /** Stub: replace with real session / DB lookup */
@@ -20,10 +28,10 @@ async function getCurrentUserAccentColor(): Promise<string | null> {
 /**
  * Stub server action: replace with real DB write.
  *
- * @throws {Error} Not implemented — this stub must be replaced before shipping
- *   to production. Currently no colour is persisted; the preference will be
- *   lost on page refresh (localStorage fallback via useAccentColor is the
- *   only client-side persistence until this is wired up).
+ * @throws {Error} Not implemented — this stub must be replaced before enabling
+ *   the feature flag in production. Currently no colour is persisted; the
+ *   preference will be lost on page refresh (localStorage fallback via
+ *   useAccentColor is the only client-side persistence until this is wired up).
  */
 async function saveAccentColor(
   hex: string
@@ -43,17 +51,24 @@ async function saveAccentColor(
 }
 
 export default async function ProfileSettingsPage() {
-  const currentAccentColor = await getCurrentUserAccentColor();
+  // Feature flag is checked in the Server Component so that AccentColorPickerSection
+  // is never mounted (and its hooks never run) when the flag is off.
+  const accentColorPickerEnabled = isFeatureEnabled("accentColorPicker");
+  const currentAccentColor = accentColorPickerEnabled
+    ? await getCurrentUserAccentColor()
+    : null;
 
   return (
     <main className="profile-settings">
       <h1 className="profile-settings__title">Profile settings</h1>
 
       {/* Accent colour section – rendered only when feature flag is on */}
-      <AccentColorPickerSection
-        currentAccentColor={currentAccentColor}
-        onSave={saveAccentColor}
-      />
+      {accentColorPickerEnabled && (
+        <AccentColorPickerSection
+          currentAccentColor={currentAccentColor}
+          onSave={saveAccentColor}
+        />
+      )}
     </main>
   );
 }
