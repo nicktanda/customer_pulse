@@ -1,0 +1,45 @@
+/*
+  Accent colour custom property.
+  Applied globally so every component can consume var(--color-accent).
+  The default value matches the existing brand primary.
+*/
+:root {
+  --color-accent: #6366f1; /* default: indigo-500 */
+  --color-accent-hover: color-mix(in srgb, var(--color-accent) 85%, black);
+  --color-accent-light: color-mix(in srgb, var(--color-accent) 15%, white);
+  --color-accent-ring: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+
+/* Primary button */
+.btn-primary,
+button[data-variant="primary"] {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+.btn-primary:hover,
+button[data-variant="primary"]:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+/* Focus rings */
+*:focus-visible {
+  outline-color: var(--color-accent);
+  outline-offset: 2px;
+  outline-width: 2px;
+  outline-style: solid;
+}
+
+/* Highlighted / active states */
+.active-highlight,
+[data-active="true"],
+[aria-selected="true"] {
+  background-color: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+/* Selection highlight */
+::selection {
+  background-color: var(--color-accent-light);
+}
