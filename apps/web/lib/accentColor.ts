@@ -44,6 +44,9 @@ export const ACCENT_COLOR_SWATCHES: AccentColorSwatch[] = [
 
 /**
  * Convert a hex colour string to its relative luminance (WCAG 2.1).
+ *
+ * Uses the threshold value of 0.04045 as specified in WCAG 2.1 / IEC 61966-2-1
+ * (the earlier WCAG 2.0 draft incorrectly used 0.03928).
  */
 export function hexToLuminance(hex: string): number {
   const clean = hex.replace(/^#/, "");
@@ -59,8 +62,9 @@ export function hexToLuminance(hex: string): number {
   const g = parseInt(full.slice(2, 4), 16) / 255;
   const b = parseInt(full.slice(4, 6), 16) / 255;
 
+  // 0.04045 is the correct WCAG 2.1 / sRGB linearisation threshold
   const linearise = (c: number) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 
   return 0.2126 * linearise(r) + 0.7152 * linearise(g) + 0.0722 * linearise(b);
 }
