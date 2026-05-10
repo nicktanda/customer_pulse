@@ -23,6 +23,11 @@
 }
 
 .bg-accent-light {
+  /*
+   * color-mix() is used for the translucent tint.
+   * Supported in Chrome 111+, Firefox 113+, Safari 16.2+.
+   * Older browsers will fall back to a transparent background.
+   */
   background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
