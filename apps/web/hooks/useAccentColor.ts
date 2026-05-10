@@ -11,12 +11,14 @@ import {
 export interface UseAccentColorReturn {
   /** Currently active accent colour (hex string). */
   accentColor: string;
-  /** Update the accent colour locally and persist it. */
+  /** Update the accent colour locally (instant preview) without saving to server. */
   setAccentColor: (hex: string) => void;
-  /** Persist to the server (no-op stub; replace with real API call). */
+  /** Persist to the server. Exposes save error via `saveError`. */
   saveAccentColor: (hex: string) => Promise<void>;
   /** Whether the server save is in progress. */
   isSaving: boolean;
+  /** Non-null when the most recent save attempt failed. */
+  saveError: string | null;
 }
 
 /**
@@ -31,6 +33,7 @@ export function useAccentColor(
   /** Colour already stored on the server (from profile API). */
   serverValue?: string | null
 ): UseAccentColorReturn {
+  // readStoredAccentColor is SSR-safe (returns null on server)
   const initial =
     (serverValue && isValidHex(serverValue) ? serverValue : null) ??
     readStoredAccentColor() ??
@@ -38,6 +41,7 @@ export function useAccentColor(
 
   const [accentColor, setAccentColorState] = useState<string>(initial);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Apply on mount and whenever the value changes
   useEffect(() => {
@@ -64,27 +68,34 @@ export function useAccentColor(
    * Replace the fetch call below with your real API client.
    * The function is intentionally separated from `setAccentColor` so that
    * local preview (instant) and remote persistence (async) are decoupled.
+   *
+   * On success: also updates localStorage for fast next-load.
+   * On failure: sets `saveError` so callers can render an error message.
    */
-  const saveAccentColor = useCallback(
-    async (hex: string): Promise<void> => {
-      if (!isValidHex(hex)) return;
-      setIsSaving(true);
-      try {
-        await fetch("/api/user/preferences", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accentColor: hex }),
-        });
-        // Also persist locally so next page-load is fast
-        storeAccentColor(hex);
-      } catch (err) {
-        console.warn("[useAccentColor] Failed to save preference:", err);
-      } finally {
-        setIsSaving(false);
+  const saveAccentColor = useCallback(async (hex: string): Promise<void> => {
+    if (!isValidHex(hex)) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/user/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accentColor: hex }),
+      });
+      if (!res.ok) {
+        throw new Error(`Server responded with ${res.status}`);
       }
-    },
-    []
-  );
+      // Persist locally only after confirmed server success
+      storeAccentColor(hex);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to save preference";
+      console.warn("[useAccentColor] Failed to save preference:", err);
+      setSaveError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
 
-  return { accentColor, setAccentColor, saveAccentColor, isSaving };
+  return { accentColor, setAccentColor, saveAccentColor, isSaving, saveError };
 }
