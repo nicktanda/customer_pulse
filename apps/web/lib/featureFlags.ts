@@ -15,11 +15,11 @@ const FLAG_ENV_KEYS: Record<FeatureFlag, string> = {
 /**
  * Returns true when the given feature flag is enabled.
  *
- * Reads from `process.env` which is inlined by Next.js at build time for
- * NEXT_PUBLIC_* variables, ensuring zero runtime overhead in production.
+ * A flag is considered enabled when its corresponding environment variable
+ * is set to the string `"true"` or `"1"` (case-insensitive).
  */
 export function isFeatureEnabled(flag: FeatureFlag): boolean {
-  const envKey = FLAG_ENV_KEYS[flag];
-  const value = process.env[envKey];
+  const key = FLAG_ENV_KEYS[flag];
+  const value = process.env[key];
   return value === "true" || value === "1";
 }
