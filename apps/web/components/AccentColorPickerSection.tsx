@@ -24,10 +24,15 @@ export function AccentColorPickerSection({
   currentAccentColor,
   onSave,
 }: AccentColorPickerSectionProps) {
+  // ⚠️  Rules of Hooks: all hooks MUST be declared before any conditional
+  // return. `isFeatureEnabled` reads a build-time constant and is therefore
+  // safe to call after the hooks below, but the early-return MUST stay after
+  // all hook calls to avoid violating the Rules of Hooks.
   const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [savedColor, setSavedColor] = React.useState<string | null>(null);
 
+  // Feature flag check — placed after hooks to satisfy the Rules of Hooks.
   if (!isFeatureEnabled("accentColorPicker")) return null;
 
   function handleChange(hex: string) {
