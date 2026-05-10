@@ -1,0 +1,61 @@
+/*
+  Styles for <AccentColorSettings>.
+*/
+
+.accent-color-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  border-radius: 0.5rem;
+  background: #fff;
+  max-width: 28rem;
+}
+
+.accent-color-settings__heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.accent-color-settings__description {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.accent-color-settings__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.accent-color-settings__save-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.accent-color-settings__save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.accent-color-settings__feedback {
+  font-size: 0.875rem;
+}
+
+.accent-color-settings__feedback--success {
+  color: #065f46; /* emerald-800 */
+}
+
+.accent-color-settings__feedback--error {
+  color: #991b1b; /* red-800 */
+}
