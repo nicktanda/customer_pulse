@@ -47,11 +47,12 @@ export async function analyzeRepo(
     .limit(1);
 
   if (existing && existing.commitSha === commitSha) {
-    // Skip the cache if it predates the `existingDirs` field — without it
-    // the path-mismatch check has no data to compare against, so we'd
-    // rather pay the tree-fetch than silently degrade the safety net.
+    // Skip the cache if it predates the `existingDirs` or `dirsByExtension`
+    // fields — without them the path-mismatch check has no data to compare
+    // against, so we'd rather pay the tree-fetch than silently degrade the
+    // safety net.
     const cachedStructure = existing.structure as Record<string, unknown>;
-    if (Array.isArray(cachedStructure.existingDirs)) {
+    if (Array.isArray(cachedStructure.existingDirs) && cachedStructure.dirsByExtension && typeof cachedStructure.dirsByExtension === "object") {
       return {
         techStack: existing.techStack,
         structure: existing.structure,
@@ -85,11 +86,28 @@ export async function analyzeRepo(
   // (e.g. `apps/web/components/...` when `apps/web/src/components/...` is
   // the convention).
   const existingDirs = new Set<string>();
+  // Additionally, record which directories contain files of which extension,
+  // so we can catch convention mismatches like creating `apps/web/src/Foo.tsx`
+  // when every other `.tsx` lives under `apps/web/src/components/...`.
+  // Shape: { tsx: ["apps/web/src/components", ...], ts: [...], ... }
+  const extDirsRaw: Record<string, Set<string>> = {};
   for (const f of files) {
     const parts = f.split("/");
     for (let depth = 1; depth < Math.min(parts.length, 5); depth++) {
       existingDirs.add(parts.slice(0, depth).join("/"));
     }
+    if (parts.length >= 2) {
+      const filename = parts[parts.length - 1];
+      const ext = filename.split(".").pop()?.toLowerCase();
+      if (ext && ext !== filename) {
+        const dir = parts.slice(0, -1).join("/");
+        (extDirsRaw[ext] ??= new Set()).add(dir);
+      }
+    }
+  }
+  const dirsByExtension: Record<string, string[]> = {};
+  for (const [ext, dirs] of Object.entries(extDirsRaw)) {
+    dirsByExtension[ext] = [...dirs];
   }
 
   const structure = {
@@ -97,6 +115,7 @@ export async function analyzeRepo(
     topDirs: [...new Set(files.map((f) => f.split("/")[0]).filter(Boolean))].slice(0, 20),
     sampleFiles: files.slice(0, 50),
     existingDirs: [...existingDirs],
+    dirsByExtension,
   };
 
   const conventions: Record<string, unknown> = {};
@@ -117,4 +136,86 @@ export async function analyzeRepo(
   });
 
   return { techStack, structure, conventions, commitSha };
+}
+
+/**
+ * Deterministic check: flags newly-created file paths that violate the
+ * repo's existing layout. Two classes of finding:
+ *
+ *   1. Prefix mismatch — the new file's parent directory chain doesn't
+ *      exist in the repo at all (e.g. `apps/web/components/Foo.tsx` when
+ *      the repo only has `apps/web/src/components/`).
+ *   2. Convention mismatch — the parent directory exists but no other
+ *      file of the same extension lives there, while a descendant
+ *      directory does have files of that extension (e.g. dropping
+ *      `apps/web/src/Foo.tsx` directly when every other `.tsx` lives at
+ *      `apps/web/src/components/...`). This catches the loose-files-in-
+ *      `src/` case that bit PR #71.
+ *
+ * Used by both the QA reviewer (as a hard-fail signal that the model
+ * cannot rationalise away) and the code generator (as a self-check that
+ * triggers a retry with the failing paths fed back into the prompt).
+ */
+export function findPathMismatches(
+  filesChanged: { path: string; action: string }[],
+  repoContext: RepoContext | null,
+): string[] {
+  if (!repoContext) return [];
+  const structure = repoContext.structure as { existingDirs?: string[]; dirsByExtension?: Record<string, string[]> };
+  const existing = new Set(structure.existingDirs ?? []);
+  if (existing.size === 0) return [];
+  const dirsByExt = structure.dirsByExtension ?? {};
+
+  const findings: string[] = [];
+  const seenPaths = new Set<string>();
+  for (const f of filesChanged) {
+    if (f.action !== "create") continue;
+    if (seenPaths.has(f.path)) continue;
+    seenPaths.add(f.path);
+
+    const parts = f.path.split("/");
+
+    // 1. Prefix mismatch — walk depths 2..4 looking for the deepest
+    // existing prefix; if missing but a wrapper-segment sibling exists,
+    // name it.
+    let prefixFlagged = false;
+    for (let depth = 2; depth <= Math.min(4, parts.length - 1); depth++) {
+      const prefix = parts.slice(0, depth).join("/");
+      if (existing.has(prefix)) continue;
+      const tail = parts[depth - 1];
+      const parent = parts.slice(0, depth - 1).join("/");
+      const sibling = [...existing].find((d) => {
+        const dParts = d.split("/");
+        return dParts.length === depth + 1
+          && dParts.slice(0, depth - 1).join("/") === parent
+          && dParts[depth] === tail;
+      });
+      if (sibling) {
+        findings.push(`\`${f.path}\` — prefix \`${prefix}\` does not exist; the repo has \`${sibling}\` (note the extra \`${sibling.split("/")[depth - 1]}\` segment). Files belong under the existing prefix.`);
+      } else {
+        findings.push(`\`${f.path}\` — prefix \`${prefix}\` is not present in the repo's existing directories. Verify this isn't a typo or a missing convention segment.`);
+      }
+      prefixFlagged = true;
+      break;
+    }
+    if (prefixFlagged) continue;
+
+    // 2. Convention mismatch — the parent dir exists, but no other file
+    // of this extension lives there, while a descendant does. We only
+    // flag when the descendant evidence is strong (≥ 2 distinct
+    // descendant dirs hold this extension) so single-file edge cases
+    // don't get false-flagged.
+    const filename = parts[parts.length - 1];
+    const ext = filename.split(".").pop()?.toLowerCase();
+    if (!ext || ext === filename) continue;
+    const parentDir = parts.slice(0, -1).join("/");
+    const dirsWithExt = dirsByExt[ext] ?? [];
+    if (dirsWithExt.length === 0) continue;
+    if (dirsWithExt.includes(parentDir)) continue; // convention met
+    const descendants = dirsWithExt.filter((d) => d.startsWith(parentDir + "/"));
+    if (descendants.length < 2) continue;
+    descendants.sort((a, b) => a.length - b.length);
+    findings.push(`\`${f.path}\` — no existing \`.${ext}\` files live at \`${parentDir}\`; sibling \`.${ext}\` files in this area are organised under subdirectories such as \`${descendants[0]}\`. Place this file inside an appropriate subdirectory to match the repo convention.`);
+  }
+  return findings;
 }

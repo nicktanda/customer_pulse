@@ -18,7 +18,7 @@ import {
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { callClaude, callClaudeJson } from "../ai/call-claude.js";
 import { commitFile } from "./pr-creator.js";
-import { analyzeRepo, type RepoContext } from "./repo-analyzer.js";
+import { analyzeRepo, findPathMismatches, type RepoContext } from "./repo-analyzer.js";
 
 interface GithubCreds {
   access_token: string;
@@ -34,8 +34,9 @@ interface ReviewResult {
 
 interface FixFile {
   path: string;
-  content: string;
-  action: "create" | "modify";
+  /** Required for "create" and "modify"; omit/empty for "delete". */
+  content?: string;
+  action: "create" | "modify" | "delete";
 }
 
 interface FixResult {
@@ -136,8 +137,13 @@ const FIX_SYSTEM = `You are a senior software engineer. You will receive:
 
 Generate code changes that address ALL feedback from every reviewer AND fix any CI failures. For each file, provide:
 - "path": file path relative to repo root
-- "content": the COMPLETE updated file content (not a diff)
-- "action": "create" for new files, "modify" for existing files
+- "content": the COMPLETE updated file content (not a diff). Required for "create" and "modify"; omit (or empty string) for "delete".
+- "action": one of:
+  - "create" — new file
+  - "modify" — replace an existing file's contents
+  - "delete" — remove an existing file from the repo
+
+When fixing a wrong-path file, emit BOTH a "create" at the corrected path AND a "delete" at the old path. Do not just create the new copy and leave the original — that produces duplicates that will fail the next round of review. The same applies to renames or any reorganisation.
 
 Return a JSON object with:
 - "files": array of file changes
@@ -469,62 +475,6 @@ function summarizeRepoContext(ctx: RepoContext): string {
   ].join("\n");
 }
 
-/**
- * Deterministic check that complements QA's prompt-based "infrastructure
- * sanity" criterion. Walks each new file path in the diff; for every
- * directory prefix it sits in (depths 2-4), checks whether that exact
- * prefix exists in the repo's known directories. If not, but a sibling
- * prefix exists (e.g. new file is at `apps/web/components/X` while the
- * repo has `apps/web/src/components/Y`), the new path is flagged as a
- * mismatch — this is the exact bug that broke PRs #58 and #63.
- *
- * Output is a list of human-readable findings the QA prompt is instructed
- * to treat as automatic FAILs (so the model can't rationalise them away).
- */
-function findPathMismatches(
-  filesChanged: { path: string; action: string }[],
-  repoContext: RepoContext | null,
-): string[] {
-  if (!repoContext) return [];
-  const structure = repoContext.structure as { existingDirs?: string[] };
-  const existing = new Set(structure.existingDirs ?? []);
-  if (existing.size === 0) return [];
-
-  const findings: string[] = [];
-  const seenPaths = new Set<string>();
-  for (const f of filesChanged) {
-    if (f.action !== "create") continue;
-    if (seenPaths.has(f.path)) continue;
-    seenPaths.add(f.path);
-
-    const parts = f.path.split("/");
-    // Walk depths 2..4 looking for the deepest prefix that exists. If the
-    // depth-2 prefix is missing but a sibling at the same level under a
-    // wrapper segment (e.g. `src/`) does exist, that's almost certainly
-    // the wrong-directory bug.
-    for (let depth = 2; depth <= Math.min(4, parts.length - 1); depth++) {
-      const prefix = parts.slice(0, depth).join("/");
-      if (existing.has(prefix)) continue;
-      // Look for a same-tail prefix one level deeper (e.g. `apps/web/src/components`
-      // when this prefix is `apps/web/components`).
-      const tail = parts[depth - 1];
-      const parent = parts.slice(0, depth - 1).join("/");
-      const sibling = [...existing].find((d) => {
-        const dParts = d.split("/");
-        return dParts.length === depth + 1
-          && dParts.slice(0, depth - 1).join("/") === parent
-          && dParts[depth] === tail;
-      });
-      if (sibling) {
-        findings.push(`\`${f.path}\` — prefix \`${prefix}\` does not exist; the repo has \`${sibling}\` (note the extra \`${sibling.split("/")[depth - 1]}\` segment). Files belong under the existing prefix.`);
-      } else {
-        findings.push(`\`${f.path}\` — prefix \`${prefix}\` is not present in the repo's existing directories. Verify this isn't a typo or a missing convention segment.`);
-      }
-      break; // one finding per file is enough
-    }
-  }
-  return findings;
-}
 
 async function runQaReview(
   diff: string,
