@@ -1,9 +1,11 @@
 /**
  * Thin abstraction around user-preference persistence.
  *
- * In the initial ship the accent colour is stored in localStorage so it works
- * without a backend migration.  The API route below can later persist it
- * server-side and this module updated to call it.
+ * The accent colour is stored in localStorage so it works without a backend
+ * migration. The /api/user/accent-color cookie-based route exists as a
+ * parallel path for future cross-device/server-side sync; this module is the
+ * single source of truth read by AccentColorProvider until that migration
+ * lands.
  */
 
 import { DEFAULT_ACCENT_COLOR, isValidHex } from "./accent-color";
