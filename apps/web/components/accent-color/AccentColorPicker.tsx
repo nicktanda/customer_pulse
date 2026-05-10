@@ -12,44 +12,64 @@ import { useAccentColor } from "./AccentColorProvider";
 import styles from "./AccentColorPicker.module.css";
 
 export function AccentColorPicker() {
-  const { accentColor, setAccentColor, resetAccentColor } = useAccentColor();
+  const { accentColor, setAccentColor, resetAccentColor, isFeatureEnabled } =
+    useAccentColor();
   const [showFree, setShowFree] = useState(false);
   const [freeInput, setFreeInput] = useState("");
   const [freeError, setFreeError] = useState("");
+  const [freeWarning, setFreeWarning] = useState("");
   const freeLabelId = useId();
+
+  // Don't render the picker at all when the feature flag is off.
+  if (!isFeatureEnabled) return null;
 
   function handleSwatchClick(hex: string) {
     setAccentColor(hex);
     setShowFree(false);
     setFreeError("");
+    setFreeWarning("");
+    // Keep the hex input in sync with the newly selected swatch colour.
+    setFreeInput(hex);
   }
 
   function handleFreeInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     setFreeInput(value);
     setFreeError("");
+    setFreeWarning("");
   }
 
-  function handleFreeApply() {
-    const hex = freeInput.startsWith("#") ? freeInput : `#${freeInput}`;
+  function applyHex(rawHex: string) {
+    const hex = rawHex.startsWith("#") ? rawHex : `#${rawHex}`;
     if (!isValidHex(hex)) {
       setFreeError("Please enter a valid 6-digit hex colour (e.g. #3B82F6).");
+      setFreeWarning("");
       return;
     }
+    setFreeError("");
     if (!isWcagAA(hex)) {
       const ratio = contrastRatio(hex)?.toFixed(2) ?? "?";
-      setFreeError(
+      setFreeWarning(
         `This colour has a contrast ratio of ${ratio}:1 against white, which is below the WCAG AA minimum of 4.5:1. Text may be hard to read.`
       );
-      // Still allow applying – just warn.
     } else {
-      setFreeError("");
+      setFreeWarning("");
     }
     setAccentColor(hex);
   }
 
+  function handleFreeApply() {
+    applyHex(freeInput);
+  }
+
   function handleFreeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") handleFreeApply();
+  }
+
+  function handleNativePickerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const hex = e.target.value;
+    setFreeInput(hex);
+    applyHex(hex);
   }
 
   const isDefault = accentColor === DEFAULT_ACCENT_COLOR;
@@ -86,7 +106,11 @@ export function AccentColorPicker() {
       </div>
 
       {/* Curated palette */}
-      <div className={styles.palette} role="radiogroup" aria-label="Accent colour palette">
+      <div
+        className={styles.palette}
+        role="radiogroup"
+        aria-label="Accent colour palette"
+      >
         {ACCENT_PALETTE.map((color) => {
           const isSelected = accentColor === color.value;
           return (
@@ -97,7 +121,9 @@ export function AccentColorPicker() {
               aria-checked={isSelected}
               aria-label={color.label}
               title={`${color.label} (${color.value})`}
-              className={`${styles.swatch} ${isSelected ? styles.swatchSelected : ""}`}
+              className={`${styles.swatch} ${
+                isSelected ? styles.swatchSelected : ""
+              }`}
               style={{ backgroundColor: color.value }}
               onClick={() => handleSwatchClick(color.value)}
             />
@@ -117,14 +143,11 @@ export function AccentColorPicker() {
 
       {showFree && (
         <div className={styles.freePickRow}>
-          {/* Native colour picker */}
+          {/* Native colour picker — runs through the same validation path */}
           <input
             type="color"
             value={accentColor}
-            onChange={(e) => {
-              setFreeInput(e.target.value);
-              setAccentColor(e.target.value);
-            }}
+            onChange={handleNativePickerChange}
             className={styles.nativePicker}
             aria-label="Pick a custom accent colour"
           />
@@ -157,6 +180,13 @@ export function AccentColorPicker() {
           {freeError && (
             <p className={styles.errorMsg} role="alert">
               {freeError}
+            </p>
+          )}
+
+          {/* Distinguish warnings (applied but low contrast) from errors (not applied) */}
+          {freeWarning && !freeError && (
+            <p className={styles.warnMsg} role="status">
+              {freeWarning}
             </p>
           )}
         </div>
