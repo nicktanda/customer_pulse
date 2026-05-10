@@ -21,6 +21,7 @@ export function AccentColorPicker({ onSave }: AccentColorPickerProps) {
   const [freePickValue, setFreePickValue] = useState(accentColor);
   const [freePickInput, setFreePickInput] = useState(accentColor);
   const freePickId = useId();
+  const advancedPanelId = useId();
 
   const handleSwatchClick = (hex: string) => {
     setAccentColor(hex);
@@ -118,12 +119,13 @@ export function AccentColorPicker({ onSave }: AccentColorPickerProps) {
         className="accent-color-picker__advanced-toggle"
         onClick={() => setShowAdvanced((v) => !v)}
         aria-expanded={showAdvanced}
+        aria-controls={advancedPanelId}
       >
         {showAdvanced ? "Hide" : "Show"} custom colour
       </button>
 
       {showAdvanced && (
-        <div className="accent-color-picker__advanced">
+        <div id={advancedPanelId} className="accent-color-picker__advanced">
           <label
             htmlFor={freePickId}
             className="accent-color-picker__label"
