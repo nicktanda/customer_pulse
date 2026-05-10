@@ -15,20 +15,27 @@ export interface AccentColorSwatch {
 
 /**
  * Curated palette.
- * Note: some of these colours may not pass WCAG AA (4.5:1) against white —
+ *
+ * The DEFAULT_ACCENT_COLOR (#6366f1, Indigo-500) is intentionally included
+ * as the first swatch so that a freshly installed user sees their active
+ * colour reflected in the palette. The remaining swatches use the -700
+ * variants of each hue for better WCAG AA contrast on white backgrounds.
+ *
+ * Note: some colours may not pass WCAG AA (4.5:1) against white —
  * the picker's contrast warning banner will flag those at runtime.
  */
 export const ACCENT_COLOR_SWATCHES: AccentColorSwatch[] = [
-  { label: "Indigo", value: "#4338ca" },   // Indigo-700  ~8.2:1
-  { label: "Violet", value: "#6d28d9" },   // Violet-700  ~7.1:1
-  { label: "Sky", value: "#0369a1" },      // Sky-700     ~7.4:1
-  { label: "Teal", value: "#0f766e" },     // Teal-700    ~6.1:1
-  { label: "Emerald", value: "#047857" },  // Emerald-700 ~7.2:1
-  { label: "Rose", value: "#be123c" },     // Rose-700    ~7.5:1
-  { label: "Orange", value: "#c2410c" },   // Orange-700  ~6.3:1
-  { label: "Amber", value: "#b45309" },    // Amber-700   ~5.7:1
-  { label: "Pink", value: "#be185d" },     // Pink-700    ~7.2:1
-  { label: "Fuchsia", value: "#a21caf" },  // Fuchsia-700 ~7.4:1
+  { label: "Indigo (default)", value: DEFAULT_ACCENT_COLOR }, // #6366f1 Indigo-500
+  { label: "Indigo Dark", value: "#4338ca" },   // Indigo-700  ~8.2:1
+  { label: "Violet", value: "#6d28d9" },         // Violet-700  ~7.1:1
+  { label: "Sky", value: "#0369a1" },            // Sky-700     ~7.4:1
+  { label: "Teal", value: "#0f766e" },           // Teal-700    ~6.1:1
+  { label: "Emerald", value: "#047857" },        // Emerald-700 ~7.2:1
+  { label: "Rose", value: "#be123c" },           // Rose-700    ~7.5:1
+  { label: "Orange", value: "#c2410c" },         // Orange-700  ~6.3:1
+  { label: "Amber", value: "#b45309" },          // Amber-700   ~5.7:1
+  { label: "Pink", value: "#be185d" },           // Pink-700    ~7.2:1
+  { label: "Fuchsia", value: "#a21caf" },        // Fuchsia-700 ~7.4:1
 ];
 
 // ---------------------------------------------------------------------------
@@ -86,9 +93,14 @@ export function passesWcagAA(
 
 /**
  * Apply the accent colour as the --color-accent CSS custom property on :root.
+ *
+ * @param hex - Must be a valid hex colour string. Call `isValidHex` before
+ *   invoking this function. Passing an unvalidated value is unsafe as it
+ *   could set an arbitrary CSS property value.
  */
 export function applyAccentColor(hex: string): void {
   if (typeof document === "undefined") return;
+  if (!isValidHex(hex)) return; // Guard against unvalidated callers
   document.documentElement.style.setProperty("--color-accent", hex);
 }
 
