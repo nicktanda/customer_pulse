@@ -1,0 +1,151 @@
+/* AccentColorSettingsPanel styles */
+
+.accent-color-page {
+  padding: 2rem 1rem;
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+.accent-color-page__inner {
+  max-width: 38rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.accent-color-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.accent-color-page__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.accent-color-page__description {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ---- Panel ---- */
+
+.accent-settings-panel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* ---- Preview ---- */
+
+.accent-settings-panel__preview-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.75rem;
+}
+
+.accent-settings-panel__preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.accent-settings-panel__preview-btn-primary {
+  padding: 0.4375rem 1rem;
+  background-color: var(--color-accent, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: default;
+  line-height: 1.4;
+}
+
+.accent-settings-panel__preview-btn-outline {
+  padding: 0.375rem 1rem;
+  background-color: transparent;
+  color: var(--color-accent, #6366f1);
+  border: 1.5px solid var(--color-accent, #6366f1);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: default;
+  line-height: 1.4;
+}
+
+.accent-settings-panel__preview-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1875rem 0.625rem;
+  background-color: color-mix(in srgb, var(--color-accent, #6366f1) 12%, transparent);
+  color: var(--color-accent, #6366f1);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.accent-settings-panel__preview-link {
+  color: var(--color-accent, #6366f1);
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: default;
+}
+
+/* ---- Feedback ---- */
+
+.accent-settings-panel__contrast-ok {
+  font-size: 0.8125rem;
+  color: #065f46;
+  margin: 0;
+}
+
+.accent-settings-panel__save-status {
+  min-height: 1.25rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.accent-settings-panel__saved {
+  color: #065f46;
+}
+
+.accent-settings-panel__error {
+  color: #991b1b;
+}
+
+/* ---- Reset ---- */
+
+.accent-settings-panel__reset-row {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 1rem;
+}
+
+.accent-settings-panel__reset-btn {
+  font-size: 0.875rem;
+  color: #6b7280;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.accent-settings-panel__reset-btn:hover {
+  color: #374151;
+}
