@@ -20,6 +20,11 @@ export interface AccentColorProviderProps {
  * the page renders with the correct colour without a flash.
  * Should be placed high in the component tree (e.g. inside the root layout).
  *
+ * NOTE: This provider must be wired into the root layout before enabling
+ * NEXT_PUBLIC_FF_ACCENT_COLOR_PICKER in production. Without it, users will
+ * see a flash of the default colour on every page load even after the backend
+ * persistence layer is implemented.
+ *
  * Example usage in `apps/web/app/layout.tsx`:
  * ```tsx
  * import { AccentColorProvider } from "../components/AccentColorProvider";
