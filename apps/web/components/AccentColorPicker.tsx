@@ -3,6 +3,7 @@
 import React, { useId, useRef, useState } from "react";
 import { ACCENT_PALETTE, isValidHex } from "../lib/accentColor";
 import { useAccentColor } from "../hooks/useAccentColor";
+import "./AccentColorPicker.css";
 
 export function AccentColorPicker() {
   const {
@@ -14,6 +15,7 @@ export function AccentColorPicker() {
   } = useAccentColor();
 
   const [showFreePick, setShowFreePick] = useState(false);
+  // freePickInput mirrors accentColor; swatch clicks keep it in sync via handleSwatchClick
   const [freePickInput, setFreePickInput] = useState(accentColor);
   const [freePickError, setFreePickError] = useState("");
   const freePickInputId = useId();
@@ -120,7 +122,7 @@ export function AccentColorPicker() {
           className="accent-color-picker__free-pick"
         >
           <div className="accent-color-picker__free-pick-row">
-            {/* Native colour picker */}
+            {/* Native colour picker — always produces a valid 6-digit hex value */}
             <input
               ref={nativePickerRef}
               type="color"
