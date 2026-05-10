@@ -22,7 +22,12 @@ export const ACCENT_PALETTE: AccentColor[] = [
   { id: "pink", label: "Pink", value: "#DB2777" },
 ];
 
-export const DEFAULT_ACCENT_COLOR = ACCENT_PALETTE[0].value;
+/**
+ * Named constant for the default accent colour.
+ * Defined explicitly here rather than derived from ACCENT_PALETTE[0] so that
+ * reordering the palette never silently changes the application default.
+ */
+export const DEFAULT_ACCENT_COLOR = "#2563EB";
 
 // ---------------------------------------------------------------------------
 // Contrast helpers (WCAG 2.1)
@@ -92,15 +97,17 @@ export function applyAccentColor(hex: string): void {
 function darkenHex(hex: string, amount: number): string | null {
   const rgb = hexToRgb(hex);
   if (!rgb) return null;
-  const [r, g, b] = rgb.map((c) => Math.max(0, Math.round(c * (1 - amount))));
-  return rgbToHex(r, g, b);
+  // Use index access to avoid tuple-inference issues with Array.map.
+  const mapped = rgb.map((c) => Math.max(0, Math.round(c * (1 - amount))));
+  return rgbToHex(mapped[0], mapped[1], mapped[2]);
 }
 
 function lightenHex(hex: string, amount: number): string | null {
   const rgb = hexToRgb(hex);
   if (!rgb) return null;
-  const [r, g, b] = rgb.map((c) => Math.min(255, Math.round(c + (255 - c) * amount)));
-  return rgbToHex(r, g, b);
+  // Use index access to avoid tuple-inference issues with Array.map.
+  const mapped = rgb.map((c) => Math.min(255, Math.round(c + (255 - c) * amount)));
+  return rgbToHex(mapped[0], mapped[1], mapped[2]);
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
