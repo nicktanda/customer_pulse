@@ -25,11 +25,17 @@ export interface UseAccentColorReturn {
 export function useAccentColor(
   serverValue?: string | null
 ): UseAccentColorReturn {
-  const initial = serverValue ?? readFromStorage() ?? DEFAULT_ACCENT_COLOR;
+  // Lazy initialiser avoids SSR/hydration mismatch:
+  // on the server `serverValue` (or DEFAULT) is used; on the client,
+  // localStorage is only read inside the lazy function which runs
+  // exclusively in the browser after hydration.
+  const [accentColor, setColorState] = useState<string>(() => {
+    if (serverValue) return serverValue;
+    return readFromStorage() ?? DEFAULT_ACCENT_COLOR;
+  });
 
-  const [accentColor, setColorState] = useState<string>(initial);
-  const [contrastWarning, setContrastWarning] = useState<boolean>(
-    !passesWcagAA(initial)
+  const [contrastWarning, setContrastWarning] = useState<boolean>(() =>
+    !passesWcagAA(serverValue ?? readFromStorage() ?? DEFAULT_ACCENT_COLOR)
   );
 
   // Apply on mount and whenever the value changes
@@ -46,7 +52,8 @@ export function useAccentColor(
     } catch {
       // storage unavailable – silently ignore
     }
-    applyAccentColor(hex);
+    // Note: applyAccentColor is also called by the useEffect above;
+    // we do NOT call it directly here to avoid the double-apply.
   }, []);
 
   const resetToDefault = useCallback(() => {
