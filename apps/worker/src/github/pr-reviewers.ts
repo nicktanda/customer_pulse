@@ -349,7 +349,7 @@ async function generateFixes(
       "## QA Review Feedback",
       qaReview.text,
     ].join("\n"),
-    maxTokens: 8192,
+    maxTokens: 64000,
   });
 }
 

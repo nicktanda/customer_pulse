@@ -23,7 +23,6 @@ export class SlackClient extends BaseIntegrationClient {
     console.log(`[slack-sync] creds keys=${Object.keys(this.credentials).join(",")} token=${token ? "set" : "MISSING"} channel=${channel || "MISSING"} raw_channels=${this.str("channels")}`);
     if (!token || !channel) return [];
 
-    const keywords = (this.str("keywords") || "feedback,bug,issue,feature,request,problem").split(",").map((k) => k.trim().toLowerCase());
     const oldest = String(Math.floor((Date.now() - 60 * 60 * 1000) / 1000)); // last hour
 
     const res = await fetch(`https://slack.com/api/conversations.history?channel=${channel}&oldest=${oldest}&limit=100`, {
@@ -37,8 +36,9 @@ export class SlackClient extends BaseIntegrationClient {
     const items: FeedbackItem[] = [];
     for (const msg of json.messages) {
       if (!msg.text) continue;
-      const lower = msg.text.toLowerCase();
-      if (!keywords.some((kw) => lower.includes(kw))) continue;
+      // Skip Slack system events (joins, topic changes, pinned items, etc.) —
+      // standard user messages have no `subtype`.
+      if (msg.subtype) continue;
 
       items.push({
         title: msg.text.slice(0, 200),
@@ -55,6 +55,7 @@ export class SlackClient extends BaseIntegrationClient {
 
 interface SlackMessage {
   type?: string;
+  subtype?: string;
   user?: string;
   text?: string;
   ts?: string;
