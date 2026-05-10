@@ -15,7 +15,9 @@ export function AccentColorPicker() {
   const { accentColor, setAccentColor, resetAccentColor, isFeatureEnabled } =
     useAccentColor();
   const [showFree, setShowFree] = useState(false);
-  const [freeInput, setFreeInput] = useState("");
+  // Initialise freeInput from the current accentColor so it's never blank
+  // when the advanced panel is opened for the first time.
+  const [freeInput, setFreeInput] = useState(accentColor);
   const [freeError, setFreeError] = useState("");
   const [freeWarning, setFreeWarning] = useState("");
   const freeLabelId = useId();
@@ -40,6 +42,7 @@ export function AccentColorPicker() {
   }
 
   function applyHex(rawHex: string) {
+    // Normalise: add leading # if the user typed a bare 6-char hex string.
     const hex = rawHex.startsWith("#") ? rawHex : `#${rawHex}`;
     if (!isValidHex(hex)) {
       setFreeError("Please enter a valid 6-digit hex colour (e.g. #3B82F6).");
@@ -56,6 +59,8 @@ export function AccentColorPicker() {
       setFreeWarning("");
     }
     setAccentColor(hex);
+    // Keep the input in sync with the normalised value.
+    setFreeInput(hex);
   }
 
   function handleFreeApply() {
@@ -152,7 +157,10 @@ export function AccentColorPicker() {
             aria-label="Pick a custom accent colour"
           />
 
-          {/* Hex text input */}
+          {/* Hex text input
+              maxLength=8 to allow for '#' + 6 hex chars + 1 spare so the user
+              can freely type with or without a leading '#' without being cut off.
+              applyHex normalises the value before validation. */}
           <div className={styles.hexInputWrapper}>
             <label htmlFor={freeLabelId} className={styles.srOnly}>
               Hex colour value
@@ -164,7 +172,7 @@ export function AccentColorPicker() {
               onChange={handleFreeInputChange}
               onKeyDown={handleFreeKeyDown}
               placeholder="#3B82F6"
-              maxLength={7}
+              maxLength={8}
               className={styles.hexInput}
               spellCheck={false}
             />
