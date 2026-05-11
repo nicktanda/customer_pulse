@@ -51,6 +51,12 @@ describe('relativeLuminance', () => {
     expect(relativeLuminance('notahex')).toBeNull();
   });
 
+  it('returns null for 6-char non-hex strings (e.g. zzzzzz)', () => {
+    // Previously hexToRgb only checked length, allowing NaN to propagate.
+    // The fix adds character validation so these now correctly return null.
+    expect(relativeLuminance('#zzzzzz')).toBeNull();
+  });
+
   it('returns a value between 0 and 1 for mid-range colours', () => {
     const l = relativeLuminance('#6366f1');
     expect(l).not.toBeNull();
@@ -71,6 +77,10 @@ describe('contrastRatio', () => {
   it('returns null when either colour is invalid', () => {
     expect(contrastRatio('#fff', '#000000')).toBeNull();
     expect(contrastRatio('#000000', 'bad')).toBeNull();
+  });
+
+  it('returns null for 6-char non-hex strings', () => {
+    expect(contrastRatio('#zzzzzz', '#ffffff')).toBeNull();
   });
 
   it('is symmetric', () => {
@@ -101,6 +111,10 @@ describe('passesWcagAA', () => {
 
   it('returns false for invalid hex', () => {
     expect(passesWcagAA('#fff')).toBe(false);
+  });
+
+  it('returns false for 6-char non-hex strings', () => {
+    expect(passesWcagAA('#zzzzzz')).toBe(false);
   });
 });
 
