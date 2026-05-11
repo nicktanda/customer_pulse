@@ -7,14 +7,6 @@ import { saveAccentColorAction } from './accent-color-action';
 
 interface AccentColorSectionProps {
   userId: string;
-  /**
-   * The user's saved accent colour loaded server-side.
-   * This prop is intentionally unused here — the actual colour state is
-   * managed by the nearest `AccentColorProvider` (initialised with this
-   * value at the page level). It is kept in the interface so callers can
-   * pass it through for documentation / future use.
-   */
-  initialColor?: string | null;
   featureEnabled?: boolean;
 }
 
@@ -29,8 +21,6 @@ export function AccentColorSection({
   // ref so rapid clicks always roll back to the true last-committed value
   // rather than an intermediate optimistic value.
   const committedColorRef = useRef<string>(accentColor);
-
-  if (!featureEnabled) return null;
 
   /**
    * Optimistically updates the accent colour and persists via server action.
@@ -66,6 +56,8 @@ export function AccentColorSection({
       }
     });
   };
+
+  if (!featureEnabled) return null;
 
   return (
     <section aria-labelledby="accent-color-heading">
