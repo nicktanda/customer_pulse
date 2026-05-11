@@ -44,12 +44,20 @@ export function contrastRatio(hex1: string, hex2: string): number {
 
 /**
  * Returns true if the colour passes WCAG AA (4.5:1) against white (#ffffff).
- * TODO: consider also checking against the page's actual background colour
- * to avoid false-safe results on dark/coloured backgrounds.
+ *
+ * Note: this app uses a dark theme (`data-bs-theme="dark"`). A colour that
+ * passes 4.5:1 against white may still have insufficient contrast against the
+ * actual dark background. The warning below reflects the white-background
+ * check only; always verify against the real background in context.
  */
-export function passesWCAG_AA(hex: string): boolean {
+export function passesWcagAA(hex: string): boolean {
   return contrastRatio(hex, "#ffffff") >= 4.5;
 }
+
+/**
+ * @deprecated Use `passesWcagAA` instead. Kept for backwards compatibility.
+ */
+export const passesWCAG_AA = passesWcagAA;
 
 export function isValidHex(value: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(value);
@@ -110,7 +118,7 @@ export function AccentColorPicker({
   );
 
   const activeColor = isValidHex(currentColor) ? currentColor : DEFAULT_ACCENT;
-  const contrastOk = passesWCAG_AA(activeColor);
+  const contrastOk = passesWcagAA(activeColor);
   const contrastValue = contrastRatio(activeColor, "#ffffff").toFixed(2);
 
   return (
@@ -171,8 +179,9 @@ export function AccentColorPicker({
       {!contrastOk && (
         <p className="accent-color-picker__warning" role="alert">
           ⚠️ This colour has a contrast ratio of {contrastValue}:1 against white,
-          which may fail WCAG AA accessibility guidelines (minimum 4.5:1). Consider
-          choosing a darker shade.
+          which may fail WCAG AA accessibility guidelines (minimum 4.5:1). Note:
+          on the dark background used by this app, the actual contrast may differ.
+          Consider choosing a darker or lighter shade and verifying in context.
         </p>
       )}
     </div>
