@@ -40,8 +40,6 @@ export function AccentColorPicker({
   const [saving, setSaving] = useState(false);
 
   // Sync pending and freePickValue when the external value prop changes.
-  // `current` is always derived from `value`, so listing `value` in the
-  // dependency array is sufficient — no eslint suppression needed.
   useEffect(() => {
     const resolved = value && isValidHex(value) ? value : DEFAULT_ACCENT_COLOR;
     setPending(resolved);
@@ -58,9 +56,6 @@ export function AccentColorPicker({
     const val = e.target.value;
     setFreePickValue(val);
     // isValidHex only accepts exactly 6-digit hex strings (e.g. #rrggbb).
-    // Short-form (#rgb) and alpha (#rrggbbaa) are intentionally unsupported
-    // because <input type="color"> always emits 6-digit values and the
-    // palette exclusively uses 6-digit values.
     if (isValidHex(val)) {
       setPending(val);
     }
@@ -79,18 +74,25 @@ export function AccentColorPicker({
   const info = getContrastInfo(pending);
   const isDirty = pending !== current;
 
+  // Ensure the color input always receives a valid 6-digit hex value.
+  const colorInputValue = isValidHex(freePickValue) ? freePickValue : current;
+
   return (
     <div className={styles.accentColorPicker} aria-label="Accent colour picker">
       <p className={styles.label}>Accent Colour</p>
 
-      {/* Palette swatches */}
-      <div className={styles.swatches} role="listbox" aria-label="Colour palette">
+      {/* Palette swatches — radiogroup/radio matches single-select semantics */}
+      <div
+        className={styles.swatches}
+        role="radiogroup"
+        aria-label="Colour palette"
+      >
         {ACCENT_COLOR_PALETTE.map((swatch) => (
           <button
             key={swatch.value}
             type="button"
-            role="option"
-            aria-selected={pending === swatch.value}
+            role="radio"
+            aria-checked={pending === swatch.value}
             aria-label={swatch.label}
             title={swatch.label}
             className={`${styles.swatch}${
@@ -119,10 +121,11 @@ export function AccentColorPicker({
           <input
             id={`${instanceId}-color`}
             type="color"
-            value={freePickValue}
+            value={colorInputValue}
             onChange={(e) => {
-              setFreePickValue(e.target.value);
-              setPending(e.target.value);
+              const val = e.target.value;
+              setFreePickValue(val);
+              setPending(val);
             }}
             disabled={disabled}
             aria-label="Custom colour picker"
