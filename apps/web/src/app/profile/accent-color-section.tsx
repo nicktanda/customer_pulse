@@ -7,13 +7,19 @@ import { saveAccentColorAction } from './accent-color-action';
 
 interface AccentColorSectionProps {
   userId: string;
+  /**
+   * The user's saved accent colour loaded server-side.
+   * This prop is intentionally unused here — the actual colour state is
+   * managed by the nearest `AccentColorProvider` (initialised with this
+   * value at the page level). It is kept in the interface so callers can
+   * pass it through for documentation / future use.
+   */
   initialColor?: string | null;
   featureEnabled?: boolean;
 }
 
 export function AccentColorSection({
   userId,
-  initialColor: _initialColor,
   featureEnabled = false,
 }: AccentColorSectionProps) {
   const { accentColor, setAccentColor } = useAccentColor();
@@ -26,7 +32,12 @@ export function AccentColorSection({
 
   if (!featureEnabled) return null;
 
-  const handleChange = async (hex: string) => {
+  /**
+   * Optimistically updates the accent colour and persists via server action.
+   * The update is fire-and-forget from the caller's perspective; rollback
+   * on failure happens inside the startTransition callback.
+   */
+  const handleColorChange = (hex: string) => {
     // Snapshot the last committed colour for rollback.
     const previousCommitted = committedColorRef.current;
 
@@ -80,7 +91,7 @@ export function AccentColorSection({
         Choose an accent colour used for buttons, highlights, and active
         states across the app.
       </p>
-      <AccentColorPicker value={accentColor} onChange={handleChange} />
+      <AccentColorPicker value={accentColor} onChange={handleColorChange} />
     </section>
   );
 }
