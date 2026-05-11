@@ -13,25 +13,26 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return {
+  return (
     // data-bs-theme is fixed to dark; xenoform.ai is a single-theme app.
-  } && (
     <html lang="en" data-bs-theme="dark">
       <body className="min-vh-100 antialiased bg-body text-body">
-        <Providers>
-          {/*
-            AccentColorProvider is mounted at the root so that the --color-accent
-            CSS custom property is available to all pages and components.
-            The `enabled` prop is intentionally omitted here (defaults to true)
-            so the CSS custom property is always registered. The feature flag
-            only controls whether the picker UI is visible to the user; having
-            the property set to its default value causes no visible change when
-            the flag is off.
-          */}
-          <AccentColorProvider>
-            {children}
-          </AccentColorProvider>
-        </Providers>
+        {/*
+          AccentColorProvider is mounted at the root so that the --color-accent
+          CSS custom property is available to all pages and components.
+          The initial colour defaults to DEFAULT_ACCENT_COLOR; individual pages
+          (e.g. ProfilePage) can pass a user-specific saved colour via a nested
+          AccentColorProvider that overrides this root one.
+
+          NOTE: Both this root provider and any nested provider write to the
+          same document.documentElement CSS property, so whichever renders last
+          wins. This is safe for the current single-nesting use case but could
+          silently conflict if multiple nested providers exist simultaneously
+          (e.g. concurrent route segments).
+        */}
+        <AccentColorProvider>
+          <Providers>{children}</Providers>
+        </AccentColorProvider>
       </body>
     </html>
   );
