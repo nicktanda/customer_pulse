@@ -42,19 +42,13 @@ export function AccentColorProvider({
   const [accentColor, setAccentColorState] = useState<string>(resolved);
 
   // Sync CSS custom property whenever the colour changes.
+  // This single effect handles both initial mount and subsequent updates,
+  // so no separate mount-only effect is needed.
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.style.setProperty('--color-accent', accentColor);
     }
   }, [accentColor]);
-
-  // Also set the initial value on mount (SSR hydration safety).
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--color-accent', resolved);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const setAccentColor = (hex: string) => {
     if (!isValidHex(hex)) return;
