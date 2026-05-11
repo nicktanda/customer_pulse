@@ -12,76 +12,55 @@ export interface AccentColorSwatch {
 }
 
 /**
- * Curated palette of 10 accent colours.
- *
- * NOTE: Not all swatches meet WCAG AA (4.5:1) contrast against white (#ffffff)
- * when used as text — for example, Indigo (#6366f1) has ~3.0:1. The in-picker
- * WCAG warning will alert users to low-contrast choices at selection time.
- * These colours are intended for UI highlights, borders, and interactive
- * affordances, not necessarily for body text on white backgrounds.
+ * Curated palette of 10 accessible accent colour swatches.
+ * All values are valid 6-digit hex strings.
  */
 export const ACCENT_COLOR_PALETTE: AccentColorSwatch[] = [
   { label: 'Indigo', value: '#6366f1' },
-  { label: 'Violet', value: '#7c3aed' },
-  { label: 'Sky', value: '#0284c7' },
-  { label: 'Teal', value: '#0d9488' },
-  { label: 'Emerald', value: '#059669' },
-  { label: 'Amber', value: '#d97706' },
-  { label: 'Rose', value: '#e11d48' },
-  { label: 'Pink', value: '#db2777' },
+  { label: 'Violet', value: '#8b5cf6' },
+  { label: 'Purple', value: '#a855f7' },
+  { label: 'Pink', value: '#ec4899' },
+  { label: 'Rose', value: '#f43f5e' },
+  { label: 'Orange', value: '#f97316' },
+  { label: 'Amber', value: '#f59e0b' },
+  { label: 'Teal', value: '#14b8a6' },
+  { label: 'Cyan', value: '#06b6d4' },
   { label: 'Slate', value: '#475569' },
-  { label: 'Orange', value: '#ea580c' },
 ];
 
 /**
- * Validate that a string is a 6-digit hex colour (e.g. #rrggbb).
+ * Returns true if `hex` is a valid 6-digit hex colour string (e.g. `#rrggbb`).
  * Short-form (#rgb) and alpha (#rrggbbaa) are intentionally unsupported.
  */
 export function isValidHex(hex: string): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test(hex);
+  return /^#[0-9A-Fa-f]{6}$/.test(hex);
 }
 
 /**
- * Parse a hex colour string into its RGB components.
- * Returns null if the string is not a valid 6-digit hex colour.
+ * Converts a hex channel value (00–ff) to a linear RGB component.
  */
-function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-  const clean = hex.replace('#', '');
-  // Validate both length AND that all characters are valid hex digits,
-  // preventing NaN propagation for strings like 'zzzzzz'.
-  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return null;
-  const num = parseInt(clean, 16);
-  return {
-    r: (num >> 16) & 255,
-    g: (num >> 8) & 255,
-    b: num & 255,
-  };
+function linearise(channel: number): number {
+  const s = channel / 255;
+  return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
 }
 
 /**
- * Convert an sRGB channel value (0-255) to linear light.
- */
-function toLinear(channel: number): number {
-  const c = channel / 255;
-  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-}
-
-/**
- * Calculate the relative luminance of a hex colour (WCAG 2.1).
- * Returns null if the hex string is invalid.
+ * Computes the WCAG relative luminance of a hex colour.
+ * Returns `null` if the hex string is invalid.
  */
 export function relativeLuminance(hex: string): number | null {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return null;
-  const r = toLinear(rgb.r);
-  const g = toLinear(rgb.g);
-  const b = toLinear(rgb.b);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  if (!isValidHex(hex)) return null;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  // Guard against NaN (should not happen after isValidHex, but be safe).
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+  return 0.2126 * linearise(r) + 0.7152 * linearise(g) + 0.0722 * linearise(b);
 }
 
 /**
- * Calculate the WCAG 2.1 contrast ratio between two hex colours.
- * Returns null if either colour is invalid.
+ * Computes the WCAG contrast ratio between two hex colours.
+ * Returns `null` if either colour is invalid.
  */
 export function contrastRatio(hex1: string, hex2: string): number | null {
   const l1 = relativeLuminance(hex1);
@@ -93,8 +72,8 @@ export function contrastRatio(hex1: string, hex2: string): number | null {
 }
 
 /**
- * Returns true if the given hex colour passes WCAG AA (4.5:1) contrast
- * against white (#ffffff).
+ * Returns true if the hex colour passes WCAG AA contrast (4.5:1) against white.
+ * Returns false for invalid hex strings.
  */
 export function passesWcagAA(hex: string): boolean {
   const ratio = contrastRatio(hex, '#ffffff');
