@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { AccentColorPicker } from "./AccentColorPicker";
 import {
   ACCENT_STORAGE_KEY,
@@ -87,35 +87,35 @@ export function AccentColorSettings() {
     };
   }, []);
 
-  const scheduleSavedReset = () => {
+  const scheduleSavedReset = useCallback(() => {
     if (savedTimerRef.current !== null) {
       clearTimeout(savedTimerRef.current);
     }
     savedTimerRef.current = setTimeout(() => setSaved(false), 2500);
-  };
+  }, []);
 
-  const handleColorChange = (newColor: string) => {
+  const handleColorChange = useCallback((newColor: string) => {
     setColor(newColor);
     applyAccentColor(newColor);
     setSaved(false);
-  };
+  }, []);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     startTransition(async () => {
       await saveAccentColor(color);
       setSaved(true);
       scheduleSavedReset();
     });
-  };
+  }, [color, scheduleSavedReset]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     handleColorChange(DEFAULT_ACCENT);
     startTransition(async () => {
       await saveAccentColor(DEFAULT_ACCENT);
       setSaved(true);
       scheduleSavedReset();
     });
-  };
+  }, [handleColorChange, scheduleSavedReset]);
 
   if (!enabled) {
     return null;
