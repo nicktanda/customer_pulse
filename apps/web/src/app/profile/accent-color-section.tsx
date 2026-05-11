@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useTransition } from 'react';
+import React, { useRef, useTransition } from 'react';
 import { AccentColorPicker } from '@/components/accent-color-picker';
 import { useAccentColor } from '@/components/accent-color-provider';
 import { saveAccentColorAction } from './accent-color-action';
@@ -13,17 +13,22 @@ interface AccentColorSectionProps {
 
 export function AccentColorSection({
   userId,
-  initialColor,
+  initialColor: _initialColor,
   featureEnabled = false,
 }: AccentColorSectionProps) {
   const { accentColor, setAccentColor } = useAccentColor();
   const [, startTransition] = useTransition();
 
+  // Track the last committed (successfully saved or initial) colour using a
+  // ref so rapid clicks always roll back to the true last-committed value
+  // rather than an intermediate optimistic value.
+  const committedColorRef = useRef<string>(accentColor);
+
   if (!featureEnabled) return null;
 
   const handleChange = async (hex: string) => {
-    // Snapshot the previous colour so we can roll back on failure.
-    const previousColor = accentColor;
+    // Snapshot the last committed colour for rollback.
+    const previousCommitted = committedColorRef.current;
 
     // Optimistically update the UI.
     setAccentColor(hex);
@@ -33,16 +38,19 @@ export function AccentColorSection({
       try {
         const result = await saveAccentColorAction({ userId, accentColor: hex });
         if (!result.success) {
-          // Roll back the optimistic update.
-          setAccentColor(previousColor);
+          // Roll back to the last committed colour.
+          setAccentColor(previousCommitted);
           console.error(
             '[AccentColor] Failed to save preference:',
             result.error,
           );
+        } else {
+          // Advance the committed ref to the newly saved colour.
+          committedColorRef.current = hex;
         }
       } catch (err) {
-        // Roll back the optimistic update.
-        setAccentColor(previousColor);
+        // Roll back to the last committed colour.
+        setAccentColor(previousCommitted);
         console.error('[AccentColor] Failed to save preference:', err);
       }
     });
