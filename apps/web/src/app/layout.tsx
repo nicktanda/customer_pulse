@@ -7,6 +7,7 @@ import "./styles/accent-color.css";
 
 export const metadata: Metadata = {
   title: "xenoform.ai",
+  description: "Adaptive customer feedback intelligence.",
 };
 
 export default function RootLayout({
