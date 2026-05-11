@@ -20,7 +20,6 @@ import {
  */
 export function AccentColorInit() {
   useEffect(() => {
-    if (typeof window === "undefined") return;
     const featureEnabled =
       process.env.NEXT_PUBLIC_ACCENT_COLOR_ENABLED === "true" ||
       localStorage.getItem(ACCENT_FEATURE_FLAG_KEY) === "true";
