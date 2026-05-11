@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useId, useState } from 'react';
+import React, { useId, useState, useEffect } from 'react';
 import {
   ACCENT_PALETTE,
   DEFAULT_ACCENT,
@@ -25,29 +25,26 @@ export function AccentColourPicker({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [freeInput, setFreeInput] = useState(value);
 
+  // Sync freeInput when value changes externally (e.g. palette click or context reset)
+  useEffect(() => {
+    setFreeInput(value);
+  }, [value]);
+
   const passes = passesWCAG_AA(value);
   const ratio = contrastRatio(value, '#ffffff').toFixed(2);
 
   function handlePaletteClick(hex: string) {
     if (disabled) return;
-    setFreeInput(hex);
     onChange(hex);
   }
 
-  function handleFreePickChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const hex = e.target.value;
-    setFreeInput(hex);
-    if (isValidHex(hex)) onChange(hex);
-  }
-
-  function handleFreeTextChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleColourInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const hex = e.target.value;
     setFreeInput(hex);
     if (isValidHex(hex)) onChange(hex);
   }
 
   function handleReset() {
-    setFreeInput(DEFAULT_ACCENT);
     onChange(DEFAULT_ACCENT);
   }
 
@@ -81,6 +78,22 @@ export function AccentColourPicker({
               aria-label={swatch.label}
               disabled={disabled}
               onClick={() => handlePaletteClick(swatch.value)}
+              onKeyDown={(e) => {
+                if (disabled) return;
+                const swatches = ACCENT_PALETTE.map((s) => s.value);
+                const idx = swatches.indexOf(swatch.value);
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  const next = swatches[(idx + 1) % swatches.length];
+                  handlePaletteClick(next);
+                  (e.currentTarget.parentElement?.querySelectorAll('button')[((idx + 1) % swatches.length)] as HTMLButtonElement | undefined)?.focus();
+                } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  const prev = swatches[(idx - 1 + swatches.length) % swatches.length];
+                  handlePaletteClick(prev);
+                  (e.currentTarget.parentElement?.querySelectorAll('button')[((idx - 1 + swatches.length) % swatches.length)] as HTMLButtonElement | undefined)?.focus();
+                }
+              }}
               title={swatch.label}
               style={{
                 width: 32,
@@ -214,7 +227,7 @@ export function AccentColourPicker({
             id={freePickId}
             type="color"
             value={freeInput.length === 7 ? freeInput : value}
-            onChange={handleFreePickChange}
+            onChange={handleColourInputChange}
             disabled={disabled}
             style={{
               width: 36,
@@ -230,7 +243,7 @@ export function AccentColourPicker({
             type="text"
             aria-label="Hex colour value"
             value={freeInput}
-            onChange={handleFreeTextChange}
+            onChange={handleColourInputChange}
             maxLength={7}
             disabled={disabled}
             placeholder="#6366f1"
