@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
 import { AccentColorProvider } from '@/components/accent-color-provider';
+import { SiteNav } from '@/components/site-nav';
 
 export const metadata: Metadata = {
   title: 'xenoform.ai',
@@ -31,7 +32,10 @@ export default function RootLayout({
           (e.g. concurrent route segments).
         */}
         <AccentColorProvider>
-          <Providers>{children}</Providers>
+          <Providers>
+            <SiteNav />
+            {children}
+          </Providers>
         </AccentColorProvider>
       </body>
     </html>
