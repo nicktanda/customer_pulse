@@ -20,18 +20,18 @@ import {
  */
 export function AccentColorInit() {
   useEffect(() => {
-    const featureEnabled =
-      process.env.NEXT_PUBLIC_ACCENT_COLOR_ENABLED === "true" ||
-      localStorage.getItem(ACCENT_FEATURE_FLAG_KEY) === "true";
-    if (!featureEnabled) return;
-
     try {
+      const featureEnabled =
+        process.env.NEXT_PUBLIC_ACCENT_COLOR_ENABLED === "true" ||
+        localStorage.getItem(ACCENT_FEATURE_FLAG_KEY) === "true";
+      if (!featureEnabled) return;
+
       const stored = localStorage.getItem(ACCENT_STORAGE_KEY);
       if (stored && /^#[0-9A-Fa-f]{6}$/.test(stored)) {
         document.documentElement.style.setProperty(ACCENT_CSS_PROPERTY, stored);
       }
     } catch {
-      // Ignore storage errors
+      // Ignore storage errors (e.g. private-browsing mode)
     }
   }, []);
 
