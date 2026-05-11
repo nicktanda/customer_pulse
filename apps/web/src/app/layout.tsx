@@ -1,4 +1,5 @@
-import type { Metadata, ReactNode } from "next";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import "./globals.css";
 import { Providers } from "./providers";
 import { AccentColorInit } from "./components/AccentColorInit";
@@ -6,7 +7,6 @@ import "./styles/accent-color.css";
 
 export const metadata: Metadata = {
   title: "xenoform.ai",
-  description: "Adaptive customer feedback intelligence.",
 };
 
 export default function RootLayout({
