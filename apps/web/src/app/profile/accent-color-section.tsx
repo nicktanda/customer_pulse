@@ -22,14 +22,27 @@ export function AccentColorSection({
   if (!featureEnabled) return null;
 
   const handleChange = async (hex: string) => {
+    // Snapshot the previous colour so we can roll back on failure.
+    const previousColor = accentColor;
+
     // Optimistically update the UI.
     setAccentColor(hex);
 
-    // Persist via server action.
+    // Persist via server action and roll back on failure.
     startTransition(async () => {
       try {
-        await saveAccentColorAction({ userId, accentColor: hex });
+        const result = await saveAccentColorAction({ userId, accentColor: hex });
+        if (!result.success) {
+          // Roll back the optimistic update.
+          setAccentColor(previousColor);
+          console.error(
+            '[AccentColor] Failed to save preference:',
+            result.error,
+          );
+        }
       } catch (err) {
+        // Roll back the optimistic update.
+        setAccentColor(previousColor);
         console.error('[AccentColor] Failed to save preference:', err);
       }
     });
