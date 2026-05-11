@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useState } from 'react';
+import styles from './accent-color-picker.module.css';
 import {
   ACCENT_COLOR_PALETTE,
   DEFAULT_ACCENT_COLOR,
@@ -38,11 +39,13 @@ export function AccentColorPicker({
   const [freePickValue, setFreePickValue] = useState(current);
   const [saving, setSaving] = useState(false);
 
-  // Sync pending and freePickValue if the external value prop changes.
+  // Sync pending and freePickValue when the external value prop changes.
+  // `current` is always derived from `value`, so listing `value` in the
+  // dependency array is sufficient — no eslint suppression needed.
   useEffect(() => {
-    setPending(current);
-    setFreePickValue(current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const resolved = value && isValidHex(value) ? value : DEFAULT_ACCENT_COLOR;
+    setPending(resolved);
+    setFreePickValue(resolved);
   }, [value]);
 
   const handleSwatchClick = (hex: string) => {
@@ -77,186 +80,11 @@ export function AccentColorPicker({
   const isDirty = pending !== current;
 
   return (
-    <div className="accent-color-picker" aria-label="Accent colour picker">
-      <style>{`
-        .accent-color-picker {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          max-width: 420px;
-        }
-        .acp-label {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #374151;
-          margin: 0;
-        }
-        .acp-swatches {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-        }
-        .acp-swatch {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border: 3px solid transparent;
-          cursor: pointer;
-          transition: transform 0.1s ease, border-color 0.1s ease;
-          outline: none;
-          padding: 0;
-        }
-        .acp-swatch:hover:not(:disabled) {
-          transform: scale(1.15);
-        }
-        .acp-swatch:focus-visible {
-          outline: 2px solid var(--color-accent, ${DEFAULT_ACCENT_COLOR});
-          outline-offset: 2px;
-        }
-        .acp-swatch--selected {
-          border-color: #1f2937;
-          transform: scale(1.1);
-        }
-        .acp-swatch:disabled {
-          cursor: not-allowed;
-          opacity: 0.5;
-        }
-        .acp-advanced-toggle {
-          background: none;
-          border: none;
-          padding: 0;
-          color: var(--color-accent, ${DEFAULT_ACCENT_COLOR});
-          font-size: 0.8125rem;
-          cursor: pointer;
-          text-decoration: underline;
-          text-align: left;
-          width: fit-content;
-        }
-        .acp-advanced-toggle:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        .acp-free-pick {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .acp-free-pick input[type="color"] {
-          width: 44px;
-          height: 36px;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          cursor: pointer;
-          padding: 2px;
-          background: white;
-        }
-        .acp-free-pick-hex {
-          font-family: monospace;
-          font-size: 0.875rem;
-          border: 1px solid #d1d5db;
-          border-radius: 6px;
-          padding: 6px 10px;
-          width: 110px;
-          outline: none;
-        }
-        .acp-free-pick-hex:focus {
-          border-color: var(--color-accent, ${DEFAULT_ACCENT_COLOR});
-          box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, ${DEFAULT_ACCENT_COLOR}) 25%, transparent);
-        }
-        .acp-contrast-badge {
-          font-size: 0.75rem;
-          padding: 3px 8px;
-          border-radius: 9999px;
-          font-weight: 600;
-        }
-        .acp-contrast-pass {
-          background: #dcfce7;
-          color: #166534;
-        }
-        .acp-contrast-fail {
-          background: #fee2e2;
-          color: #991b1b;
-        }
-        .acp-contrast-warning {
-          font-size: 0.75rem;
-          color: #92400e;
-          background: #fef3c7;
-          padding: 6px 10px;
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .acp-preview {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 10px 14px;
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-        }
-        .acp-preview-dot {
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          flex-shrink: 0;
-        }
-        .acp-preview-btn {
-          font-size: 0.8125rem;
-          font-weight: 600;
-          padding: 4px 12px;
-          border-radius: 6px;
-          border: none;
-          cursor: default;
-          color: white;
-        }
-        .acp-preview-text {
-          font-size: 0.8125rem;
-          color: #374151;
-        }
-        .acp-actions {
-          display: flex;
-          gap: 8px;
-        }
-        .acp-save-btn {
-          font-size: 0.875rem;
-          font-weight: 600;
-          padding: 8px 20px;
-          border-radius: 8px;
-          border: none;
-          cursor: pointer;
-          color: white;
-          transition: opacity 0.15s ease;
-        }
-        .acp-save-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        .acp-cancel-btn {
-          font-size: 0.875rem;
-          font-weight: 600;
-          padding: 8px 16px;
-          border-radius: 8px;
-          border: 1px solid #d1d5db;
-          background: white;
-          cursor: pointer;
-          color: #374151;
-          transition: background 0.15s ease;
-        }
-        .acp-cancel-btn:hover:not(:disabled) {
-          background: #f3f4f6;
-        }
-        .acp-cancel-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      `}</style>
-
-      <p className="acp-label">Accent Colour</p>
+    <div className={styles.accentColorPicker} aria-label="Accent colour picker">
+      <p className={styles.label}>Accent Colour</p>
 
       {/* Palette swatches */}
-      <div className="acp-swatches" role="listbox" aria-label="Colour palette">
+      <div className={styles.swatches} role="listbox" aria-label="Colour palette">
         {ACCENT_COLOR_PALETTE.map((swatch) => (
           <button
             key={swatch.value}
@@ -265,8 +93,8 @@ export function AccentColorPicker({
             aria-selected={pending === swatch.value}
             aria-label={swatch.label}
             title={swatch.label}
-            className={`acp-swatch${
-              pending === swatch.value ? ' acp-swatch--selected' : ''
+            className={`${styles.swatch}${
+              pending === swatch.value ? ` ${styles.swatchSelected}` : ''
             }`}
             style={{ backgroundColor: swatch.value }}
             onClick={() => handleSwatchClick(swatch.value)}
@@ -278,7 +106,7 @@ export function AccentColorPicker({
       {/* Advanced free-pick toggle */}
       <button
         type="button"
-        className="acp-advanced-toggle"
+        className={styles.advancedToggle}
         onClick={() => setShowAdvanced((v) => !v)}
         disabled={disabled}
         aria-expanded={showAdvanced}
@@ -287,7 +115,7 @@ export function AccentColorPicker({
       </button>
 
       {showAdvanced && (
-        <div className="acp-free-pick">
+        <div className={styles.freePick}>
           <input
             id={`${instanceId}-color`}
             type="color"
@@ -301,7 +129,7 @@ export function AccentColorPicker({
           />
           <input
             type="text"
-            className="acp-free-pick-hex"
+            className={styles.freePickHex}
             value={freePickValue}
             onChange={handleFreePickChange}
             maxLength={7}
@@ -311,8 +139,8 @@ export function AccentColorPicker({
           />
           {info && (
             <span
-              className={`acp-contrast-badge ${
-                info.passes ? 'acp-contrast-pass' : 'acp-contrast-fail'
+              className={`${styles.contrastBadge} ${
+                info.passes ? styles.contrastPass : styles.contrastFail
               }`}
               title={`Contrast ratio ${info.ratio}:1`}
             >
@@ -324,7 +152,7 @@ export function AccentColorPicker({
 
       {/* WCAG warning */}
       {info && !info.passes && (
-        <div className="acp-contrast-warning" role="alert">
+        <div className={styles.contrastWarning} role="alert">
           <span aria-hidden="true">⚠️</span>
           This colour ({info.ratio}:1) may not meet WCAG AA contrast (4.5:1)
           against white backgrounds.
@@ -332,29 +160,29 @@ export function AccentColorPicker({
       )}
 
       {/* Preview */}
-      <div className="acp-preview">
+      <div className={styles.preview}>
         <span
-          className="acp-preview-dot"
+          className={styles.previewDot}
           style={{ backgroundColor: pending }}
           aria-hidden="true"
         />
         <span
-          className="acp-preview-btn"
+          className={styles.previewBtn}
           style={{ backgroundColor: pending }}
           aria-hidden="true"
         >
           Button
         </span>
-        <span className="acp-preview-text">
+        <span className={styles.previewText}>
           Preview of your accent colour
         </span>
       </div>
 
       {/* Actions */}
-      <div className="acp-actions">
+      <div className={styles.actions}>
         <button
           type="button"
-          className="acp-save-btn"
+          className={styles.saveBtn}
           style={{ backgroundColor: pending }}
           onClick={handleSave}
           disabled={!isDirty || saving || disabled || !isValidHex(pending)}
@@ -364,7 +192,7 @@ export function AccentColorPicker({
         {isDirty && (
           <button
             type="button"
-            className="acp-cancel-btn"
+            className={styles.cancelBtn}
             onClick={() => {
               setPending(current);
               setFreePickValue(current);
