@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useId, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import {
   ACCENT_COLOR_PALETTE,
   DEFAULT_ACCENT_COLOR,
@@ -17,6 +17,14 @@ interface AccentColorPickerProps {
   disabled?: boolean;
 }
 
+function getContrastInfo(
+  hex: string,
+): { ratio: number; passes: boolean } | null {
+  const ratio = contrastRatio(hex, '#ffffff');
+  if (ratio === null) return null;
+  return { ratio: Math.round(ratio * 100) / 100, passes: passesWcagAA(hex) };
+}
+
 export function AccentColorPicker({
   value,
   onChange,
@@ -30,11 +38,12 @@ export function AccentColorPicker({
   const [freePickValue, setFreePickValue] = useState(current);
   const [saving, setSaving] = useState(false);
 
-  const contrastInfo = useCallback((hex: string) => {
-    const ratio = contrastRatio(hex, '#ffffff');
-    if (ratio === null) return null;
-    return { ratio: Math.round(ratio * 100) / 100, passes: passesWcagAA(hex) };
-  }, []);
+  // Sync pending and freePickValue if the external value prop changes.
+  useEffect(() => {
+    setPending(current);
+    setFreePickValue(current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const handleSwatchClick = (hex: string) => {
     if (disabled) return;
@@ -45,6 +54,10 @@ export function AccentColorPicker({
   const handleFreePickChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setFreePickValue(val);
+    // isValidHex only accepts exactly 6-digit hex strings (e.g. #rrggbb).
+    // Short-form (#rgb) and alpha (#rrggbbaa) are intentionally unsupported
+    // because <input type="color"> always emits 6-digit values and the
+    // palette exclusively uses 6-digit values.
     if (isValidHex(val)) {
       setPending(val);
     }
@@ -60,7 +73,7 @@ export function AccentColorPicker({
     }
   };
 
-  const info = contrastInfo(pending);
+  const info = getContrastInfo(pending);
   const isDirty = pending !== current;
 
   return (
