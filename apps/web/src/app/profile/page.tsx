@@ -51,7 +51,6 @@ export default async function ProfilePage() {
 
         <AccentColorSection
           userId={userId}
-          initialColor={savedAccentColor}
           featureEnabled={accentColorEnabled}
         />
       </main>
