@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import {
   isValidHex,
   relativeLuminance,
@@ -131,11 +132,12 @@ describe('ACCENT_COLOR_PALETTE', () => {
     }
   });
 
-  it('contains at least one swatch', () => {
-    expect(ACCENT_COLOR_PALETTE.length).toBeGreaterThan(0);
+  it('contains DEFAULT_ACCENT_COLOR', () => {
+    const values = ACCENT_COLOR_PALETTE.map((s) => s.value);
+    expect(values).toContain(DEFAULT_ACCENT_COLOR);
   });
 
-  it('contains no duplicate values', () => {
+  it('has no duplicate hex values', () => {
     const values = ACCENT_COLOR_PALETTE.map((s) => s.value);
     const unique = new Set(values);
     expect(unique.size).toBe(values.length);
