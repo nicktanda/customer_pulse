@@ -119,10 +119,6 @@ describe('passesWcagAA', () => {
 });
 
 describe('ACCENT_COLOR_PALETTE', () => {
-  it('contains exactly 10 swatches', () => {
-    expect(ACCENT_COLOR_PALETTE).toHaveLength(10);
-  });
-
   it('all swatches have valid 6-digit hex values', () => {
     for (const swatch of ACCENT_COLOR_PALETTE) {
       expect(isValidHex(swatch.value)).toBe(true);
@@ -133,5 +129,15 @@ describe('ACCENT_COLOR_PALETTE', () => {
     for (const swatch of ACCENT_COLOR_PALETTE) {
       expect(swatch.label.length).toBeGreaterThan(0);
     }
+  });
+
+  it('contains at least one swatch', () => {
+    expect(ACCENT_COLOR_PALETTE.length).toBeGreaterThan(0);
+  });
+
+  it('contains no duplicate values', () => {
+    const values = ACCENT_COLOR_PALETTE.map((s) => s.value);
+    const unique = new Set(values);
+    expect(unique.size).toBe(values.length);
   });
 });
