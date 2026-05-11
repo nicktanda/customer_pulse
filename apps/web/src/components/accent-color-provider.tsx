@@ -20,7 +20,15 @@ export function useAccentColor(): AccentColorContextValue {
 interface AccentColorProviderProps {
   /** Initial accent colour loaded from the user's saved preference. */
   initialColor?: string | null;
-  /** Whether the accent colour feature is enabled (feature flag). */
+  /**
+   * Whether the accent colour feature is enabled (feature flag).
+   *
+   * NOTE: `useState` is initialised from `resolved` at mount time.
+   * If `initialColor` or `enabled` change after mount (e.g. a user logs
+   * in mid-session without a full page reload), the context value will
+   * not automatically re-sync. For the current SSR-driven use case this
+   * is acceptable because the page re-renders from the server on navigation.
+   */
   enabled?: boolean;
   children: React.ReactNode;
 }
@@ -28,6 +36,14 @@ interface AccentColorProviderProps {
 /**
  * Wraps the application and injects the --color-accent CSS custom property
  * onto the document root whenever the accent colour changes.
+ *
+ * IMPORTANT — nested provider caveat: both the root provider (in layout.tsx)
+ * and any nested provider (e.g. ProfilePage) write to the same
+ * document.documentElement CSS property. Whichever renders last wins.
+ * This is safe for the current single-nesting pattern but could silently
+ * conflict if multiple nested providers are active simultaneously
+ * (e.g. concurrent route segments). Prefer a ref-count or scope mechanism
+ * if that pattern emerges.
  */
 export function AccentColorProvider({
   initialColor,
