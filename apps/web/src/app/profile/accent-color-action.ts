@@ -10,8 +10,9 @@ export interface SaveAccentColorInput {
 /**
  * Server action: persist the user's accent colour preference.
  *
- * IMPORTANT: Before enabling real DB persistence, verify `userId` against
- * the authenticated session (e.g. via `getServerSession`) to prevent one
+ * IMPORTANT: Before enabling real DB persistence, replace the placeholder
+ * session check below with a real `getServerSession` (or equivalent) call
+ * to verify `userId` against the authenticated session. This prevents one
  * user from overwriting another user's preferences.
  *
  * Replace the placeholder persistence logic below with your actual
@@ -26,8 +27,28 @@ export async function saveAccentColorAction(
     return { success: false, error: 'Missing userId' };
   }
 
-  // NOTE: `userId` must be validated against the authenticated session here
-  // before any DB write to prevent privilege escalation.
+  // ---------------------------------------------------------------------------
+  // AUTH GUARD — replace this stub with a real session check before shipping.
+  //
+  // Example:
+  //   const session = await getServerSession(authOptions);
+  //   if (!session || session.user.id !== userId) {
+  //     return { success: false, error: 'Unauthorised' };
+  //   }
+  //
+  // Until real auth is wired, reject all writes so no data is mutated by
+  // unauthenticated or mis-authenticated callers.
+  // ---------------------------------------------------------------------------
+  const isAuthStubEnabled = process.env.ACCENT_COLOR_AUTH_STUB === 'allow';
+  if (!isAuthStubEnabled) {
+    // In production (or any env where the stub is not explicitly unlocked),
+    // refuse to write until real session validation is in place.
+    return {
+      success: false,
+      error:
+        'Server action requires authenticated session. Wire getServerSession before enabling.',
+    };
+  }
 
   if (!isValidHex(accentColor)) {
     return { success: false, error: 'Invalid hex colour value' };
@@ -35,12 +56,6 @@ export async function saveAccentColorAction(
 
   // ---------------------------------------------------------------------------
   // TODO: replace with real DB persistence once user_preferences schema is set.
-  // Also add session validation:
-  //
-  //   const session = await getServerSession(authOptions);
-  //   if (!session || session.user.id !== userId) {
-  //     return { success: false, error: 'Unauthorised' };
-  //   }
   //
   // Example (Drizzle):
   //
