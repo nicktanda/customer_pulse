@@ -68,10 +68,13 @@ export async function saveAccentColorAction(
   //     });
   // ---------------------------------------------------------------------------
 
-  // Temporary: log to confirm the action is wired correctly.
-  console.info(
-    `[AccentColor] Saved accent colour ${accentColor} for user ${userId}`,
-  );
+  // Development-only log: removed from production builds to avoid leaking
+  // user IDs to server logs.
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(
+      `[AccentColor] Saved accent colour ${accentColor} for user ${userId}`,
+    );
+  }
 
   return { success: true };
 }
