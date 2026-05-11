@@ -11,13 +11,14 @@ import { ACCENT_COLOR_FEATURE_FLAG } from '@/lib/accent-color';
  *
  * NOTE: `userId` is hard-coded here as a placeholder. Replace with real session
  * lookup (e.g. `getServerSession`, `auth()`, etc.) before shipping. The server
- * action MUST verify the userId against the authenticated session to prevent
- * one user from overwriting another's preferences.
+ * action requires session validation (controlled by the `ACCENT_COLOR_AUTH_STUB`
+ * env var) to prevent one user from overwriting another's preferences.
  */
 export default async function ProfilePage() {
   // TODO: replace with real session lookup, e.g.:
   //   const session = await getServerSession(authOptions);
-  //   const userId = session?.user?.id ?? '';
+  //   if (!session?.user?.id) notFound();
+  //   const userId = session.user.id;
   const userId = 'placeholder-user-id';
 
   // TODO: replace with real DB fetch of the user's saved accent colour.
