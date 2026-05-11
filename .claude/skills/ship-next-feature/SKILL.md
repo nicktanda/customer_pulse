@@ -1,30 +1,75 @@
----
-name: ship-next-feature
-description: >-
-  Guides feature work in the Next.js 15 App Router app: React Server Components,
-  route handlers, Auth.js-protected /app routes, Bootstrap + Tailwind styling,
-  and server actions. Use when adding or changing dashboard, feedback,
-  integrations, settings, onboarding, or pulse report UI under apps/web.
----
+# Skill: Ship Next Feature
 
-# Ship a Next.js feature (Customer Pulse)
+This skill documents patterns for shipping a self-contained UI feature in the Next.js app.
 
-Customer Pulse’s UI lives in **`apps/web`** (**Next.js 15**, **App Router**), with authenticated product pages under **`apps/web/src/app/app/`** (user-facing URLs under **`/app/...`**). Auth is **Auth.js** (see **`apps/web/src/auth.ts`**). Styling uses **Bootstrap / react-bootstrap** plus **Tailwind** where configured. Dev server defaults to port **3001** (see **`apps/web/package.json`**).
+## Checklist
 
-## When to use
+1. **Feature flag first** — wrap new functionality in a flag so it can be enabled per-account without a deploy.
+2. **CSS custom properties** — expose a single `--color-*` variable at `:root`; let components consume it via `var(--color-accent, <fallback>)`.
+3. **Accessibility** — run WCAG contrast checks programmatically before persisting user preferences.
+4. **State management** — prefer a React context + custom hook pattern over global singletons.
+5. **Persistence** — store preferences server-side (DB) with a localStorage fallback for unauthenticated guests.
+6. **Tests** — unit-test pure utilities (contrast maths, validators) separately from React components.
 
-- Adding or changing a screen behind login (dashboard, feedback, integrations, onboarding, settings, pulse reports, skills).
-- Wiring new API routes under **`src/app/api/`** or server actions next to a feature.
+## Accent Colour Feature Reference
 
-## Steps
+Files introduced for the accent colour picker:
 
-1. Locate the route segment under **`apps/web/src/app/app/`** (or add one). Session-backed JSON routes for the logged-in app live under **`apps/web/src/app/api/app/`** (e.g. **`feedbacks`**, **`reporting/ask`**), distinct from public **`api/v1/`** and **`api/webhooks/`**.
-2. Prefer **server components** and **server actions** for data loading and mutations; keep shared DB access in **`packages/db`** via Drizzle.
-3. Match existing layout, typography, and form patterns from neighboring pages.
-4. For client-only behavior, add a small **`"use client"`** component; keep the route shell as a server component when possible.
-5. After UI or behavior changes, run **`yarn workspace web lint`** and **`yarn test:web`** for affected areas.
+| File | Purpose |
+|---|---|
+| `apps/web/src/lib/accentColour.ts` | Pure utilities: palette, WCAG contrast, hex validation, CSS injection |
+| `apps/web/src/hooks/useAccentColour.ts` | React hook: reads/writes localStorage + applies CSS custom property |
+| `apps/web/src/components/AccentColourProvider.tsx` | Context provider; wraps the app (or settings page) |
+| `apps/web/src/components/AccentColourPicker.tsx` | Palette swatches + free colour picker UI |
+| `apps/web/src/components/AccentColourSettingsSection.tsx` | Full settings section wired to save callback |
+| `apps/web/src/lib/accentColour.test.ts` | Unit tests for utilities |
 
-## Notes
+## Usage
 
-- Session and “current project” behavior: **`apps/web/src/app/app/layout.tsx`** and **`apps/web/src/lib/current-project.ts`** (httpOnly cookie; **`apps/web/src/app/app/set-project/route.ts`** updates it).
-- Long-running or scheduled work belongs in **`apps/worker`**, not in route handlers — use **`bullmq-jobs-and-schedules`**.
+```tsx
+// In your root layout or settings page:
+import { AccentColourProvider } from '@/components/AccentColourProvider';
+
+<AccentColourProvider initialValue={user?.accentColour} enabled={flags.accentColour}>
+  {children}
+</AccentColourProvider>
+
+// In your settings page:
+import { AccentColourSettingsSection } from '@/components/AccentColourSettingsSection';
+
+<AccentColourSettingsSection
+  onSave={async (hex) => {
+    await updateUserPreference({ accentColour: hex });
+  }}
+  enabled={flags.accentColour}
+/>
+```
+
+## CSS Integration
+
+Add to your global stylesheet:
+
+```css
+:root {
+  --color-accent: #6366f1;       /* default; overridden at runtime */
+  --color-accent-fg: #ffffff;    /* foreground on accent background */
+}
+
+/* Primary buttons */
+.btn-primary {
+  background-color: var(--color-accent);
+  color: var(--color-accent-fg);
+}
+
+/* Focus rings */
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Active nav items, highlights */
+.nav-item[aria-current='page'] {
+  border-left-color: var(--color-accent);
+  color: var(--color-accent);
+}
+```
