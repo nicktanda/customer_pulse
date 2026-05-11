@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useRef, useState, useTransition } from "react";
 import { AccentColorPicker } from "./AccentColorPicker";
-
-const FEATURE_FLAG_KEY = "accent_color_enabled";
-const STORAGE_KEY = "user_accent_color";
-const DEFAULT_ACCENT = "#4F46E5";
-const CSS_PROPERTY = "--color-accent";
+import {
+  ACCENT_STORAGE_KEY,
+  ACCENT_FEATURE_FLAG_KEY,
+  ACCENT_CSS_PROPERTY,
+  DEFAULT_ACCENT,
+} from "../lib/accentColorConstants";
 
 /**
  * Reads a simple feature flag from localStorage (or env).
@@ -14,10 +15,9 @@ const CSS_PROPERTY = "--color-accent";
  */
 function isAccentColorEnabled(): boolean {
   if (typeof window === "undefined") return false;
-  // Check env override first (set NEXT_PUBLIC_ACCENT_COLOR_ENABLED=true to enable)
   if (process.env.NEXT_PUBLIC_ACCENT_COLOR_ENABLED === "true") return true;
   try {
-    return localStorage.getItem(FEATURE_FLAG_KEY) === "true";
+    return localStorage.getItem(ACCENT_FEATURE_FLAG_KEY) === "true";
   } catch {
     return false;
   }
@@ -28,22 +28,25 @@ function isAccentColorEnabled(): boolean {
  */
 function applyAccentColor(color: string): void {
   if (typeof document === "undefined") return;
-  document.documentElement.style.setProperty(CSS_PROPERTY, color);
+  document.documentElement.style.setProperty(ACCENT_CSS_PROPERTY, color);
 }
 
 /**
- * Persists the chosen colour. In production this would call an API route to
- * save the preference against the user's account; here we use localStorage as
- * a lightweight stand-in that can be swapped out easily.
+ * Persists the chosen colour.
+ * TODO: replace localStorage with fetch('/api/user/preferences', { method: 'PATCH', … })
+ *
+ * NOTE: Passing an async callback to startTransition is not yet officially
+ * supported in React 18 (it is in React 19). isPending may return to false
+ * before the promise resolves. Consider upgrading to React 19 or using a
+ * manual loading state instead.
  */
 async function saveAccentColor(color: string): Promise<void> {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, color);
+    localStorage.setItem(ACCENT_STORAGE_KEY, color);
   } catch {
     // Silently ignore storage errors
   }
-  // TODO: replace with fetch('/api/user/preferences', { method: 'PATCH', body: JSON.stringify({ accentColor: color }) })
 }
 
 /**
@@ -52,7 +55,7 @@ async function saveAccentColor(color: string): Promise<void> {
 function loadAccentColor(): string {
   if (typeof window === "undefined") return DEFAULT_ACCENT;
   try {
-    return localStorage.getItem(STORAGE_KEY) ?? DEFAULT_ACCENT;
+    return localStorage.getItem(ACCENT_STORAGE_KEY) ?? DEFAULT_ACCENT;
   } catch {
     return DEFAULT_ACCENT;
   }
@@ -63,6 +66,7 @@ export function AccentColorSettings() {
   const [color, setColor] = useState(DEFAULT_ACCENT);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const flagOn = isAccentColorEnabled();
@@ -74,6 +78,22 @@ export function AccentColorSettings() {
     }
   }, []);
 
+  // Clear any pending "Saved" timer on unmount to avoid state updates after unmount.
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current !== null) {
+        clearTimeout(savedTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleSavedReset = () => {
+    if (savedTimerRef.current !== null) {
+      clearTimeout(savedTimerRef.current);
+    }
+    savedTimerRef.current = setTimeout(() => setSaved(false), 2500);
+  };
+
   const handleColorChange = (newColor: string) => {
     setColor(newColor);
     applyAccentColor(newColor);
@@ -84,7 +104,7 @@ export function AccentColorSettings() {
     startTransition(async () => {
       await saveAccentColor(color);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      scheduleSavedReset();
     });
   };
 
@@ -93,7 +113,7 @@ export function AccentColorSettings() {
     startTransition(async () => {
       await saveAccentColor(DEFAULT_ACCENT);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      scheduleSavedReset();
     });
   };
 
@@ -102,13 +122,19 @@ export function AccentColorSettings() {
   }
 
   return (
-    <section className="accent-color-settings" aria-labelledby="accent-color-settings-heading">
-      <h3 id="accent-color-settings-heading" className="accent-color-settings__heading">
+    <section
+      className="accent-color-settings"
+      aria-labelledby="accent-color-settings-heading"
+    >
+      <h3
+        id="accent-color-settings-heading"
+        className="accent-color-settings__heading"
+      >
         Accent colour
       </h3>
       <p className="accent-color-settings__description">
-        Choose a highlight colour used for buttons, active states, and focus rings
-        throughout the app.
+        Choose a highlight colour used for buttons, active states, and focus
+        rings throughout the app.
       </p>
 
       <div className="accent-color-settings__preview">
@@ -143,7 +169,7 @@ export function AccentColorSettings() {
           onClick={handleSave}
           disabled={isPending}
         >
-          {isPending ? "Saving…" : saved ? "Saved ✓" : "Save preference"}
+          {isPending ? "Saving\u2026" : saved ? "Saved \u2713" : "Save preference"}
         </button>
         <button
           type="button"
