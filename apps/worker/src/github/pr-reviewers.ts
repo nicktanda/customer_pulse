@@ -724,9 +724,23 @@ export async function reviewPullRequest(
       return;
     }
 
-    // Push fix commits to the PR branch
-    for (const file of fixes.files) {
-      await commitFile(headers, creds.owner, creds.repo, pr.branchName, file, fixes.commit_message);
+    // Push fix commits to the PR branch. If any individual commit fails
+    // (e.g. the model emitted a path that GitHub rejects), stop the loop
+    // gracefully with a comment instead of throwing — otherwise the
+    // outer non-fatal handler swallows the error and the PR is left in
+    // a half-fixed state with no signal to the user.
+    try {
+      for (const file of fixes.files) {
+        await commitFile(headers, creds.owner, creds.repo, pr.branchName, file, fixes.commit_message);
+      }
+    } catch (commitErr) {
+      const msg = commitErr instanceof Error ? commitErr.message : String(commitErr);
+      await postPrComment(
+        headers, creds.owner, creds.repo, pr.prNumber,
+        `⚠️ **Auto-fix partially applied but stopped.** A subsequent fix commit failed: \`${msg}\`. A human should address the remaining review feedback.`,
+      );
+      console.warn(`${tag} — commitFile threw, stopping: ${msg}`);
+      return;
     }
 
     // Update the tracked files on the PR record

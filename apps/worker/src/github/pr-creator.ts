@@ -183,14 +183,17 @@ export async function commitFile(
     return;
   }
 
-  // Get current file SHA if modifying
+  // Always probe for an existing blob SHA so create vs. modify becomes
+  // equivalent: if a file already exists at the path, we PUT with its sha
+  // (modify); if not, we PUT without (create). This makes commits robust
+  // to the auto-fix model emitting the wrong `action` for an existing
+  // path — without this, a "create" against an existing file 422s with
+  // `"sha" wasn't supplied` and kills the review loop.
   let sha: string | undefined;
-  if (file.action === "modify") {
-    const getRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${branch}`, { headers });
-    if (getRes.ok) {
-      const getJson = (await getRes.json()) as { sha?: string };
-      sha = getJson.sha;
-    }
+  const probeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${branch}`, { headers });
+  if (probeRes.ok) {
+    const probeJson = (await probeRes.json()) as { sha?: string };
+    sha = probeJson.sha;
   }
 
   const content = file.content ?? "";
