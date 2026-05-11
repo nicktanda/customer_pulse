@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { DEFAULT_ACCENT_COLOR, isValidHex } from '@/lib/accent-color';
 
 interface AccentColorContextValue {
@@ -39,11 +39,9 @@ interface AccentColorProviderProps {
  *
  * IMPORTANT — nested provider caveat: both the root provider (in layout.tsx)
  * and any nested provider (e.g. ProfilePage) write to the same
- * document.documentElement CSS property. Whichever renders last wins.
- * This is safe for the current single-nesting pattern but could silently
- * conflict if multiple nested providers are active simultaneously
- * (e.g. concurrent route segments). Prefer a ref-count or scope mechanism
- * if that pattern emerges.
+ * document.documentElement CSS property. On unmount, this provider restores
+ * the previous value it observed at mount time so the root provider's colour
+ * is preserved when navigating away from a page that uses a nested provider.
  */
 export function AccentColorProvider({
   initialColor,
@@ -57,13 +55,32 @@ export function AccentColorProvider({
 
   const [accentColor, setAccentColorState] = useState<string>(resolved);
 
-  // Sync CSS custom property whenever the colour changes.
-  // This single effect handles both initial mount and subsequent updates,
-  // so no separate mount-only effect is needed.
+  // Track the CSS custom property value that was set before this provider
+  // mounted so we can restore it on unmount (nested provider cleanup).
+  const previousCssValueRef = useRef<string | null>(null);
+
+  // Capture the pre-mount CSS value once on mount.
   useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--color-accent', accentColor);
-    }
+    previousCssValueRef.current =
+      document.documentElement.style.getPropertyValue('--color-accent') || null;
+
+    return () => {
+      // Restore the previous value when this provider unmounts (e.g. when
+      // navigating away from a page that uses a nested AccentColorProvider).
+      if (previousCssValueRef.current !== null) {
+        document.documentElement.style.setProperty(
+          '--color-accent',
+          previousCssValueRef.current,
+        );
+      } else {
+        document.documentElement.style.removeProperty('--color-accent');
+      }
+    };
+  }, []);
+
+  // Sync CSS custom property whenever the colour changes.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--color-accent', accentColor);
   }, [accentColor]);
 
   const setAccentColor = (hex: string) => {
