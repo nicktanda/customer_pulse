@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useAccentColour } from '../hooks/useAccentColour';
+import { useAccentColour } from '../lib/useAccentColour';
 
 interface AccentColourContextValue {
   accent: string;
