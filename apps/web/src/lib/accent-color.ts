@@ -12,9 +12,13 @@ export interface AccentColorSwatch {
 }
 
 /**
- * Curated palette of 10 accessible accent colours.
- * All colours are chosen to meet WCAG AA (4.5:1) contrast against white (#ffffff)
- * when used as text, and are visually distinct.
+ * Curated palette of 10 accent colours.
+ *
+ * NOTE: Not all swatches meet WCAG AA (4.5:1) contrast against white (#ffffff)
+ * when used as text — for example, Indigo (#6366f1) has ~3.0:1. The in-picker
+ * WCAG warning will alert users to low-contrast choices at selection time.
+ * These colours are intended for UI highlights, borders, and interactive
+ * affordances, not necessarily for body text on white backgrounds.
  */
 export const ACCENT_COLOR_PALETTE: AccentColorSwatch[] = [
   { label: 'Indigo', value: '#6366f1' },
@@ -88,6 +92,11 @@ export function passesWcagAA(hex: string): boolean {
 
 /**
  * Validate a hex colour string format.
+ *
+ * Only exactly 6-digit hex strings (e.g. `#rrggbb`) are accepted.
+ * Short-form (`#rgb`) and alpha (`#rrggbbaa`) are intentionally unsupported
+ * because `<input type="color">` always emits 6-digit lowercase hex and the
+ * palette exclusively uses 6-digit values.
  */
 export function isValidHex(value: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(value);
