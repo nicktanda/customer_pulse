@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { DEFAULT_ACCENT } from "../lib/accentColorConstants";
 
 const CURATED_PALETTE = [
   { name: "Indigo", value: "#4F46E5" },
@@ -15,26 +16,25 @@ const CURATED_PALETTE = [
   { name: "Orange", value: "#EA580C" },
 ];
 
-const DEFAULT_ACCENT = "#4F46E5";
-
 /**
  * Computes relative luminance for a hex colour.
  * https://www.w3.org/TR/WCAG20/#relativeluminancedef
+ * Uses the corrected WCAG 2.1 errata threshold of 0.04045.
  */
-function relativeLuminance(hex: string): number {
+export function relativeLuminance(hex: string): number {
   const clean = hex.replace("#", "");
   const r = parseInt(clean.substring(0, 2), 16) / 255;
   const g = parseInt(clean.substring(2, 4), 16) / 255;
   const b = parseInt(clean.substring(4, 6), 16) / 255;
   const linearise = (c: number) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   return 0.2126 * linearise(r) + 0.7152 * linearise(g) + 0.0722 * linearise(b);
 }
 
 /**
  * Returns the WCAG contrast ratio between two hex colours.
  */
-function contrastRatio(hex1: string, hex2: string): number {
+export function contrastRatio(hex1: string, hex2: string): number {
   const l1 = relativeLuminance(hex1);
   const l2 = relativeLuminance(hex2);
   const lighter = Math.max(l1, l2);
@@ -44,12 +44,14 @@ function contrastRatio(hex1: string, hex2: string): number {
 
 /**
  * Returns true if the colour passes WCAG AA (4.5:1) against white (#ffffff).
+ * TODO: consider also checking against the page's actual background colour
+ * to avoid false-safe results on dark/coloured backgrounds.
  */
-function passesWCAG_AA(hex: string): boolean {
+export function passesWCAG_AA(hex: string): boolean {
   return contrastRatio(hex, "#ffffff") >= 4.5;
 }
 
-function isValidHex(value: string): boolean {
+export function isValidHex(value: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(value);
 }
 
@@ -67,6 +69,12 @@ export function AccentColorPicker({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [freePickValue, setFreePickValue] = useState(currentColor);
   const [freePickInput, setFreePickInput] = useState(currentColor);
+
+  // Synchronise internal state when the parent resets or changes currentColor.
+  useEffect(() => {
+    setFreePickValue(currentColor);
+    setFreePickInput(currentColor);
+  }, [currentColor]);
 
   const handlePaletteSelect = useCallback(
     (color: string) => {
@@ -130,10 +138,11 @@ export function AccentColorPicker({
       <button
         type="button"
         className="accent-color-picker__advanced-toggle"
+        aria-expanded={showAdvanced}
         onClick={() => setShowAdvanced((v) => !v)}
         disabled={disabled}
       >
-        {showAdvanced ? "Hide advanced" : "Custom colour…"}
+        {showAdvanced ? "Hide advanced" : "Custom colour\u2026"}
       </button>
 
       {showAdvanced && (
