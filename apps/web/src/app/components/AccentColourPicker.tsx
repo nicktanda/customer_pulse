@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import "../styles/accent-colour-picker.css";
 
 export const CURATED_PALETTE: { label: string; value: string }[] = [
   { label: "Indigo", value: "#6366f1" },
@@ -47,6 +48,11 @@ function applyAccentColour(colour: string) {
   }
 }
 
+/**
+ * Reads the stored accent colour from localStorage.
+ * Safe to call only after the component has mounted (client-side only).
+ * Falls back to the default accent when localStorage is unavailable.
+ */
 export function loadStoredAccent(): string {
   if (typeof localStorage === "undefined") return DEFAULT_ACCENT;
   return localStorage.getItem(STORAGE_KEY) ?? DEFAULT_ACCENT;
@@ -61,7 +67,11 @@ function saveAccent(colour: string) {
 interface AccentColourPickerProps {
   /** Called whenever a valid new accent colour is committed */
   onChange?: (colour: string) => void;
-  /** Initial value; falls back to localStorage then default */
+  /**
+   * Initial value; falls back to localStorage then default.
+   * Note: if provided from a server preference, it overrides the stored
+   * local value on first render but does not automatically update localStorage.
+   */
   initialColour?: string;
 }
 
@@ -69,9 +79,15 @@ export default function AccentColourPicker({
   onChange,
   initialColour,
 }: AccentColourPickerProps) {
-  const stored = loadStoredAccent();
-  const [selected, setSelected] = useState<string>(initialColour ?? stored);
-  const [freeInput, setFreeInput] = useState<string>(initialColour ?? stored);
+  // Lazy initialiser avoids calling loadStoredAccent() during SSR/RSC render.
+  // The "use client" directive ensures this only runs in the browser, but the
+  // lazy form makes the intent explicit and is safer for edge environments.
+  const [selected, setSelected] = useState<string>(
+    () => initialColour ?? loadStoredAccent()
+  );
+  const [freeInput, setFreeInput] = useState<string>(
+    () => initialColour ?? loadStoredAccent()
+  );
   const [showFree, setShowFree] = useState(false);
   const [contrastWarning, setContrastWarning] = useState(false);
   const freeInputRef = useRef<HTMLInputElement>(null);
@@ -82,18 +98,20 @@ export default function AccentColourPicker({
       setFreeInput(colour);
       applyAccentColour(colour);
       saveAccent(colour);
+      // WCAG AA: 4.5:1 for normal text, 3:1 for large text / UI components.
+      // We warn below 4.5:1 to cover the preview button (small text, ~0.875 rem).
       const ratio = contrastAgainstWhite(colour);
-      setContrastWarning(ratio < 3);
+      setContrastWarning(ratio < 4.5);
       onChange?.(colour);
     },
     [onChange]
   );
 
-  // Apply on mount
+  // Apply stored/initial colour on mount
   useEffect(() => {
     applyAccentColour(selected);
     const ratio = contrastAgainstWhite(selected);
-    setContrastWarning(ratio < 3);
+    setContrastWarning(ratio < 4.5);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -112,11 +130,12 @@ export default function AccentColourPicker({
   };
 
   return (
-    <div className="accent-colour-picker" role="group" aria-label="Accent colour">
+    // Single landmark group; the radiogroup inside provides its own label.
+    <div className="accent-colour-picker">
       <p className="accent-colour-picker__label">Accent colour</p>
 
       {/* Curated swatches */}
-      <div className="accent-colour-picker__swatches" role="radiogroup" aria-label="Preset colours">
+      <div className="accent-colour-picker__swatches" role="radiogroup" aria-label="Accent colour">
         {CURATED_PALETTE.map((swatch) => {
           const isActive = selected === swatch.value;
           return (
@@ -145,8 +164,13 @@ export default function AccentColourPicker({
             showFree ? " accent-colour-picker__swatch--active" : ""
           }`}
           onClick={() => {
-            setShowFree((v) => !v);
-            setTimeout(() => freeInputRef.current?.focus(), 50);
+            const next = !showFree;
+            setShowFree(next);
+            if (next) {
+              // Focus the hex input once it is in the DOM.
+              // useLayoutEffect-style: schedule after paint so the element exists.
+              requestAnimationFrame(() => freeInputRef.current?.focus());
+            }
           }}
         >
           <span aria-hidden>+</span>
@@ -180,8 +204,8 @@ export default function AccentColourPicker({
       {/* WCAG contrast warning */}
       {contrastWarning && (
         <p className="accent-colour-picker__warning" role="alert">
-          ⚠️ This colour may have low contrast against white backgrounds (below
-          WCAG AA 3:1 for large text). Consider choosing a darker shade.
+          ⚠️ This colour may have insufficient contrast against white backgrounds
+          (below WCAG AA 4.5:1 for normal-sized text). Consider choosing a darker shade.
         </p>
       )}
 
