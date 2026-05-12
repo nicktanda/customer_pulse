@@ -1,9 +1,13 @@
 /**
  * Accent colour utilities.
  *
- * – CURATED_PALETTE: the 10 pre-vetted swatches shown in the picker
- * – checkContrast:   WCAG AA contrast-ratio validation
+ * – CURATED_PALETTE: the 10 pre-vetted swatches shown in the picker.
+ *   Note: Amber (#f59e0b) has a contrast ratio of ~2.9:1 against white,
+ *   below WCAG AA. The picker will show a warning if a user selects it;
+ *   this is intentional so users are aware of the accessibility trade-off.
+ * – contrastRatio / isAccessible: WCAG 2.1 AA contrast-ratio validation
  * – applyAccentColor: writes the CSS custom property to :root
+ *   (guarded by isValidHex — never writes arbitrary strings to the DOM)
  * – STORAGE_KEY / FEATURE_FLAG: constants used across the feature
  */
 
@@ -17,16 +21,16 @@ export interface AccentSwatch {
 }
 
 export const CURATED_PALETTE: AccentSwatch[] = [
-  { label: "Indigo",    value: "#6366f1" },
-  { label: "Violet",   value: "#8b5cf6" },
-  { label: "Sky",      value: "#0ea5e9" },
-  { label: "Teal",     value: "#14b8a6" },
-  { label: "Emerald",  value: "#10b981" },
-  { label: "Amber",    value: "#f59e0b" },
-  { label: "Rose",     value: "#f43f5e" },
-  { label: "Pink",     value: "#ec4899" },
-  { label: "Fuchsia",  value: "#d946ef" },
-  { label: "Slate",    value: "#475569" },
+  { label: "Indigo",   value: "#6366f1" },
+  { label: "Violet",  value: "#8b5cf6" },
+  { label: "Sky",     value: "#0ea5e9" },
+  { label: "Teal",    value: "#14b8a6" },
+  { label: "Emerald", value: "#10b981" },
+  { label: "Amber",   value: "#f59e0b" }, // ~2.9:1 on white — below AA; picker warns
+  { label: "Rose",    value: "#f43f5e" },
+  { label: "Pink",    value: "#ec4899" },
+  { label: "Fuchsia", value: "#d946ef" },
+  { label: "Slate",   value: "#475569" },
 ];
 
 /**
@@ -43,17 +47,19 @@ function hexToRgb(hex: string): [number, number, number] | null {
           .join("")
       : clean;
   const num = parseInt(full, 16);
+  if (isNaN(num)) return null;
   return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
 }
 
 /**
- * Relative luminance per WCAG 2.1.
+ * Relative luminance per WCAG 2.1 (uses the corrected 0.04045 threshold).
  */
 function relativeLuminance(rgb: [number, number, number]): number {
   const [r, g, b] = rgb.map((c) => {
     const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  });
+    // WCAG 2.1 specifies 0.04045 (not the older draft value of 0.03928)
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  }) as [number, number, number];
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
@@ -84,10 +90,14 @@ export function isAccessible(accentHex: string): boolean {
 
 /**
  * Write the --color-accent CSS custom property to the document root.
- * Safe to call on every render; it's a cheap DOM write.
+ *
+ * Validates `hex` with isValidHex before writing so arbitrary strings are
+ * never passed to setProperty. Safe to call on every render; it's a cheap
+ * DOM write.
  */
 export function applyAccentColor(hex: string): void {
   if (typeof document === "undefined") return;
+  if (!isValidHex(hex)) return;
   document.documentElement.style.setProperty("--color-accent", hex);
 }
 
