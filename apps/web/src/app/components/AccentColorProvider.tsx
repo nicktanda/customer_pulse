@@ -10,7 +10,7 @@ import {
 } from "react";
 
 const STORAGE_KEY = "user_accent_color";
-const DEFAULT_ACCENT = "#6366f1";
+export const DEFAULT_ACCENT = "#6366f1";
 const CSS_VAR = "--color-accent";
 const FEATURE_FLAG_KEY = "feature_accent_color";
 
@@ -59,7 +59,8 @@ export function AccentColorProvider({
   children,
   initialColor,
 }: AccentColorProviderProps) {
-  const enabled = isFeatureEnabled();
+  // Derive enabled state once on mount (client-side only) via useState initialiser
+  const [enabled] = useState<boolean>(() => isFeatureEnabled());
 
   const [accentColor, setAccentColorState] = useState<string>(() => {
     if (!enabled) return DEFAULT_ACCENT;
