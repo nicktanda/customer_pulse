@@ -1,0 +1,58 @@
+/*
+ * Accent colour custom property.
+ * Set by AccentColorProvider at runtime; falls back to the brand default.
+ */
+:root {
+  --color-accent: #6366f1;
+  --color-accent-hover: color-mix(in srgb, var(--color-accent) 85%, black);
+  --color-accent-light: color-mix(in srgb, var(--color-accent) 15%, white);
+}
+
+/* Primary buttons */
+.btn-accent {
+  background-color: var(--color-accent);
+  color: #ffffff;
+  border: 2px solid transparent;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-accent:hover {
+  background-color: var(--color-accent-hover);
+}
+.btn-accent:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Highlighted / active text */
+.text-accent {
+  color: var(--color-accent);
+}
+
+/* Active nav / sidebar item */
+.nav-item-active {
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Focus rings on interactive elements */
+.focus-accent:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Swatch grid used in the colour picker UI */
+.accent-swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.1s ease, transform 0.1s ease;
+}
+.accent-swatch:hover {
+  transform: scale(1.1);
+}
+.accent-swatch[aria-pressed="true"] {
+  border-color: #000;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+}
