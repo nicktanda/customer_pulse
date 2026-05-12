@@ -1,19 +1,19 @@
 import React from "react";
 import AccentColourSection from "./AccentColourSection";
-import { isAccentColourEnabled } from "./accent-colour-feature-flag";
 
 export const metadata = {
   title: "Profile – Accent Colour",
 };
 
 export default function ProfilePage() {
-  // isAccentColourEnabled() is client-side (reads localStorage/env);
-  // we pass the env-derived flag value from the server and let the
-  // client component handle the localStorage A/B bucket.
+  // NEXT_PUBLIC_FEATURE_ACCENT_COLOUR is a build-time env var; we read it
+  // server-side here and pass the resolved boolean to the client component,
+  // which also handles the A/B localStorage bucket for the "ab" mode.
+  const flagValue = process.env.NEXT_PUBLIC_FEATURE_ACCENT_COLOUR;
   const enabled =
-    process.env.NEXT_PUBLIC_FEATURE_ACCENT_COLOUR === "true" ||
-    process.env.NEXT_PUBLIC_FEATURE_ACCENT_COLOUR === "ab" ||
-    // Default to showing the picker when the flag is unset in dev.
+    flagValue === "true" ||
+    flagValue === "ab" ||
+    // Show the picker by default in development when the flag is not set.
     process.env.NODE_ENV === "development";
 
   return (
