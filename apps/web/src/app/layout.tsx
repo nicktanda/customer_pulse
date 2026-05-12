@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
+    // data-bs-theme is fixed to dark; xenoform.ai is a single-theme dark app.
     <html lang="en" data-bs-theme="dark">
       <body className="min-vh-100 antialiased bg-body text-body">
         <Providers>
