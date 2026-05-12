@@ -25,6 +25,14 @@ interface AccentColorPickerProps {
  *   1. A row of curated palette swatches
  *   2. An "advanced" free-pick colour input
  *   3. A contrast-ratio warning when the chosen colour fails WCAG AA
+ *
+ * Note: `handleSwatchClick` calls `applyAccentColor` directly for an
+ * immediate visual preview before the parent commits. In the current wiring
+ * (`AccentColorSettings`), `onChange` is `setPending` which does NOT call
+ * `applyAccentColor` again, so there is no double-apply. If you wire
+ * `onChange` directly to `setAccentColor` (from the context), the second
+ * apply would be a harmless no-op because `applyAccentColor` validates the
+ * hex and writes the same value.
  */
 export function AccentColorPicker({
   value,
@@ -40,6 +48,13 @@ export function AccentColorPicker({
   useEffect(() => {
     setFreeHex(value);
   }, [value]);
+
+  // Clear hex error when the advanced panel is closed and reopened
+  useEffect(() => {
+    if (!showAdvanced) {
+      setHexError(null);
+    }
+  }, [showAdvanced]);
 
   const handleSwatchClick = useCallback(
     (hex: string) => {
