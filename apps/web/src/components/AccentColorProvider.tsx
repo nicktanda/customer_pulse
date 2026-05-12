@@ -28,6 +28,11 @@ interface AccentColorProviderProps {
   /**
    * The persisted accent colour loaded server-side (e.g. from the user's
    * profile record).  Falls back to DEFAULT_ACCENT when omitted.
+   *
+   * Note on precedence: if localStorage already contains a cached colour,
+   * it takes priority over this prop on the client. This handles the common
+   * case where the user changed their colour in another tab or the server
+   * value is stale. To force the server value, clear localStorage first.
    */
   initialColor?: string;
   /**
@@ -45,6 +50,11 @@ interface AccentColorProviderProps {
  *   1. The CSS custom property is applied immediately on mount
  *   2. Any component can call `useAccentColor()` to read or update the colour
  *   3. Changes are persisted to localStorage as a local cache between page loads
+ *
+ * Note: `applyAccentColor` is called in two effects. The second effect
+ * (watching `accentColor`) is intentional — it keeps the DOM in sync when
+ * `setAccentColor` is called programmatically. `applyAccentColor` already
+ * validates the hex before writing, so duplicate calls are harmless.
  */
 export function AccentColorProvider({
   initialColor,
@@ -55,8 +65,7 @@ export function AccentColorProvider({
     initialColor ?? DEFAULT_ACCENT
   );
 
-  // On mount: prefer localStorage cache over SSR prop (handles the case where
-  // the user changed the colour in another tab or the server value is stale).
+  // On mount: prefer localStorage cache over SSR prop.
   useEffect(() => {
     if (!featureEnabled) return;
     try {
@@ -102,4 +111,5 @@ export function AccentColorProvider({
   );
 }
 
+// Re-exported for convenience; prefer importing directly from lib/accentColor.
 export { FEATURE_FLAG };
