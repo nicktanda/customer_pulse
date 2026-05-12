@@ -2,6 +2,11 @@
    Accent Colour Picker – component styles
    Uses --color-accent for live preview elements; the rest of
    the app reads the same custom property via globals.css.
+
+   NOTE: The :root default for --color-accent should be set in
+   globals.css to avoid cascade conflicts. The declaration below
+   acts as a safe fallback only if this sheet is loaded in
+   isolation (e.g. in Storybook or unit-test environments).
    ============================================================ */
 
 :root {
@@ -108,8 +113,17 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.accent-colour-picker__hex-input:focus-visible {
+  border-color: var(--color-accent, #6366f1);
+  /* Fallback for browsers without color-mix() support */
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent, #6366f1) 25%, transparent);
+}
+
+/* Keep legacy :focus for non-:focus-visible browsers */
 .accent-colour-picker__hex-input:focus {
   border-color: var(--color-accent, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent, #6366f1) 25%, transparent);
 }
 
@@ -143,6 +157,8 @@
   font-weight: 600;
   color: #ffffff;
   cursor: pointer;
+  /* fit-content with -webkit- prefix for broader Safari support */
+  width: -webkit-fit-content;
   width: fit-content;
   transition: opacity 0.15s ease;
 }
@@ -162,5 +178,7 @@
   border-radius: 0 0.25rem 0.25rem 0;
   font-size: 0.875rem;
   color: #1f2937;
+  /* fit-content with -webkit- prefix for broader Safari support */
+  width: -webkit-fit-content;
   width: fit-content;
 }
