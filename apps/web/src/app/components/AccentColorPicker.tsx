@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useAccentColor } from "./AccentColorProvider";
+import { DEFAULT_ACCENT } from "./AccentColorProvider";
 
 const CURATED_PALETTE = [
   { label: "Indigo", value: "#6366f1" },
@@ -15,8 +16,6 @@ const CURATED_PALETTE = [
   { label: "Fuchsia", value: "#d946ef" },
   { label: "Slate", value: "#475569" },
 ];
-
-const DEFAULT_ACCENT = "#6366f1";
 
 /**
  * Calculate relative luminance for a hex colour.
@@ -46,6 +45,8 @@ function contrastRatio(hex1: string, hex2: string): number {
 
 /**
  * Check WCAG AA compliance against white (#ffffff) background.
+ * Note: This only checks against a white background. Dark-mode users
+ * may see inaccurate results. A follow-up should add dark-mode awareness.
  */
 function meetsWcagAA(hex: string): boolean {
   return contrastRatio(hex, "#ffffff") >= 4.5;
