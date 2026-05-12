@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import AccentColourPicker, { loadStoredAccent } from "../components/AccentColourPicker";
-import "../styles/accent-colour-picker.css";
+import { isAccentColourEnabled } from "./accent-colour-feature-flag";
 
 /**
  * Drop-in section for the user profile / settings page.
@@ -10,7 +10,11 @@ import "../styles/accent-colour-picker.css";
  * (and to the server via the optional onSave prop).
  */
 interface AccentColourSectionProps {
-  /** Feature-flag guard – render nothing when false */
+  /**
+   * Feature-flag guard – render nothing when false.
+   * When omitted the client-side flag utility is consulted instead,
+   * supporting the A/B bucket assignment.
+   */
   enabled?: boolean;
   /** Optional server-persist callback */
   onSave?: (colour: string) => Promise<void>;
@@ -19,7 +23,7 @@ interface AccentColourSectionProps {
 }
 
 export default function AccentColourSection({
-  enabled = true,
+  enabled,
   onSave,
   serverColour,
 }: AccentColourSectionProps) {
@@ -31,9 +35,14 @@ export default function AccentColourSection({
     setMounted(true);
   }, []);
 
-  if (!enabled) return null;
-  // Avoid SSR/hydration mismatch for localStorage reads
+  // Avoid SSR/hydration mismatch: localStorage and the A/B bucket are
+  // only available after the component has mounted on the client.
   if (!mounted) return null;
+
+  // If the caller explicitly passes enabled=false, hide immediately.
+  // Otherwise fall back to the client-side feature flag (which handles A/B).
+  const show = enabled !== undefined ? enabled : isAccentColourEnabled();
+  if (!show) return null;
 
   const initial = serverColour ?? loadStoredAccent();
 
@@ -58,7 +67,12 @@ export default function AccentColourSection({
         Personalisation
       </h2>
 
-      <AccentColourPicker initialColour={initial} onChange={handleChange} />
+      {/* Only wire onChange when there is a server-persist callback to avoid
+          spurious async calls on every colour pick. */}
+      <AccentColourPicker
+        initialColour={initial}
+        onChange={onSave ? handleChange : undefined}
+      />
 
       {saving && (
         <p style={{ fontSize: "0.8125rem", color: "#6b7280", marginTop: "0.5rem" }}>
