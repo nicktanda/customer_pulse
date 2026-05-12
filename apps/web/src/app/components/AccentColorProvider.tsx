@@ -8,16 +8,12 @@ import {
   useCallback,
   ReactNode,
 } from "react";
+import { isValidHex } from "../utils/color";
 
 const STORAGE_KEY = "user_accent_color";
 export const DEFAULT_ACCENT = "#6366f1";
 const CSS_VAR = "--color-accent";
 const FEATURE_FLAG_KEY = "feature_accent_color";
-
-/** Validates a 6-digit hex colour string. */
-function isValidHex(hex: string): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test(hex);
-}
 
 interface AccentColorContextValue {
   accentColor: string;
@@ -34,6 +30,9 @@ const AccentColorContext = createContext<AccentColorContextValue>({
 /**
  * Read the feature flag from localStorage (or environment variable fallback).
  * In production, replace this with your actual feature-flag SDK call.
+ *
+ * Note: any user can enable this by setting `feature_accent_color=true` in
+ * localStorage via DevTools — this is intentional for testing purposes.
  */
 function isFeatureEnabled(): boolean {
   if (typeof window === "undefined") return false;
