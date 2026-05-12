@@ -12,6 +12,9 @@
 
 export type AccentColourFlagMode = "true" | "false" | "ab";
 
+/** Exported so tests can reference the key directly */
+export const AB_BUCKET_STORAGE_KEY = "__accent_ab_bucket";
+
 function getFlagMode(): AccentColourFlagMode {
   const raw =
     (typeof process !== "undefined" &&
@@ -28,11 +31,10 @@ function getFlagMode(): AccentColourFlagMode {
  */
 function getAbBucket(): "a" | "b" {
   if (typeof localStorage === "undefined") return "a";
-  const key = "__accent_ab_bucket";
-  const stored = localStorage.getItem(key);
+  const stored = localStorage.getItem(AB_BUCKET_STORAGE_KEY);
   if (stored === "a" || stored === "b") return stored;
   const bucket = Math.random() < 0.5 ? "a" : "b";
-  localStorage.setItem(key, bucket);
+  localStorage.setItem(AB_BUCKET_STORAGE_KEY, bucket);
   return bucket;
 }
 
