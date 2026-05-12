@@ -1,3 +1,5 @@
+"use client";
+
 import { AccentColorSettings } from "../../../components/AccentColorSettings";
 
 async function saveAccentColor(hex: string): Promise<void> {
