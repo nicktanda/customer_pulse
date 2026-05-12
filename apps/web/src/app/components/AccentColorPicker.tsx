@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useAccentColor } from "./AccentColorProvider";
-import { DEFAULT_ACCENT } from "./AccentColorProvider";
+import { useAccentColor, DEFAULT_ACCENT } from "./AccentColorProvider";
 
 const CURATED_PALETTE = [
   { label: "Indigo", value: "#6366f1" },
@@ -17,8 +16,14 @@ const CURATED_PALETTE = [
   { label: "Slate", value: "#475569" },
 ];
 
+/** Validates a 6-digit hex colour string. */
+function isValidHex(hex: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(hex);
+}
+
 /**
  * Calculate relative luminance for a hex colour.
+ * Assumes a valid 6-digit hex string.
  */
 function hexToLuminance(hex: string): number {
   const clean = hex.replace("#", "");
@@ -49,6 +54,7 @@ function contrastRatio(hex1: string, hex2: string): number {
  * may see inaccurate results. A follow-up should add dark-mode awareness.
  */
 function meetsWcagAA(hex: string): boolean {
+  if (!isValidHex(hex)) return false;
   return contrastRatio(hex, "#ffffff") >= 4.5;
 }
 
@@ -69,7 +75,11 @@ export function AccentColorPicker() {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const color = e.target.value;
       setTempCustomColor(color);
-      setAccentColor(color);
+      // Only apply if it's a valid complete hex (native color input always
+      // returns #rrggbb, but guard anyway for programmatic changes).
+      if (isValidHex(color)) {
+        setAccentColor(color);
+      }
     },
     [setAccentColor]
   );
@@ -79,8 +89,11 @@ export function AccentColorPicker() {
     setTempCustomColor(DEFAULT_ACCENT);
   }, [setAccentColor]);
 
-  const wcagPass = meetsWcagAA(accentColor);
-  const contrastValue = contrastRatio(accentColor, "#ffffff").toFixed(2);
+  const validColor = isValidHex(accentColor);
+  const wcagPass = validColor && meetsWcagAA(accentColor);
+  const contrastValue = validColor
+    ? contrastRatio(accentColor, "#ffffff").toFixed(2)
+    : "N/A";
 
   return (
     <div className="accent-color-picker">
@@ -98,17 +111,21 @@ export function AccentColorPicker() {
           aria-label={`Current accent colour: ${accentColor}`}
         />
         <span className="accent-color-picker__preview-hex">{accentColor}</span>
-        {!wcagPass && (
-          <span className="accent-color-picker__wcag-warning" role="alert">
-            ⚠ Low contrast ({contrastValue}:1). May be hard to read on light
-            backgrounds.
-          </span>
-        )}
-        {wcagPass && (
-          <span className="accent-color-picker__wcag-pass">
-            ✓ Contrast {contrastValue}:1 – WCAG AA
-          </span>
-        )}
+        <span
+          className={
+            !validColor || !wcagPass
+              ? "accent-color-picker__wcag-warning"
+              : "accent-color-picker__wcag-pass"
+          }
+          role="status"
+          aria-live="polite"
+        >
+          {!validColor
+            ? "⚠ Invalid colour value."
+            : !wcagPass
+            ? `⚠ Low contrast (${contrastValue}:1). May be hard to read on light backgrounds.`
+            : `✓ Contrast ${contrastValue}:1 – WCAG AA`}
+        </span>
       </div>
 
       <div
