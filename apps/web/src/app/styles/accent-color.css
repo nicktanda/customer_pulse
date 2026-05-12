@@ -6,6 +6,11 @@
  *
  * The value is set dynamically via AccentColorProvider on <html>.
  * The default below is overridden at runtime; it acts as a build-time fallback.
+ *
+ * Browser support note:
+ *   --color-accent-hover and --color-accent-subtle use color-mix(in srgb, ...)
+ *   which requires Chromium 111+, Firefox 113+, Safari 16.2+.
+ *   Older browsers will fall back to the default accent color for hover/subtle states.
  */
 
 :root {
@@ -63,7 +68,7 @@ input[type="radio"]:checked {
 
 /* ── Progress / range ────────────────────────────────────────────────────── */
 
-progressbar,
+progress,
 input[type="range"] {
   accent-color: var(--color-accent);
 }
@@ -235,4 +240,12 @@ input[type="range"] {
   font-size: 0.875rem;
   color: #6b7280;
   margin: 0 0 1rem;
+}
+
+/* ── Settings page layout ────────────────────────────────────────────────── */
+
+.settings-page {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
 }
