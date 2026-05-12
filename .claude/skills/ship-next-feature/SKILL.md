@@ -1,30 +1,38 @@
----
-name: ship-next-feature
-description: >-
-  Guides feature work in the Next.js 15 App Router app: React Server Components,
-  route handlers, Auth.js-protected /app routes, Bootstrap + Tailwind styling,
-  and server actions. Use when adding or changing dashboard, feedback,
-  integrations, settings, onboarding, or pulse report UI under apps/web.
----
+# Skill: Ship Next Feature
 
-# Ship a Next.js feature (Customer Pulse)
+This skill provides guidance for shipping a new product feature end-to-end in this repository.
 
-Customer Pulse’s UI lives in **`apps/web`** (**Next.js 15**, **App Router**), with authenticated product pages under **`apps/web/src/app/app/`** (user-facing URLs under **`/app/...`**). Auth is **Auth.js** (see **`apps/web/src/auth.ts`**). Styling uses **Bootstrap / react-bootstrap** plus **Tailwind** where configured. Dev server defaults to port **3001** (see **`apps/web/package.json`**).
+## Process
 
-## When to use
+1. **Plan** – Identify the minimal set of files to create or modify.
+2. **Implement** – Write production-quality TypeScript/React code following repo conventions.
+3. **Style** – Add component-scoped CSS; use CSS custom properties for theming.
+4. **Test** – Co-locate `*.test.tsx` files with components.
+5. **Flag** – Ship behind a feature flag (`NEXT_PUBLIC_FEATURE_*`) with A/B support.
+6. **Review** – Run ESLint and TypeScript checks before opening a PR.
 
-- Adding or changing a screen behind login (dashboard, feedback, integrations, onboarding, settings, pulse reports, skills).
-- Wiring new API routes under **`src/app/api/`** or server actions next to a feature.
+## Conventions
 
-## Steps
+- Components live under `apps/web/src/app/components/`.
+- Page-level sections live under `apps/web/src/app/<route>/`.
+- CSS files live under `apps/web/src/app/styles/`.
+- Feature flags live under `apps/web/src/app/<route>/` or a shared `lib/` directory.
+- Use `"use client"` directive for components that read browser APIs.
+- Avoid SSR/hydration mismatches by gating `localStorage` reads behind a `mounted` state.
 
-1. Locate the route segment under **`apps/web/src/app/app/`** (or add one). Session-backed JSON routes for the logged-in app live under **`apps/web/src/app/api/app/`** (e.g. **`feedbacks`**, **`reporting/ask`**), distinct from public **`api/v1/`** and **`api/webhooks/`**.
-2. Prefer **server components** and **server actions** for data loading and mutations; keep shared DB access in **`packages/db`** via Drizzle.
-3. Match existing layout, typography, and form patterns from neighboring pages.
-4. For client-only behavior, add a small **`"use client"`** component; keep the route shell as a server component when possible.
-5. After UI or behavior changes, run **`yarn workspace web lint`** and **`yarn test:web`** for affected areas.
+## Accent Colour Feature (example)
 
-## Notes
+The accent colour personalisation feature demonstrates the pattern:
 
-- Session and “current project” behavior: **`apps/web/src/app/app/layout.tsx`** and **`apps/web/src/lib/current-project.ts`** (httpOnly cookie; **`apps/web/src/app/app/set-project/route.ts`** updates it).
-- Long-running or scheduled work belongs in **`apps/worker`**, not in route handlers — use **`bullmq-jobs-and-schedules`**.
+```
+apps/web/src/app/components/AccentColourPicker.tsx   ← core picker component
+apps/web/src/app/components/AccentColourPicker.test.tsx
+apps/web/src/app/styles/accent-colour-picker.css
+apps/web/src/app/profile/AccentColourSection.tsx     ← profile page section
+apps/web/src/app/profile/accent-colour-feature-flag.ts
+```
+
+- A single CSS custom property `--color-accent` is applied to `document.documentElement`.
+- WCAG AA contrast is checked programmatically; a warning is shown for failing colours.
+- Preference is stored in `localStorage` (and optionally persisted to the server via a callback).
+- The flag is controlled by `NEXT_PUBLIC_FEATURE_ACCENT_COLOUR=true|false|ab`.
