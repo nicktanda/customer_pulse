@@ -2,6 +2,7 @@ import {
   contrastRatio,
   isAccessible,
   isValidHex,
+  applyAccentColor,
   CURATED_PALETTE,
   DEFAULT_ACCENT,
 } from "./accentColor";
@@ -46,6 +47,24 @@ describe("isAccessible", () => {
   });
   it("returns true for black on white", () => {
     expect(isAccessible("#000000")).toBe(true);
+  });
+});
+
+describe("applyAccentColor", () => {
+  it("sets --color-accent on document root for a valid hex", () => {
+    applyAccentColor("#6366f1");
+    expect(
+      document.documentElement.style.getPropertyValue("--color-accent")
+    ).toBe("#6366f1");
+  });
+
+  it("does not set --color-accent for an invalid hex", () => {
+    // Reset to a known value first
+    document.documentElement.style.setProperty("--color-accent", "#ffffff");
+    applyAccentColor("notvalid");
+    expect(
+      document.documentElement.style.getPropertyValue("--color-accent")
+    ).toBe("#ffffff");
   });
 });
 
