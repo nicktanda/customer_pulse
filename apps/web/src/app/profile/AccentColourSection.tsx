@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import AccentColourPicker, { loadStoredAccent } from "../components/AccentColourPicker";
 import { isAccentColourEnabled } from "./accent-colour-feature-flag";
 
@@ -30,9 +30,16 @@ export default function AccentColourSection({
   const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const savedFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    // Cleanup any pending saved-feedback timer on unmount
+    return () => {
+      if (savedFeedbackTimerRef.current !== null) {
+        clearTimeout(savedFeedbackTimerRef.current);
+      }
+    };
   }, []);
 
   // Avoid SSR/hydration mismatch: localStorage and the A/B bucket are
@@ -52,7 +59,10 @@ export default function AccentColourSection({
     try {
       await onSave(colour);
       setSavedFeedback(true);
-      setTimeout(() => setSavedFeedback(false), 2000);
+      if (savedFeedbackTimerRef.current !== null) {
+        clearTimeout(savedFeedbackTimerRef.current);
+      }
+      savedFeedbackTimerRef.current = setTimeout(() => setSavedFeedback(false), 2000);
     } finally {
       setSaving(false);
     }
