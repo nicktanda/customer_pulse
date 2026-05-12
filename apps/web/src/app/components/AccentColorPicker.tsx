@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAccentColor, DEFAULT_ACCENT } from "./AccentColorProvider";
+import { isValidHex, meetsWcagAA, contrastRatio } from "../utils/color";
 
 const CURATED_PALETTE = [
   { label: "Indigo", value: "#6366f1" },
@@ -16,52 +17,24 @@ const CURATED_PALETTE = [
   { label: "Slate", value: "#475569" },
 ];
 
-/** Validates a 6-digit hex colour string. */
-function isValidHex(hex: string): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test(hex);
-}
-
 /**
- * Calculate relative luminance for a hex colour.
- * Assumes a valid 6-digit hex string.
+ * The app uses a dark theme (`data-bs-theme="dark"`).
+ * WCAG contrast is checked against this background colour rather than white
+ * to avoid misleading pass/fail results for dark-mode users.
+ *
+ * TODO: make this dynamic if the app ever supports light mode.
  */
-function hexToLuminance(hex: string): number {
-  const clean = hex.replace("#", "");
-  const r = parseInt(clean.slice(0, 2), 16) / 255;
-  const g = parseInt(clean.slice(2, 4), 16) / 255;
-  const b = parseInt(clean.slice(4, 6), 16) / 255;
-
-  const linearise = (c: number) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-
-  return 0.2126 * linearise(r) + 0.7152 * linearise(g) + 0.0722 * linearise(b);
-}
-
-/**
- * Calculate WCAG contrast ratio between two hex colours.
- */
-function contrastRatio(hex1: string, hex2: string): number {
-  const l1 = hexToLuminance(hex1);
-  const l2 = hexToLuminance(hex2);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-/**
- * Check WCAG AA compliance against white (#ffffff) background.
- * Note: This only checks against a white background. Dark-mode users
- * may see inaccurate results. A follow-up should add dark-mode awareness.
- */
-function meetsWcagAA(hex: string): boolean {
-  if (!isValidHex(hex)) return false;
-  return contrastRatio(hex, "#ffffff") >= 4.5;
-}
+const DARK_BG = "#1a1a2e";
 
 export function AccentColorPicker() {
   const { accentColor, setAccentColor } = useAccentColor();
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // Keep tempCustomColor in sync with the context colour (handles external changes)
   const [tempCustomColor, setTempCustomColor] = useState(accentColor);
+
+  useEffect(() => {
+    setTempCustomColor(accentColor);
+  }, [accentColor]);
 
   const handlePaletteSelect = useCallback(
     (color: string) => {
@@ -90,9 +63,9 @@ export function AccentColorPicker() {
   }, [setAccentColor]);
 
   const validColor = isValidHex(accentColor);
-  const wcagPass = validColor && meetsWcagAA(accentColor);
+  const wcagPass = validColor && meetsWcagAA(accentColor, DARK_BG);
   const contrastValue = validColor
-    ? contrastRatio(accentColor, "#ffffff").toFixed(2)
+    ? contrastRatio(accentColor, DARK_BG).toFixed(2)
     : "N/A";
 
   return (
@@ -123,8 +96,8 @@ export function AccentColorPicker() {
           {!validColor
             ? "⚠ Invalid colour value."
             : !wcagPass
-            ? `⚠ Low contrast (${contrastValue}:1). May be hard to read on light backgrounds.`
-            : `✓ Contrast ${contrastValue}:1 – WCAG AA`}
+            ? `⚠ Low contrast (${contrastValue}:1) on dark background. May be hard to read.`
+            : `✓ Contrast ${contrastValue}:1 – WCAG AA (dark bg)`}
         </span>
       </div>
 
