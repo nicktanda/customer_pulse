@@ -19,14 +19,14 @@ export const CURATED_PALETTE: { label: string; value: string }[] = [
 const DEFAULT_ACCENT = "#6366f1";
 const STORAGE_KEY = "user_accent_colour";
 
-/** Relative luminance per WCAG 2.1 */
+/** Relative luminance per WCAG 2.1 (uses 0.04045 cutoff per the current spec) */
 function relativeLuminance(hex: string): number {
   const clean = hex.replace("#", "");
   const r = parseInt(clean.slice(0, 2), 16) / 255;
   const g = parseInt(clean.slice(2, 4), 16) / 255;
   const b = parseInt(clean.slice(4, 6), 16) / 255;
   const toLinear = (c: number) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 }
 
@@ -79,15 +79,12 @@ export default function AccentColourPicker({
   onChange,
   initialColour,
 }: AccentColourPickerProps) {
-  // Lazy initialiser avoids calling loadStoredAccent() during SSR/RSC render.
-  // The "use client" directive ensures this only runs in the browser, but the
-  // lazy form makes the intent explicit and is safer for edge environments.
+  // Compute the initial value once to avoid two localStorage.getItem calls.
   const [selected, setSelected] = useState<string>(
     () => initialColour ?? loadStoredAccent()
   );
-  const [freeInput, setFreeInput] = useState<string>(
-    () => initialColour ?? loadStoredAccent()
-  );
+  // freeInput shares the same initial value without a second localStorage read.
+  const [freeInput, setFreeInput] = useState<string>(selected);
   const [showFree, setShowFree] = useState(false);
   const [contrastWarning, setContrastWarning] = useState(false);
   const freeInputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +104,10 @@ export default function AccentColourPicker({
     [onChange]
   );
 
-  // Apply stored/initial colour on mount
+  // Apply stored/initial colour on mount.
+  // `selected` is intentionally excluded from the dependency array because
+  // this effect should only run once on mount to initialise the CSS custom
+  // property — subsequent changes are handled synchronously in `commit`.
   useEffect(() => {
     applyAccentColour(selected);
     const ratio = contrastAgainstWhite(selected);
@@ -168,7 +168,7 @@ export default function AccentColourPicker({
             setShowFree(next);
             if (next) {
               // Focus the hex input once it is in the DOM.
-              // useLayoutEffect-style: schedule after paint so the element exists.
+              // Schedule after paint so the element exists.
               requestAnimationFrame(() => freeInputRef.current?.focus());
             }
           }}
