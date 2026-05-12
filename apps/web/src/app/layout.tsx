@@ -1,24 +1,28 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "../accent-color.css";
+import { Providers } from "./providers";
 import { AccentColorProvider } from "../components/AccentColorProvider";
 
 export const metadata: Metadata = {
-  title: "App",
-  description: "App",
+  title: "xenoform.ai",
+  description: "Adaptive customer feedback intelligence.",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en">
-      <body>
-        <AccentColorProvider featureEnabled={true}>
-          {children}
-        </AccentColorProvider>
+    // data-bs-theme is fixed to dark; xenoform.ai is a single-theme app.
+    <html lang="en" data-bs-theme="dark">
+      <body className="min-vh-100 antialiased bg-body text-body">
+        <Providers>
+          <AccentColorProvider featureEnabled={true}>
+            {children}
+          </AccentColorProvider>
+        </Providers>
       </body>
     </html>
   );
