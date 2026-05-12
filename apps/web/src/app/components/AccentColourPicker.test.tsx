@@ -74,6 +74,7 @@ describe("AccentColourPicker", () => {
   });
 
   it("shows contrast warning for a low-contrast colour", () => {
+    // #ffffaa has contrast < 4.5 against white, so warning should appear
     render(<AccentColourPicker initialColour="#ffffaa" />);
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
