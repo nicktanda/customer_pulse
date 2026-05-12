@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAccentColor } from "./AccentColorProvider";
 import AccentColorPicker from "./AccentColorPicker";
 
@@ -27,6 +27,14 @@ export function AccentColorSettings({
   const [pending, setPending] = useState<string>(accentColor);
   const [isSaving, setIsSaving] = useState(false);
   const [result, setResult] = useState<SaveResult | null>(null);
+
+  // Keep pending in sync if accentColor is updated externally (e.g. another
+  // tab syncs via localStorage), but only when we are not mid-save.
+  useEffect(() => {
+    if (!isSaving) {
+      setPending(accentColor);
+    }
+  }, [accentColor, isSaving]);
 
   if (!isFeatureEnabled) {
     return null;
