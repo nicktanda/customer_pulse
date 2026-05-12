@@ -18,6 +18,27 @@
   --color-accent-hover: color-mix(in srgb, var(--color-accent) 85%, black);
   --color-accent-subtle: color-mix(in srgb, var(--color-accent) 15%, white);
   --color-accent-foreground: #ffffff;
+
+  /* Light-mode surface tokens */
+  --color-border: #e5e7eb;
+  --color-bg: #ffffff;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-code: #374151;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-accent-hover: color-mix(in srgb, var(--color-accent) 85%, white);
+    --color-accent-subtle: color-mix(in srgb, var(--color-accent) 20%, #1f2937);
+    --color-accent-foreground: #ffffff;
+
+    --color-border: #374151;
+    --color-bg: #1f2937;
+    --color-text-primary: #f9fafb;
+    --color-text-secondary: #9ca3af;
+    --color-text-code: #d1d5db;
+  }
 }
 
 /* ── Primary buttons ─────────────────────────────────────────────────────── */
@@ -80,9 +101,9 @@ input[type="range"] {
   flex-direction: column;
   gap: 1rem;
   padding: 1.25rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
-  background: #ffffff;
+  background: var(--color-bg);
   max-width: 28rem;
 }
 
@@ -96,12 +117,12 @@ input[type="range"] {
   font-size: 0.9375rem;
   font-weight: 600;
   margin: 0;
-  color: #111827;
+  color: var(--color-text-primary);
 }
 
 .accent-color-picker__description {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -123,7 +144,7 @@ input[type="range"] {
 .accent-color-picker__preview-hex {
   font-family: ui-monospace, monospace;
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--color-text-code);
 }
 
 .accent-color-picker__wcag-warning {
@@ -134,12 +155,26 @@ input[type="range"] {
   border-radius: 9999px;
 }
 
+@media (prefers-color-scheme: dark) {
+  .accent-color-picker__wcag-warning {
+    color: #fde68a;
+    background: #451a03;
+  }
+}
+
 .accent-color-picker__wcag-pass {
   font-size: 0.75rem;
   color: #065f46;
   background: #d1fae5;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .accent-color-picker__wcag-pass {
+    color: #6ee7b7;
+    background: #064e3b;
+  }
 }
 
 .accent-color-picker__palette {
@@ -163,7 +198,7 @@ input[type="range"] {
 }
 
 .accent-color-picker__swatch--active {
-  border-color: #111827;
+  border-color: var(--color-text-primary);
   transform: scale(1.15);
 }
 
@@ -192,7 +227,7 @@ input[type="range"] {
 
 .accent-color-picker__custom-label {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--color-text-code);
 }
 
 .accent-color-picker__custom-input {
@@ -208,11 +243,11 @@ input[type="range"] {
 .accent-color-picker__reset {
   align-self: flex-start;
   background: none;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 0.375rem;
   padding: 0.375rem 0.75rem;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: border-color 0.1s ease, color 0.1s ease;
 }
@@ -226,19 +261,19 @@ input[type="range"] {
 
 .accent-color-settings {
   padding: 1.5rem 0;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .accent-color-settings__heading {
   font-size: 1rem;
   font-weight: 600;
   margin: 0 0 0.25rem;
-  color: #111827;
+  color: var(--color-text-primary);
 }
 
 .accent-color-settings__subheading {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin: 0 0 1rem;
 }
 
