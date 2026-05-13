@@ -1,6 +1,5 @@
 import React from "react";
 import AccentColourPicker from "../../../components/AccentColourPicker";
-import "../../../accent-colour-picker.css";
 
 export const metadata = {
   title: "Appearance Settings",
@@ -57,7 +56,7 @@ export default function AppearancePage() {
           <p style={{ fontSize: "0.85rem", color: "#555" }} className="mb-3">
             The elements below update live as you change your accent colour.
           </p>
-          <div className="d-flex flex-wrap gap-2 align-items-center">
+          <div className="d-flex flex-wrap gap-2 align-items-center" id="preview">
             <button className="btn btn-accent btn-sm" type="button">
               Primary action
             </button>
