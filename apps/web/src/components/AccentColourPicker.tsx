@@ -1,11 +1,38 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { ACCENT_COLOURS, ACCENT_COLOUR_ENABLED } from '@/lib/accentColour';
 import { useAccentColour } from './AccentColourProvider';
 
 export function AccentColourPicker() {
   const { accentId, setAccentId } = useAccentColour();
+
+  // Arrow-key navigation between colour swatches, matching radio-group UX.
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const currentIndex = ACCENT_COLOURS.findIndex((c) => c.id === accentId);
+      let nextIndex: number | null = null;
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        nextIndex = (currentIndex + 1) % ACCENT_COLOURS.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        nextIndex =
+          (currentIndex - 1 + ACCENT_COLOURS.length) % ACCENT_COLOURS.length;
+      }
+
+      if (nextIndex !== null) {
+        const nextColour = ACCENT_COLOURS[nextIndex];
+        setAccentId(nextColour.id);
+        // Move focus to the newly selected swatch button
+        const container = e.currentTarget;
+        const buttons = container.querySelectorAll<HTMLButtonElement>('button[role="radio"]');
+        buttons[nextIndex]?.focus();
+      }
+    },
+    [accentId, setAccentId],
+  );
 
   if (!ACCENT_COLOUR_ENABLED) return null;
 
@@ -24,6 +51,7 @@ export function AccentColourPicker() {
         role="radiogroup"
         aria-label="Accent colour options"
         className="flex flex-wrap gap-3"
+        onKeyDown={handleKeyDown}
       >
         {ACCENT_COLOURS.map((colour) => {
           const isSelected = colour.id === accentId;
@@ -35,6 +63,7 @@ export function AccentColourPicker() {
               aria-checked={isSelected}
               aria-label={colour.label}
               title={colour.label}
+              tabIndex={isSelected ? 0 : -1}
               onClick={() => setAccentId(colour.id)}
               className={
                 [
