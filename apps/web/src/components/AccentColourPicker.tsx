@@ -25,7 +25,7 @@ export function AccentColourPicker({ selected, onChange }: AccentColourPickerPro
                 isSelected ? ' accent-colour-picker__swatch--selected' : ''
               }`}
               style={{ backgroundColor: colour.value }}
-              onClick={() => onChange(colour.id as AccentColourId)}
+              onClick={() => onChange(colour.id)}
             >
               {isSelected && (
                 <svg
