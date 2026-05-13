@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import "../../accent-colour-picker.css";
 import {
   ACCENT_PALETTE,
   AccentColour,
@@ -31,7 +32,7 @@ export default function AccentColourPicker() {
                 .filter(Boolean)
                 .join(" ")}
               style={{ "--swatch-colour": entry.swatch } as React.CSSProperties}
-              onClick={() => setAccent(entry.id as AccentColour)}
+              onClick={() => setAccent(entry.id)}
             />
           );
         })}
