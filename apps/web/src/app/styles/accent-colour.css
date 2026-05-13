@@ -50,9 +50,13 @@ a.accent-link:hover {
   color: var(--colour-accent-hover);
 }
 
-/* ── Active / selected states ───────────────────────────────────────────────── */
-[data-state="active"],
-[aria-selected="true"] {
+/*
+ * ── Active / selected states ──────────────────────────────────────────────────
+ * Scoped to .accent-nav to avoid clobbering Bootstrap tabs, comboboxes, or
+ * any third-party component that uses [aria-selected] or [data-state].
+ */
+.accent-nav [data-state="active"],
+.accent-nav [aria-selected="true"] {
   background-color: var(--colour-accent-subtle);
   color: var(--colour-accent);
 }
@@ -96,4 +100,10 @@ a.accent-link:hover {
 .accent-picker__swatch:focus-visible {
   outline: 2px solid var(--colour-accent);
   outline-offset: 2px;
+}
+
+/* ── Helper utility ─────────────────────────────────────────────────────────── */
+.text-accent-hint {
+  font-size: 0.875rem;
+  color: var(--bs-secondary-color, #6c757d);
 }
