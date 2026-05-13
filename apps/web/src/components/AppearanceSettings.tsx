@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { AccentColourPicker } from './AccentColourPicker';
-import './AccentColourPicker.css';
 import './AppearanceSettings.css';
 import {
   AccentColourId,
