@@ -1,5 +1,5 @@
-import React from "react";
 import type { Metadata } from "next";
+import React from "react";
 import "./globals.css";
 import { AccentColorProvider } from "./contexts/accent-color-context";
 import AppNav from "./components/app-nav";
