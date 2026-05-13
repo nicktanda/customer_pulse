@@ -31,11 +31,21 @@ interface AccentColorContextValue {
 
 const AccentColorContext = createContext<AccentColorContextValue | null>(null);
 
+/**
+ * Applies the chosen accent colour to the document root.
+ *
+ * Two properties are set:
+ *   - `--accent`: a CSS custom property consumed by our Tailwind/CSS utilities.
+ *   - `accent-color`: a real (non-custom) CSS property that tells the browser
+ *     how to tint native controls (checkboxes, radios, range, progress). Setting
+ *     it via `style.setProperty` is spec-compliant and works in all modern
+ *     browsers; it is slightly unconventional only because most devs set it in
+ *     a stylesheet rather than via JS.
+ */
 function applyAccentColor(id: AccentColorId): void {
   const color = ACCENT_COLORS.find((c) => c.id === id);
   if (color) {
     document.documentElement.style.setProperty("--accent", color.value);
-    // Also wire up accent-color for native browser controls (checkboxes, radios, range, progress)
     document.documentElement.style.setProperty("accent-color", color.value);
   }
 }
@@ -47,7 +57,7 @@ export function AccentColorProvider({
 }) {
   const [accentId, setAccentIdState] = useState<AccentColorId>(DEFAULT_ACCENT);
 
-  // Initialise from localStorage on mount
+  // Initialise from localStorage on mount (client-only).
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as AccentColorId | null;
@@ -58,6 +68,7 @@ export function AccentColorProvider({
       setAccentIdState(resolved);
       applyAccentColor(resolved);
     } catch {
+      // localStorage unavailable (e.g. SSR or strict privacy settings).
       applyAccentColor(DEFAULT_ACCENT);
     }
   }, []);
