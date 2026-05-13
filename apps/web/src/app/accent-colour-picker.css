@@ -50,6 +50,10 @@
   transform: scale(1.1);
 }
 
+/*
+ * Note: the white checkmark SVG is visible on all current dark swatches.
+ * If a light swatch is added in future, consider using a dark SVG fill instead.
+ */
 .accent-colour-picker__swatch--selected::after {
   content: "";
   position: absolute;
