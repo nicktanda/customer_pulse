@@ -1,0 +1,67 @@
+/*
+ * AccentColourPicker component styles
+ */
+
+.accent-colour-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.accent-colour-picker__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: inherit;
+  margin: 0;
+}
+
+.accent-colour-picker__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  padding: 0.25rem 0;
+}
+
+.accent-colour-picker__swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background-color: var(--swatch-colour);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.accent-colour-picker__swatch:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+}
+
+.accent-colour-picker__swatch:focus-visible {
+  outline: 2px solid var(--accent-500, #6366f1);
+  outline-offset: 3px;
+}
+
+.accent-colour-picker__swatch--selected {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px var(--swatch-colour);
+  transform: scale(1.1);
+}
+
+.accent-colour-picker__swatch--selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3E%3Cpath d='M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z'/%3E%3C/svg%3E")
+    center / 12px no-repeat;
+}
+
+.accent-colour-picker__hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0;
+}
