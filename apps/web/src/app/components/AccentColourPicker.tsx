@@ -4,7 +4,6 @@ import React, { useRef, KeyboardEvent } from "react";
 import "../accent-colour-picker.css";
 import {
   ACCENT_PALETTE,
-  AccentColour,
   useAccentColour,
 } from "./AccentColourProvider";
 
@@ -32,7 +31,11 @@ export default function AccentColourPicker() {
 
   return (
     <div className="accent-colour-picker">
-      <p className="accent-colour-picker__label">Accent colour</p>
+      {/*
+       * The surrounding card already has an "Accent colour" heading, so
+       * we use aria-label on the radiogroup rather than a visible <p> label
+       * to avoid redundant on-screen text.
+       */}
       <div
         className="accent-colour-picker__swatches"
         role="radiogroup"
