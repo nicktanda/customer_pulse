@@ -20,6 +20,19 @@ export type AccentColourLabel = (typeof ACCENT_COLOURS)[number]["label"];
 export const DEFAULT_ACCENT: AccentColourLabel = "indigo";
 export const ACCENT_STORAGE_KEY = "user_accent_colour";
 
+/**
+ * Returns the stored accent colour from localStorage, falling back to the
+ * default if the stored value is absent or unrecognised.
+ */
+export function getStoredAccentColour(): AccentColourLabel {
+  if (typeof window === "undefined") return DEFAULT_ACCENT;
+  const stored = localStorage.getItem(ACCENT_STORAGE_KEY);
+  if (stored && ACCENT_COLOURS.some((c) => c.label === stored)) {
+    return stored as AccentColourLabel;
+  }
+  return DEFAULT_ACCENT;
+}
+
 interface AccentColourPickerProps {
   value?: AccentColourLabel;
   onChange?: (label: AccentColourLabel) => void;
@@ -29,7 +42,11 @@ export function AccentColourPicker({ value, onChange }: AccentColourPickerProps)
   const [selected, setSelected] = useState<AccentColourLabel>(value ?? DEFAULT_ACCENT);
 
   useEffect(() => {
-    if (value) setSelected(value);
+    if (value !== undefined) {
+      setSelected(value);
+    } else {
+      setSelected(DEFAULT_ACCENT);
+    }
   }, [value]);
 
   function handleSelect(label: AccentColourLabel) {
@@ -43,7 +60,7 @@ export function AccentColourPicker({ value, onChange }: AccentColourPickerProps)
     <div>
       <p className="accent-picker__label">Accent Colour</p>
       <div className="accent-picker__swatches" role="radiogroup" aria-label="Accent colour">
-        {ACCENT_COLOURS.map((colour, index) => (
+        {ACCENT_COLOURS.map((colour) => (
           <button
             key={colour.label}
             type="button"
@@ -51,7 +68,7 @@ export function AccentColourPicker({ value, onChange }: AccentColourPickerProps)
             aria-checked={selected === colour.label}
             aria-label={colour.name}
             title={colour.name}
-            tabIndex={selected === colour.label ? 0 : index === 0 && !ACCENT_COLOURS.some((c) => c.label === selected) ? 0 : selected === colour.label ? 0 : -1}
+            tabIndex={selected === colour.label ? 0 : -1}
             className={[
               "accent-picker__swatch",
               selected === colour.label ? "accent-picker__swatch--active" : "",
@@ -78,8 +95,6 @@ export function applyAccentColour(label: AccentColourLabel) {
 
 export function initAccentColour() {
   if (typeof window === "undefined") return;
-  const stored = localStorage.getItem(ACCENT_STORAGE_KEY) as AccentColourLabel | null;
-  const label: AccentColourLabel =
-    stored && ACCENT_COLOURS.some((c) => c.label === stored) ? stored : DEFAULT_ACCENT;
+  const label = getStoredAccentColour();
   applyAccentColour(label);
 }
