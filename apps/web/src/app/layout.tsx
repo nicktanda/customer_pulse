@@ -5,7 +5,7 @@ import { AccentColorProvider } from "./contexts/accent-color-context";
 
 export const metadata: Metadata = {
   title: "xenoform.ai",
-  description: "xenoform.ai application",
+  description: "xenoform.ai — AI-powered form intelligence",
 };
 
 export default function RootLayout({
