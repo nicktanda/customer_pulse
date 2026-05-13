@@ -177,14 +177,15 @@ input[type="range"] {
 
 /*
  * Highlighted / selected table rows and list items.
- * The transparent border-left base prevents layout shift on selection.
+ * Scoped to .accent-table to avoid affecting all tables in the app
+ * (global `tr` + border-left can break border-collapse layouts).
  */
-tr,
+.accent-table tr,
 .list-item {
   border-left: 3px solid transparent;
 }
 
-tr.selected,
+.accent-table tr.selected,
 .list-item.selected {
   background-color: var(--accent-100);
   border-left: 3px solid var(--accent-600);
