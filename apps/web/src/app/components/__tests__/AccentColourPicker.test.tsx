@@ -33,24 +33,26 @@ describe("AccentColourPicker", () => {
   it("clicking a swatch marks it as selected and updates data-accent", () => {
     const { getByRole } = render(<Fixture />);
     const roseBtn = getByRole("radio", { name: "Rose" });
-
     fireEvent.click(roseBtn);
-
     expect(roseBtn.getAttribute("aria-checked")).toBe("true");
     expect(document.documentElement.getAttribute("data-accent")).toBe("rose");
   });
 
-  it("clicking a swatch persists to localStorage", () => {
+  it("persists the selected colour to localStorage", () => {
     const { getByRole } = render(<Fixture />);
     const tealBtn = getByRole("radio", { name: "Teal" });
-
     fireEvent.click(tealBtn);
-
     expect(localStorage.getItem("accentColour")).toBe("teal");
   });
 
-  it("renders the hint text", () => {
-    const { getByText } = render(<Fixture />);
-    expect(getByText("Changes are saved automatically.")).toBeTruthy();
+  it("only one swatch is checked at a time", () => {
+    const { getAllByRole, getByRole } = render(<Fixture />);
+    const violetBtn = getByRole("radio", { name: "Violet" });
+    fireEvent.click(violetBtn);
+    const checked = getAllByRole("radio").filter(
+      (el) => el.getAttribute("aria-checked") === "true"
+    );
+    expect(checked).toHaveLength(1);
+    expect(checked[0].getAttribute("aria-label")).toBe("Violet");
   });
 });
