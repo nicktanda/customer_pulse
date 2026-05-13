@@ -29,8 +29,18 @@ describe('getAccentById', () => {
 });
 
 describe('persistAccentColour / readPersistedAccentColour', () => {
+  // Minimal localStorage mock
+  let store: Record<string, string> = {};
+  const localStorageMock = {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { store = {}; },
+  };
+
   beforeEach(() => {
-    localStorage.clear();
+    store = {};
+    vi.stubGlobal('localStorage', localStorageMock);
   });
 
   it('persists and reads back a valid accent id', () => {
@@ -43,17 +53,38 @@ describe('persistAccentColour / readPersistedAccentColour', () => {
   });
 
   it('returns the default when an unrecognised id is stored', () => {
-    localStorage.setItem(ACCENT_STORAGE_KEY, 'not-a-colour');
+    localStorageMock.setItem(ACCENT_STORAGE_KEY, 'not-a-colour');
     expect(readPersistedAccentColour()).toBe(DEFAULT_ACCENT_ID);
   });
 
   it('returns the default when an empty string is stored', () => {
-    localStorage.setItem(ACCENT_STORAGE_KEY, '');
+    localStorageMock.setItem(ACCENT_STORAGE_KEY, '');
     expect(readPersistedAccentColour()).toBe(DEFAULT_ACCENT_ID);
   });
 });
 
 describe('applyAccentColour', () => {
+  // Minimal document mock
+  const styleProps: Record<string, string> = {};
+  const attributes: Record<string, string> = {};
+  const documentMock = {
+    documentElement: {
+      style: {
+        setProperty: (prop: string, value: string) => { styleProps[prop] = value; },
+        getPropertyValue: (prop: string) => styleProps[prop] ?? '',
+      },
+      setAttribute: (attr: string, value: string) => { attributes[attr] = value; },
+      getAttribute: (attr: string) => attributes[attr] ?? null,
+    },
+  };
+
+  beforeEach(() => {
+    // Reset state
+    for (const key of Object.keys(styleProps)) delete styleProps[key];
+    for (const key of Object.keys(attributes)) delete attributes[key];
+    vi.stubGlobal('document', documentMock);
+  });
+
   it('sets the --accent-colour CSS custom property on the document root', () => {
     applyAccentColour('violet');
     const value = document.documentElement.style.getPropertyValue('--accent-colour');
