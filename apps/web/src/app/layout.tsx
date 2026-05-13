@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import "./accent-colour.css";
+import { Providers } from "./providers";
 import AccentColourProvider from "./components/AccentColourProvider";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
@@ -20,9 +18,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <AccentColourProvider>{children}</AccentColourProvider>
+    <html lang="en" data-bs-theme="dark">
+      <body className="min-vh-100 antialiased bg-body text-body">
+        <AccentColourProvider>
+          <Providers>{children}</Providers>
+        </AccentColourProvider>
       </body>
     </html>
   );
