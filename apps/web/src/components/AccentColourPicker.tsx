@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ACCENT_COLOURS,
+  DEFAULT_ACCENT_ID,
   applyAccentColour,
   getAccentColourById,
   persistAccentId,
@@ -21,7 +22,7 @@ export default function AccentColourPicker({
   initialAccentId,
 }: AccentColourPickerProps) {
   const [selected, setSelected] = useState<string>(
-    initialAccentId ?? DEFAULT_ACCENT_ID_PLACEHOLDER
+    initialAccentId ?? DEFAULT_ACCENT_ID
   );
 
   // Hydrate from localStorage on mount if no server value was provided
@@ -84,20 +85,21 @@ export default function AccentColourPicker({
       </div>
       <p className="accent-picker__hint">
         Preview:{' '}
-        <span
-          className="accent-picker__preview-badge"
-          style={{
-            backgroundColor: getAccentColourById(selected).value,
-            color: getAccentColourById(selected).onAccent,
-          }}
-        >
-          {getAccentColourById(selected).label}
-        </span>
+        {(() => {
+          const previewColour = getAccentColourById(selected);
+          return (
+            <span
+              className="accent-picker__preview-badge"
+              style={{
+                backgroundColor: previewColour.value,
+                color: previewColour.onAccent,
+              }}
+            >
+              {previewColour.label}
+            </span>
+          );
+        })()}
       </p>
     </div>
   );
 }
-
-// Avoid importing DEFAULT_ACCENT_ID at module evaluation time to keep
-// the constant co-located with the logic.
-const DEFAULT_ACCENT_ID_PLACEHOLDER = 'indigo';
