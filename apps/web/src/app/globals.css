@@ -3,39 +3,24 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
-   Accent colour custom property.
-   Default matches the "indigo" swatch; overridden at runtime by
-   AccentColorProvider via document.documentElement.style.setProperty.
+   Root design tokens.
 
-   NOTE: If a user has saved a non-default accent colour to localStorage,
-   there will be a brief flash of indigo on first paint before the
-   AccentColorProvider's useEffect runs and applies the saved value.
-   This is an inherent SSR/client-split trade-off — the saved preference
-   is not available server-side without a cookie-based approach.
+   --accent
+     The user-selected accent colour. Defaults to indigo (#4F46E5).
+     Overridden at runtime by AccentColorProvider via
+     document.documentElement.style.setProperty.
+     NOTE: A brief flash of indigo is expected on first paint when a
+     non-default colour is stored in localStorage — an inherent SSR/client
+     trade-off that avoids the complexity of cookie-based hydration.
+
+   --xf-*
+     xenoform.ai dark-theme palette tokens.
    --------------------------------------------------------------------------- */
+
 :root {
+  /* User-selected accent colour (overridden by AccentColorProvider) */
   --accent: #4F46E5;
-}
 
-/* ---------------------------------------------------------------------------
-   xenoform.ai theme — dark, organic, alien-inspired.
-
-   Token hierarchy
-   ───────────────
-   --xf-bg              Page background (deepest layer)
-   --xf-surface         Card / panel background (one step above bg)
-   --xf-surface-elevated  Elevated panel, tooltip, dropdown
-   --xf-border          Default border
-   --xf-border-soft     Subtle / decorative border
-   --xf-border-strong   Emphasized border (hover, focus)
-   --xf-text            Primary text
-   --xf-text-muted      Secondary / label text
-   --xf-accent          Primary interactive colour
-   --xf-accent-glow-soft  Diffuse glow tint for box-shadows
-   --xf-danger          Destructive / error red
-   --------------------------------------------------------------------------- */
-
-:root {
   /* Backgrounds */
   --xf-bg: #0a0d10;
   --xf-surface: #111418;
@@ -70,6 +55,10 @@
   --bs-card-border-color: var(--xf-border-soft);
 }
 
+/* ---------------------------------------------------------------------------
+   Base body styles
+   --------------------------------------------------------------------------- */
+
 body {
   background-color: var(--xf-bg);
   color: var(--xf-text);
@@ -85,16 +74,7 @@ body {
 }
 
 /*
- * accent-color controls the native browser tint for checkboxes, radios,
- * range sliders, and progress elements.
- */
-:root {
-  accent-color: #39ff88;
-}
-
-/*
- * Sidebar nav pills: Bootstrap hard-codes the active pill background to blue.
- * Point those variables at our primary token so active state stays on-brand.
+ * Nav pills: neon active state.
  */
 .nav-pills {
   --bs-nav-pills-link-active-bg: var(--bs-primary);
@@ -114,6 +94,7 @@ a:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
+  text-decoration-color: rgba(57, 255, 136, 0.55);
 }
 
 a:focus-visible {
@@ -122,16 +103,10 @@ a:focus-visible {
   border-radius: 3px;
 }
 
-a:hover,
-a:focus {
-  text-decoration-color: rgba(57, 255, 136, 0.55);
-}
+/* ---------------------------------------------------------------------------
+   Cards
+   --------------------------------------------------------------------------- */
 
-/*
- * Cards: lift above the page background with surface tint + a vein-thin border
- * and a faint internal glow on hover. This is where the "alien control panel"
- * reading lives — a layered surface with restrained accent.
- */
 .card {
   background-color: var(--xf-surface);
   border-color: var(--xf-border-soft);
@@ -161,11 +136,10 @@ a:focus-visible > .card {
   border-top-color: var(--xf-border-soft);
 }
 
-a:focus-visible > .card.shadow-sm {
-  border-top-color: var(--xf-border-soft);
-}
+/* ---------------------------------------------------------------------------
+   Tables
+   --------------------------------------------------------------------------- */
 
-/* Tables — vein dividers, no zebra stripes (those clash with the dark theme) */
 .table {
   --bs-table-bg: transparent;
   --bs-table-color: var(--xf-text);
@@ -251,651 +225,25 @@ a:focus-visible > .card.shadow-sm {
 }
 
 /* ---------------------------------------------------------------------------
-   Feedback filter chips
+   Utility: two-line clamp
    --------------------------------------------------------------------------- */
 
-a.feedback-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--bs-border-radius-pill);
-  border: 1px solid var(--xf-border-soft);
-  background-color: transparent;
-  color: var(--xf-text-muted);
-  text-decoration: none;
-  transition:
-    color 0.12s ease,
-    border-color 0.12s ease,
-    background-color 0.12s ease;
-  white-space: nowrap;
-}
-
-a.feedback-filter-chip:hover {
-  color: var(--xf-text);
-  border-color: var(--xf-border);
-  background-color: var(--xf-surface-elevated);
-  text-decoration: none;
-}
-
-a.feedback-filter-chip.active {
-  color: var(--xf-accent);
-  border-color: var(--xf-accent);
-  background-color: rgba(57, 255, 136, 0.07);
-}
-
-a.feedback-filter-chip:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
-}
-
-/*
- * Feedback priority badges (P2 / P3): vivid fixed accent colors so they stand
- * out from the neon primary without clashing.
- */
-.badge.feedback-priority-badge--p2 {
-  background-color: var(--xf-danger);
-  color: #fff;
-}
-
-.badge.feedback-priority-badge--p3 {
-  background-color: var(--bs-warning);
-  color: #000;
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ---------------------------------------------------------------------------
-   List groups
+   Reduced-motion safety net
    --------------------------------------------------------------------------- */
 
-.list-group-item {
-  background-color: var(--xf-surface);
-  border-color: var(--xf-border-soft);
-  color: var(--xf-text);
-}
-
-.list-group-item-action:hover {
-  background-color: var(--xf-surface-elevated);
-}
-
-/*
- * List-group items that are links (e.g. recent activity, high-priority feedback)
- * get a subtle background transition and a left-border peek on hover.
- */
-.list-group-item a.d-block,
-.list-group-item > a.d-block {
-  transition: background-color 0.12s ease;
-}
-
-.list-group-item a.d-block:hover,
-.list-group-item > a.d-block:hover {
-  background-color: var(--xf-surface-elevated);
-  text-decoration: none;
-}
-
-/* ---------------------------------------------------------------------------
-   Dropdowns / Popovers
-   --------------------------------------------------------------------------- */
-
-.dropdown-menu {
-  --bs-dropdown-bg: var(--xf-surface-elevated);
-  --bs-dropdown-border-color: var(--xf-border);
-  --bs-dropdown-color: var(--xf-text);
-  --bs-dropdown-link-color: var(--xf-text);
-  --bs-dropdown-link-hover-bg: rgba(57, 255, 136, 0.08);
-  --bs-dropdown-link-hover-color: var(--xf-accent);
-  --bs-dropdown-link-active-bg: rgba(57, 255, 136, 0.15);
-  --bs-dropdown-link-active-color: var(--xf-accent);
-  --bs-dropdown-divider-bg: var(--xf-border-soft);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-}
-
-/* ---------------------------------------------------------------------------
-   App tab bar (shared) — page-level tabs aligned with the mode bar.
-   active = neon underline; inactive accent tabs get a quiet vein border.
-   --------------------------------------------------------------------------- */
-.app-tab-bar {
-  gap: 0.125rem;
-}
-
-.app-tab-bar .nav-link {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--xf-text-muted);
-  padding: 0.4rem 0.75rem;
-  border-radius: 0.375rem;
-  transition:
-    color 0.12s ease,
-    background-color 0.12s ease;
-}
-
-.app-tab-bar .nav-link:hover {
-  color: var(--xf-text);
-  background-color: var(--xf-surface-elevated);
-}
-
-.app-tab-bar .nav-link.active {
-  color: var(--xf-accent);
-  background-color: rgba(57, 255, 136, 0.07);
-}
-
-.app-tab-bar .nav-link:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
-}
-
-/* ---------------------------------------------------------------------------
-   Brand mark — "alien biological control surface" plate used as a logo cell.
-   Off-square radius gives the asymmetrical feel without going full organic.
-   --------------------------------------------------------------------------- */
-.xf-brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.5rem 0.5rem 0.5rem 0.25rem;
-  background: linear-gradient(
-    135deg,
-    rgba(57, 255, 136, 0.22) 0%,
-    rgba(57, 255, 136, 0.06) 100%
-  );
-  border: 1px solid rgba(57, 255, 136, 0.30);
-  box-shadow:
-    0 0 12px rgba(57, 255, 136, 0.10),
-    inset 0 1px 0 rgba(57, 255, 136, 0.15);
-  flex-shrink: 0;
-}
-
-.xf-brand-mark__glyph {
-  font-size: 0.95rem;
-  line-height: 1;
-  filter: drop-shadow(0 0 4px rgba(57, 255, 136, 0.6));
-}
-
-.xf-brand-text {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--xf-text);
-}
-
-.xf-brand-text .xf-brand-text__ai {
-  font-size: 0.75em;
-  opacity: 0.85;
-}
-
-/* ---------------------------------------------------------------------------
-   ModeLandingPage primitives (Build, Monitor area landing pages).
-   --------------------------------------------------------------------------- */
-
-.mode-section-label {
-  @apply text-xs font-semibold uppercase tracking-widest;
-  color: var(--xf-text-muted);
-}
-
-.mode-step-circle {
-  @apply flex items-center justify-center flex-shrink-0 text-sm font-semibold rounded;
-  width: 2rem;
-  height: 2rem;
-  background-color: var(--xf-surface-elevated);
-  color: var(--xf-text-muted);
-  border: 1px solid var(--xf-border-soft);
-}
-
-.mode-feature-number {
-  @apply flex-shrink-0 font-semibold;
-  font-size: 0.75rem;
-  color: var(--xf-text-muted);
-  width: 1.75rem;
-  padding-top: 0.2rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-}
-
-/* ---------------------------------------------------------------------------
-   App layout: main pane scrolls on lg+ so detail panels stick to its top.
-   --------------------------------------------------------------------------- */
-
-.app-layout-shell {
-  min-height: 100dvh;
-}
-
-@media (min-width: 992px) {
-  .app-layout-shell {
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-    align-items: stretch;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
-
-  .app-main-pane {
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-  }
-}
-
-/* Master–detail: panel pins to top of `.app-main-pane` scrollport */
-@media (min-width: 992px) {
-  .feedback-detail-aside-shell {
-    position: sticky;
-    top: 0;
-    align-self: flex-start;
-    display: flex;
-    flex-direction: column;
-    max-height: calc(100dvh - 5.5rem);
-    min-height: 0;
-    background-color: var(--xf-bg);
-  }
-
-  .feedback-detail-aside-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-  }
-
-  .app-detail-aside {
-    position: sticky;
-    top: 0;
-    align-self: flex-start;
-    max-height: calc(100dvh - 5.5rem);
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background-color: var(--xf-bg);
-  }
-
-  .app-detail-aside__scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    padding-top: 0.75rem;
-    padding-bottom: 1rem;
-  }
-}
-
-.feedback-detail-aside-scroll {
-  padding-top: 0.75rem;
-  padding-bottom: 1rem;
-}
-
-/* Shared master–detail peek header */
-.peek-panel-header {
-  padding-top: 0.25rem;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--xf-border-soft);
-}
-
-.peek-panel-header__main {
-  margin-top: 0.35rem;
-}
-
-.peek-panel-title {
-  margin-top: 0.65rem;
-  line-height: 1.35;
-}
-
-.peek-panel-toolbar {
-  justify-content: flex-start;
-  gap: 0.2rem 0.45rem !important;
-  row-gap: 0.35rem !important;
-  max-width: 100%;
-}
-
-.peek-panel-toolbar__rule {
-  width: 1px;
-  align-self: stretch;
-  min-height: 1.125rem;
-  margin: 0 0.2rem 0 0.35rem;
-  background-color: var(--xf-border-soft);
-  flex-shrink: 0;
-}
-
-.peek-panel-nav-pair {
-  gap: 0.05rem;
-}
-
-a.peek-panel-entity-link {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  color: var(--xf-text-muted);
-  text-decoration: none;
-  padding: 0.35rem 0.7rem;
-  line-height: 1.2;
-  border-radius: var(--bs-border-radius-pill);
-  border: 1px solid var(--xf-border-soft);
-  background-color: var(--xf-surface);
-  transition:
-    color 0.12s ease,
-    background-color 0.12s ease,
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
-}
-
-a.peek-panel-entity-link:hover {
-  color: var(--xf-accent);
-  border-color: var(--xf-border-strong);
-  background-color: rgba(var(--bs-primary-rgb), 0.08);
-  box-shadow: 0 0 10px var(--xf-accent-glow-soft);
-}
-
-a.peek-panel-entity-link:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.38);
-}
-
-.peek-panel-toolbar-icon {
-  display: block;
-  flex-shrink: 0;
-}
-
-.peek-panel-icon-btn {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.25rem;
-  min-height: 2.25rem;
-  padding: 0.35rem !important;
-  line-height: 0;
-  border: none;
-  border-radius: 0.35rem;
-  background: transparent;
-  color: var(--xf-text-muted);
-  text-decoration: none;
-  transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
-}
-
-a.peek-panel-icon-btn:hover,
-button.peek-panel-icon-btn:hover {
-  background-color: var(--xf-surface-elevated);
-  color: var(--xf-text);
-}
-
-.peek-panel-icon-btn:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.38);
-}
-
-.peek-panel-icon-btn.disabled,
-.peek-panel-icon-btn[aria-disabled="true"] {
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-/* Muted back control — layout from Tailwind @apply, colours from Bootstrap tokens. */
-.app-back-link {
-  @apply inline-flex items-center;
-  text-decoration: none;
-  gap: 0.35rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--xf-text-muted);
-  border-radius: var(--bs-border-radius);
-  padding: 0.25rem 0.35rem;
-  margin: -0.25rem -0.35rem;
-}
-
-.app-back-link:hover {
-  color: var(--xf-text);
-  text-decoration: none;
-}
-
-.app-back-link:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
-}
-
-.app-back-link__icon {
-  opacity: 0.85;
-}
-
-/* ---------------------------------------------------------------------------
-   Peek drawer (resizable side panel — used on Feedback and Insights list pages)
-   --------------------------------------------------------------------------- */
-
-.peek-drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1040;
-  background-color: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(2px);
-}
-
-.peek-drawer-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1045;
-  min-width: 280px;
-  max-width: min(100vw, 900px);
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  background-color: var(--xf-surface);
-  border-left: 1px solid var(--xf-border);
-  box-shadow:
-    -4px 0 32px rgba(0, 0, 0, 0.7),
-    -1px 0 0 rgba(57, 255, 136, 0.10) inset;
-  padding: 1.25rem 1.5rem 2rem calc(1.5rem + 6px);
-}
-
-.peek-drawer-resize-handle {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: ew-resize;
-  z-index: 1;
-  background-color: transparent;
-  transition: background-color 0.15s ease;
-}
-
-.peek-drawer-resize-handle:hover {
-  background-color: rgba(var(--bs-primary-rgb), 0.30);
-}
-
-/* ---------------------------------------------------------------------------
-   Responsive app sidebar (drawer on small screens)
-   --------------------------------------------------------------------------- */
-
-@media (max-width: 991.98px) {
-  .app-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 1050;
-    overflow-y: auto;
-    transform: translateX(-100%);
-    transition: transform 0.2s ease;
-    background-color: var(--xf-surface);
-    border-right: 1px solid var(--xf-border-soft);
-    box-shadow: 0 0 1.25rem rgba(0, 0, 0, 0.7);
-  }
-
-  .app-sidebar.app-sidebar--open {
-    transform: translateX(0);
-  }
-}
-
-@media (min-width: 992px) {
-  .app-sidebar {
-    position: relative !important;
-    transform: none !important;
-    height: auto !important;
-    box-shadow: none !important;
-    align-self: stretch;
-    max-height: 100dvh;
-    overflow-y: auto;
-    background-color: var(--xf-surface);
-    border-right: 1px solid var(--xf-border-soft);
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Discovery — Assumption map "Print" mode.
-   --------------------------------------------------------------------------- */
-@media print {
-  html.assumption-map-print-mode body * {
-    visibility: hidden;
-  }
-
-  html.assumption-map-print-mode .assumption-map-print-area,
-  html.assumption-map-print-mode .assumption-map-print-area * {
-    visibility: visible;
-  }
-
-  html.assumption-map-print-mode .assumption-map-print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 0 0.5rem;
-  }
-
-  html.assumption-map-print-mode .assumption-map-no-print {
-    display: none !important;
-  }
-
-  html.assumption-map-print-mode body {
-    background: #fff !important;
-    background-image: none !important;
-    color: #000 !important;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Discovery — Opportunity solution tree map.
-   --------------------------------------------------------------------------- */
-.scroll-target-discover-map,
-.scroll-target-ost-map-embed {
-  scroll-margin-top: 4.5rem;
-}
-
-.ost-map-dot-grid {
-  background-color: var(--xf-bg);
-  background-image: radial-gradient(circle, rgba(57, 255, 136, 0.10) 1px, transparent 1px);
-  background-size: 14px 14px;
-}
-
-.ost-map-connector {
-  stroke: color-mix(in srgb, var(--xf-accent) 45%, transparent);
-}
-
-.ost-node-outcome {
-  background: color-mix(in srgb, var(--bs-warning) 18%, var(--xf-surface));
-  border: 2px solid color-mix(in srgb, var(--bs-warning) 50%, var(--xf-border));
-  padding: 1.1rem 1.35rem 1.2rem;
-}
-
-.ost-node-outcome .ost-map-outcome-actions {
-  margin-top: 0.9rem;
-  padding-top: 0.25rem;
-}
-
-.ost-node-opportunity {
-  background: color-mix(in srgb, var(--bs-primary) 14%, var(--xf-surface));
-  border: 2px solid color-mix(in srgb, var(--bs-primary) 48%, var(--xf-border));
-  padding: 1.1rem 1.2rem 1.15rem;
-}
-
-.ost-node-opportunity .ost-map-opp-title {
-  line-height: 1.45;
-  margin-bottom: 0.4rem;
-}
-
-.ost-node-opportunity .ost-map-opp-badge {
-  margin-top: 0.65rem;
-  display: inline-block;
-}
-
-.ost-node-solution {
-  background: var(--xf-surface-elevated);
-  border: 1px solid var(--xf-border-soft);
-  padding: 0.85rem 0.95rem 0.9rem;
-}
-
-.ost-node-solution .ost-map-solution-list li {
-  line-height: 1.5;
-  margin-bottom: 0.4rem;
-}
-
-.ost-node-solution .ost-map-solution-list li:last-child {
-  margin-bottom: 0.25rem;
-}
-
-.ost-map-solution-list--stack {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.ost-map-solution-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem 0.65rem;
-  padding: 0.55rem 0.6rem 0.6rem 0.65rem;
-  border: 1px solid var(--xf-border-soft);
-  border-radius: var(--bs-border-radius);
-  background: var(--xf-surface);
-}
-
-.ost-map-solution-idx {
-  font-variant-numeric: tabular-nums;
-  min-width: 1.4rem;
-  font-weight: 600;
-  color: var(--xf-text-muted);
-  padding-top: 0.1rem;
-}
-
-.ost-map-solution-line {
-  flex: 1;
-  min-width: 0;
-  line-height: 1.45;
-  font-size: 0.9rem;
-}
-
-.ost-map-icon-row {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  flex-shrink: 0;
-}
-
-.ost-node-test {
-  background: var(--xf-surface);
-  border: 1px solid var(--xf-border-soft);
-  padding: 0.6rem 0.75rem 0.7rem;
-}
-
-.ost-node-test .ost-map-test-line {
-  line-height: 1.5;
-  margin-top: 0.35rem;
-}
-
-.ost-node-test .ost-map-test-line:first-of-type {
-  margin-top: 0.15rem;
-  font-size: 0.95rem;
-}
-
-.ost-map-opp-column {
-  gap: 0.9rem;
-  align-self: flex-start;
-}
-
-.ost-map-assumption-block {
-  gap: 0.65rem;
 }
