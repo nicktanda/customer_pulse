@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AccentColourPicker } from './AccentColourPicker';
 import './AccentColourPicker.css';
+import './AppearanceSettings.css';
 import {
   AccentColourId,
   DEFAULT_ACCENT_COLOUR_ID,
@@ -18,11 +19,16 @@ export function AppearanceSettings() {
     setAccentColour(loadAccentColour());
   }, []);
 
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 2000);
+    return () => clearTimeout(t);
+  }, [saved]);
+
   function handleChange(id: AccentColourId) {
     setAccentColour(id);
     saveAccentColour(id);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   }
 
   return (
@@ -37,11 +43,9 @@ export function AppearanceSettings() {
 
       <div className="appearance-settings__field">
         <AccentColourPicker selected={accentColour} onChange={handleChange} />
-        {saved && (
-          <p className="appearance-settings__saved" role="status" aria-live="polite">
-            ✓ Saved
-          </p>
-        )}
+        <p className="appearance-settings__saved" role="status" aria-live="polite">
+          {saved ? '✓ Saved' : ''}
+        </p>
       </div>
     </section>
   );
