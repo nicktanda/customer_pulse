@@ -1,5 +1,6 @@
 import React from 'react';
 import { ACCENT_COLOURS, AccentColourId } from '../lib/accentColour';
+import './AccentColourPicker.css';
 
 interface AccentColourPickerProps {
   selected: AccentColourId;
