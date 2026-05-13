@@ -27,7 +27,11 @@ export const DEFAULT_ACCENT_ID = 'indigo';
 
 export const ACCENT_STORAGE_KEY = 'user_accent_colour';
 
-/** Feature flag – set NEXT_PUBLIC_ACCENT_COLOUR_ENABLED=true to enable */
+/**
+ * Feature flag – set NEXT_PUBLIC_ACCENT_COLOUR_ENABLED=true to enable.
+ * Note: this constant is evaluated at build time. Changing the env var
+ * requires a full rebuild, not just a server restart.
+ */
 export const ACCENT_COLOUR_ENABLED =
   process.env.NEXT_PUBLIC_ACCENT_COLOUR_ENABLED === 'true';
 
@@ -59,11 +63,16 @@ export function persistAccentColour(id: string): void {
   }
 }
 
-/** Read from localStorage. */
+/**
+ * Read from localStorage and validate against the known palette.
+ * Returns DEFAULT_ACCENT_ID if the stored value is missing or unrecognised.
+ */
 export function readPersistedAccentColour(): string {
   if (typeof localStorage === 'undefined') return DEFAULT_ACCENT_ID;
   try {
-    return localStorage.getItem(ACCENT_STORAGE_KEY) ?? DEFAULT_ACCENT_ID;
+    const raw = localStorage.getItem(ACCENT_STORAGE_KEY);
+    const valid = ACCENT_COLOURS.find((c) => c.id === raw);
+    return valid ? valid.id : DEFAULT_ACCENT_ID;
   } catch {
     return DEFAULT_ACCENT_ID;
   }
