@@ -1,36 +1,30 @@
 import React from "react";
 import { AccentColorPicker } from "../../components/accent-color-picker";
 
-export const metadata = {
-  title: "Appearance — xenoform.ai",
-  description: "Personalise the accent colour used throughout the app.",
-};
-
-export default function AppearancePage() {
+export default function AppearanceSettingsPage() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <div className="space-y-6">
+    <div className="max-w-2xl space-y-8">
+      <div>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Appearance
+        </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Customise how the app looks and feels.
+        </p>
+      </div>
+
+      <section className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 space-y-4">
         <div>
-          <h1 className="text-xl font-semibold text-gray-100">
-            Appearance
-          </h1>
-          <p className="mt-1 text-sm text-gray-400">
-            Customise how xenoform.ai looks for you.
-          </p>
-        </div>
-
-        <hr className="border-gray-700" />
-
-        <section aria-labelledby="accent-colour-heading">
-          <h2
-            id="accent-colour-heading"
-            className="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-4"
-          >
+          <h2 className="text-base font-medium text-gray-900 dark:text-white">
             Accent colour
           </h2>
-          <AccentColorPicker />
-        </section>
-      </div>
-    </main>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            Choose the accent colour used for buttons, links, and focus
+            indicators throughout the app.
+          </p>
+        </div>
+        <AccentColorPicker />
+      </section>
+    </div>
   );
 }
