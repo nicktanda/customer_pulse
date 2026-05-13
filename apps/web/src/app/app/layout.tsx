@@ -15,6 +15,8 @@ import { ensureCurrentProjectCookie } from "@/lib/current-project";
 import { ResponsiveSidebar } from "./ResponsiveSidebar";
 import { MobileTopBar } from "./MobileTopBar";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "@/components/SidebarNav";
+import { AccentColourInitializer } from "@/components/AccentColourInitializer";
+
 /** Each group is rendered with the same heading toggle + sub-links (`NavGroupSection` in `SidebarNav`). */
 function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
   const workspaceItems: SidebarNavItem[] = [];
@@ -172,6 +174,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!onboardingComplete) {
     return (
       <div className="min-vh-100 bg-body-tertiary">
+        <AccentColourInitializer />
         <header className="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-secondary-subtle bg-body">
           <div className="d-flex align-items-center gap-2">
             <span aria-hidden="true" className="xf-brand-mark" />
@@ -200,6 +203,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="d-flex min-vh-100 app-layout-shell">
+      <AccentColourInitializer />
       <ResponsiveSidebar>
         <div className="d-flex align-items-center gap-2 pb-3 mb-3 border-bottom border-secondary-subtle">
           {/* Bio-mechanical accent plate — acts as the app logo mark */}
