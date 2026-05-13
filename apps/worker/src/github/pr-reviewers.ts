@@ -18,9 +18,10 @@ import {
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { callClaude, callClaudeJson } from "../ai/call-claude.js";
 import { commitFile } from "./pr-creator.js";
-import { analyzeRepo, findPathMismatches, findUnreachableComponents, type RepoContext } from "./repo-analyzer.js";
+import { analyzeRepo, findPathMismatches, findUnreachableComponents, findMisplacedNewPages, type RepoContext } from "./repo-analyzer.js";
 import { runPlaywrightReview, renderPlaywrightFindings } from "./playwright/runner.js";
 import { regenerateLockfile } from "./lockfile-regen.js";
+import { applyMechanicalCiFixes } from "./mechanical-ci-fixers.js";
 
 interface GithubCreds {
   access_token: string;
@@ -97,7 +98,8 @@ Evaluate whether the changes actually solve the customer problem. Consider:
    - For new React components, the diff must also include a Next.js \`page.tsx\` / \`layout.tsx\` / \`route.ts\` (under \`apps/web/src/app/...\`) that imports them, OR a modification to an existing page/layout/component that imports them.
    - For new providers (e.g. Context providers), the diff must also wrap them around the app via a \`layout.tsx\` modification.
    - For new server-side functions, the diff must also include a UI handler (form, button, etc.) or schedule that triggers them.
-   If new components/providers exist but nothing in the diff renders or imports them, that is a hard "needs_changes" — the user impact is zero until reachability is wired up. Do not approve PRs that ship orphaned code claiming to address a customer-facing idea.
+   - **Where the page lives matters as much as whether it exists.** If the codebase's logged-in product lives under a nested route prefix (e.g. \`apps/web/src/app/app/...\` rather than \`apps/web/src/app/...\`), a new top-level page at \`apps/web/src/app/<seg>/page.tsx\` is invisible to users browsing the actual product. URL-reachable ≠ reachable-by-a-real-user. New user-facing pages must live under the SAME prefix as existing user-facing pages in the repo. Compare the new \`page.tsx\` path against the most common existing \`page.tsx\` paths — if it doesn't share a prefix, that's a genuine gap.
+   If new components/providers exist but nothing in the diff renders or imports them, OR if they're wired to a top-level route outside the authenticated/product tree, that is a hard "needs_changes" — the user impact is zero until reachability is wired up correctly. Do not approve PRs that ship orphaned code or code at the wrong route prefix claiming to address a customer-facing idea.
 
 Return a JSON object with exactly two fields:
 - "verdict": "approved" if the PR addresses the insight, or "needs_changes" if it misses the core problem
@@ -109,7 +111,7 @@ Respond with ONLY the JSON object.`;
 
 const QA_REVIEW_SYSTEM = `You are a QA engineer verifying that a pull request (a) does what it claims AND (b) fits cleanly into the project's existing structure AND (c) is actually reachable to users.
 
-You will receive the original idea/insight, the diff, a repo context summary (top-level directories, sample file paths, tech stack), a "Deterministic Path Findings" block, a "Deterministic Reachability Findings" block, and a "Playwright QA Findings" block — all pre-computed against the actual repo, PR diff, and a live dev server running the PR's code. Your job is to derive acceptance criteria from the idea AND apply standard infrastructure + reachability criteria, then check each against the diff and the playwright findings.
+You will receive the original idea/insight, the diff, a repo context summary (top-level directories, sample file paths, tech stack), a "Deterministic Path Findings" block, a "Deterministic Reachability Findings" block, a "Deterministic Route-Prefix Findings" block, and a "Playwright QA Findings" block — all pre-computed against the actual repo, PR diff, and a live dev server running the PR's code. Your job is to derive acceptance criteria from the idea AND apply standard infrastructure + reachability criteria, then check each against the diff and the playwright findings.
 
 Process:
 1. Derive 3-5 **Functional** acceptance criteria from the idea + insights. Each is a single-line, testable statement (e.g. "Adds a 'Resend' button to the pulse report detail page").
@@ -118,8 +120,9 @@ Process:
    - "New imports reference modules that exist in the repo (or are added in the diff)."
    - "No duplicate top-level directories created at a level that conflicts with the existing layout (e.g. don't add \`apps/web/app/\` if \`apps/web/src/app/\` already exists)."
 3. Add the following **Reachability** criteria:
-   - "Every newly-created React component, hook, or provider is imported (and rendered) by at least one other file in the diff — typically a Next.js \`page.tsx\` / \`layout.tsx\` under \`apps/web/src/app/...\`, or an existing page modified to consume the new code."
-   - "If the idea is a user-facing feature, the diff includes a route the user can navigate to — either a new \`apps/web/src/app/<segment>/page.tsx\` or an update to a sidebar/menu/settings nav that surfaces the feature."
+   - "Every newly-created React component, hook, or provider is imported (and rendered) by at least one other file in the diff — typically a Next.js \`page.tsx\` / \`layout.tsx\` under the repo's authenticated app route tree, or an existing page modified to consume the new code."
+   - "If the idea is a user-facing feature for logged-in users, the diff includes a route inside the repo's authenticated app tree — not a brand-new top-level route alongside existing top-level routes. Check the repo context's sample file paths: whichever first segment under \`apps/web/src/app/\` is used by existing pages (e.g. \`apps/web/src/app/app/...\` or \`apps/web/src/app/(authenticated)/...\`) is where new user-facing pages must live. A new \`apps/web/src/app/<seg>/page.tsx\` at the top level is invisible to logged-in users navigating the app."
+   - "Either a new \`page.tsx\` under the authenticated app tree exists, OR an existing page/sidebar/menu/settings nav is modified to surface the feature."
 4. For every criterion (functional + infrastructure + reachability), check the diff and assign:
    - "PASS" — clearly met; cite file path + key line/snippet as evidence.
    - "FAIL" — not met or implementation is broken.
@@ -129,6 +132,7 @@ Process:
 7. **HARD RULE — paths**: if the "Deterministic Path Findings" block lists any items, they have already been verified by code against the actual repo tree. Each listed item is an automatic FAIL on the path-layout criterion — copy the finding into your Infrastructure section as a \`[❌]\`, do NOT explain them away as "fits Next.js conventions" or similar, and the overall verdict MUST be "needs_changes".
 8. **HARD RULE — reachability**: if the "Deterministic Reachability Findings" block lists any items, they have already been verified by code by scanning the diff for imports of each new component. Each listed item is an automatic FAIL on the reachability criterion — copy the finding into your Reachability section as a \`[❌]\`, do NOT explain them away as "the file structure makes it discoverable" or similar, and the verdict MUST be "needs_changes".
 9. **HARD RULE — playwright**: the "Playwright QA Findings" block reports the result of an automated browser session that clicked through the live UI to try to reach the feature. If it reports the feature is NOT visible or NOT reachable, that is an automatic FAIL on the Reachability section — record the finding as \`[❌]\` and the verdict MUST be "needs_changes". Code-exists-but-user-can't-see-it is the exact failure mode this check is designed to catch; do not rationalise it away. If the playwright harness could not run at all (runError without a verdict), treat reachability as UNCERTAIN and surface that — do not assume PASS.
+10. **HARD RULE — route prefix**: if the "Deterministic Route-Prefix Findings" block lists any items, they have already been verified by code by cross-referencing the diff's new \`page.tsx\` paths against where existing pages actually live in the repo. Each listed item is an automatic FAIL on the Reachability section — the page is technically URL-reachable but is outside the authenticated tree where real users navigate. Copy the finding into Reachability as \`[❌]\` and the verdict MUST be "needs_changes". Do not approve a "/settings" page when the rest of the app lives at "/app/settings" — that is the exact failure mode this check is designed to catch.
 
 Return a JSON object with exactly two fields:
 - "verdict": "approved" only if EVERY criterion (functional + infrastructure + reachability) is PASS. If any are FAIL or UNCERTAIN, "needs_changes".
@@ -159,10 +163,10 @@ Generate code changes that address ALL feedback from every reviewer AND fix any 
 When fixing a wrong-path file, emit BOTH a "create" at the corrected path AND a "delete" at the old path. Do not just create the new copy and leave the original — that produces duplicates that will fail the next round of review. The same applies to renames or any reorganisation.
 
 When fixing a reachability/orphaned-component finding (e.g. "AccentColorPicker.tsx is never imported"), the fix is NOT to delete the component. Instead, "create" the missing wiring:
-- For a Next.js feature, add a \`page.tsx\` at \`apps/web/src/app/<segment>/page.tsx\` that imports and renders the component.
-- For a context provider, "modify" \`apps/web/src/app/layout.tsx\` (or the most relevant existing layout) to wrap children with the provider.
-- For an existing settings/dashboard area, "modify" the relevant existing page to consume the component.
-The goal is that, after the fix commit, at least one Next.js auto-discovered file (\`page.tsx\`/\`layout.tsx\`/\`route.ts\`) imports the orphaned component.
+- For a Next.js feature, add a \`page.tsx\` UNDER THE SAME ROUTE PREFIX AS THE REPO'S EXISTING USER-FACING PAGES. Inspect the diff, the file paths under "Repo Context", and (when present) the "Deterministic Route-Prefix Findings" block — whichever first segment under \`apps/web/src/app/\` is used by the majority of existing pages is the authenticated/product tree. If existing pages live under \`apps/web/src/app/app/...\`, your new page MUST live there too (e.g. \`apps/web/src/app/app/<segment>/page.tsx\`). Do NOT create a brand-new top-level route at \`apps/web/src/app/<segment>/page.tsx\` for a user-facing feature — those land outside the authenticated tree and are invisible to logged-in users.
+- For a context provider, "modify" the most-deeply-nested existing layout that still wraps the user-facing routes (typically the authenticated tree's layout, e.g. \`apps/web/src/app/app/layout.tsx\`). Only modify the root \`apps/web/src/app/layout.tsx\` when the provider truly needs to wrap unauthenticated pages too.
+- For an existing settings/dashboard area, "modify" the relevant existing page to consume the component — for example, modify the existing \`apps/web/src/app/app/settings/page.tsx\` rather than creating a new \`apps/web/src/app/settings/page.tsx\`.
+The goal is that, after the fix commit, at least one Next.js auto-discovered file (\`page.tsx\`/\`layout.tsx\`/\`route.ts\`) imports the orphaned component AND it lives at a route prefix the actual product uses.
 
 ### Test / Vitest configuration fixes
 
@@ -584,6 +588,7 @@ async function runQaReview(
   repoContext: RepoContext | null,
   pathMismatches: string[],
   unreachableComponents: string[],
+  misplacedPages: string[],
   playwrightFindings: string,
 ): Promise<ReviewResult> {
   const mismatchSection = pathMismatches.length > 0
@@ -600,6 +605,13 @@ async function runQaReview(
         ...unreachableComponents.map((m) => `- ${m}`),
       ].join("\n")
     : "_(no unreachable components detected)_";
+  const misplacedSection = misplacedPages.length > 0
+    ? [
+        "**The following new pages are created at top-level routes that are OUTSIDE this repo's established user-facing route tree. The check has cross-referenced the new file paths against where existing `page.tsx` files actually live in the repo — these findings are NOT subjective. Each one is a hard FAIL in the Reachability section: the page is technically URL-reachable but invisible to real users browsing the app's navigation. The verdict MUST be `needs_changes`.**",
+        "",
+        ...misplacedPages.map((m) => `- ${m}`),
+      ].join("\n")
+    : "_(no misplaced new pages detected)_";
   const result = await callClaudeJson<{ verdict: string; review: string }>({
     system: QA_REVIEW_SYSTEM,
     user: [
@@ -620,6 +632,9 @@ async function runQaReview(
       "",
       `## Deterministic Reachability Findings`,
       reachabilitySection,
+      "",
+      `## Deterministic Route-Prefix Findings`,
+      misplacedSection,
       "",
       `## Playwright QA Findings`,
       playwrightFindings,
@@ -757,12 +772,46 @@ export async function reviewPullRequest(
       ? await getCiStatus(headers, creds.owner, creds.repo, headSha)
       : { failures: [], pending: false, hasAnyChecks: false };
 
+    // Mechanical CI fixers — `docs_inventory`, future lint/format checks,
+    // etc. — produce their fix by running a script in a worktree, not by
+    // asking the AI to hand-edit code. Run BEFORE the AI fixer so the
+    // model never has to guess at a regenerated artifact. If a mechanical
+    // fix pushes a commit, restart the loop iteration so reviewers see
+    // the post-fix state and CI re-runs on the new HEAD.
+    if (ci.failures.length > 0 && pr.branchName) {
+      const mech = await applyMechanicalCiFixes(
+        ci.failures.map((f) => f.name),
+        { branchName: pr.branchName, headers, owner: creds.owner, repo: creds.repo },
+      );
+      if (mech.pushedChecks.length > 0) {
+        await postPrComment(
+          headers, creds.owner, creds.repo, pr.prNumber,
+          `## 🛠️ Mechanical CI fix (round ${iteration})\n\nApplied scripted fixes for the following failing checks instead of running the AI fixer on them:\n\n${mech.log.join("\n")}\n\n---\n_Automated by xenoform.ai_`,
+        );
+        console.log(`${tag} — mechanical CI fixers pushed ${mech.pushedChecks.length} commit(s) (${mech.pushedChecks.join(", ")}); restarting iteration`);
+        // Restart the loop iteration: re-fetch diff + CI on the new HEAD.
+        // `continue` skips the rest of this round; iteration++ on the next
+        // loop tick is fine — we don't bump the round counter manually.
+        continue;
+      }
+      if (mech.handledChecks.length > 0) {
+        console.log(`${tag} — mechanical CI fixers ran but produced no commits (${mech.handledChecks.join(", ")})`);
+      }
+    }
+
     // Run all three reviews in parallel. CI failures are folded into the
     // code reviewer's input so its verdict accounts for them directly,
     // rather than being treated as a separate signal.
     const unreachableComponents = findUnreachableComponents(filesChangedArr, fullDiff);
     if (unreachableComponents.length > 0) {
       console.warn(`${tag} — unreachable components detected: ${unreachableComponents.length}`);
+    }
+    // Catches the "wrong route prefix" failure mode — e.g. shipping a
+    // settings page at `/settings/...` when this repo serves logged-in
+    // users under `/app/...`. URL-reachable but invisible to real users.
+    const misplacedPages = findMisplacedNewPages(filesChangedArr, repoContext);
+    if (misplacedPages.length > 0) {
+      console.warn(`${tag} — misplaced new pages detected: ${misplacedPages.length}`);
     }
 
     // Playwright QA: spin up the PR's code on a snapshot DB, click through
@@ -792,7 +841,7 @@ export async function reviewPullRequest(
     const [codeReview, pmReview, qaReview] = await Promise.all([
       runCodeReview(diff, idea.title, ci.failures),
       runPmReview(diff, idea, linkedInsights, filesChangedStr),
-      runQaReview(diff, idea, linkedInsights, filesChangedStr, repoContext, pathMismatches, unreachableComponents, playwrightFindings),
+      runQaReview(diff, idea, linkedInsights, filesChangedStr, repoContext, pathMismatches, unreachableComponents, misplacedPages, playwrightFindings),
     ]);
 
     // Post reviews as comments
