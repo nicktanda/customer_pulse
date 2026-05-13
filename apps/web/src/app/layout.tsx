@@ -6,7 +6,7 @@ import AppNav from "./components/app-nav";
 
 export const metadata: Metadata = {
   title: "xenoform.ai",
-  description: "xenoform.ai – AI-powered form intelligence",
+  description: "xenoform.ai — intelligent form automation",
 };
 
 export default function RootLayout({
