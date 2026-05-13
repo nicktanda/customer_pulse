@@ -1,4 +1,4 @@
-import { AccentColourInitializer } from '../../components/AccentColourInitializer';
+import { AccentColourInitializer } from '@/components/AccentColourInitializer';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
