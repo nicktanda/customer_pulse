@@ -19,7 +19,6 @@ import {
   PageShell,
   ProjectAccessDenied,
 } from "@/components/ui";
-import { AppearanceSettings } from "@/components/AppearanceSettings";
 
 const DEFAULT_SETTINGS = {
   pulseSendTime: "09:00",
@@ -59,11 +58,6 @@ export default async function SettingsPage({
               to a project.
             </p>
             <ProjectSwitcher projects={userProjects} currentProjectId={null} showLabel={false} />
-          </div>
-        </section>
-        <section className="card shadow-sm border-secondary-subtle">
-          <div className="card-body">
-            <AppearanceSettings />
           </div>
         </section>
       </PageShell>
@@ -213,12 +207,6 @@ export default async function SettingsPage({
               <div className="col-sm-6"><dt className="text-body-secondary">Auto-archive days</dt><dd className="fw-medium mb-0">{currentSettings.autoArchiveDays}</dd></div>
             </dl>
           )}
-        </div>
-      </section>
-
-      <section className="card shadow-sm border-secondary-subtle">
-        <div className="card-body">
-          <AppearanceSettings />
         </div>
       </section>
 
