@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import React from "react";
 import "./globals.css";
 import { AccentColorProvider } from "./contexts/accent-color-context";
 
 export const metadata: Metadata = {
   title: "xenoform.ai",
-  description: "AI-powered form intelligence",
+  description: "xenoform.ai — AI-powered form builder",
 };
 
 export default function RootLayout({
