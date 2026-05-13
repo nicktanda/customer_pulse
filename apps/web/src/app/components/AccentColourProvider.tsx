@@ -65,19 +65,35 @@ function applyAccent(colour: AccentColour): void {
   }
 }
 
+/**
+ * Reads the accent colour that the inline anti-FOUC script may have already
+ * set on <html data-accent="..."> before React hydration.
+ */
+function getInitialAccent(): AccentColour {
+  if (typeof document !== "undefined") {
+    const attr = document.documentElement.getAttribute("data-accent");
+    if (isAccentColour(attr)) return attr;
+  }
+  return DEFAULT_ACCENT;
+}
+
 export default function AccentColourProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [accent, setAccentState] = useState<AccentColour>(DEFAULT_ACCENT);
+  // Initialise from the attribute the inline script already set — avoids FOUC
+  const [accent, setAccentState] = useState<AccentColour>(getInitialAccent);
 
-  /* Initialise from localStorage on mount (client-only) */
+  /* Sync with localStorage on mount (covers cases where script didn't run) */
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     const resolved = isAccentColour(stored) ? stored : DEFAULT_ACCENT;
-    setAccentState(resolved);
+    if (resolved !== accent) {
+      setAccentState(resolved);
+    }
     applyAccent(resolved);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setAccent = useCallback((colour: AccentColour) => {
