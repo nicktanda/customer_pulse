@@ -41,6 +41,13 @@ const AccentColorContext = createContext<AccentColorContextValue | null>(null);
  *     it via `style.setProperty` is spec-compliant and works in all modern
  *     browsers; it is slightly unconventional only because most devs set it in
  *     a stylesheet rather than via JS.
+ *
+ * NOTE: The `:root` in globals.css sets `--accent` to the indigo default so
+ * the very first paint is not unstyled. However, if a user has previously saved
+ * a non-default accent to localStorage, there will be a brief flash of indigo
+ * before this effect runs. This is a known SSR/client-split trade-off — the
+ * stored preference is not available server-side without a cookie-based
+ * approach, which would add complexity not warranted for a cosmetic preference.
  */
 function applyAccentColor(id: AccentColorId): void {
   const color = ACCENT_COLORS.find((c) => c.id === id);
