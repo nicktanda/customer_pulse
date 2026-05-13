@@ -80,12 +80,6 @@ export default async function SettingsPage({
         </div>
       </section>
 
-      <section className="card shadow-sm border-secondary-subtle">
-        <div className="card-body">
-          <h2 className="h5 text-body-emphasis">Active project</h2>
-        </div>
-      </section>
-
       <NotificationSettingsForm
         projectId={projectId}
         canEdit={canEdit}
