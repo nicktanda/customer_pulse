@@ -51,7 +51,7 @@ export default function AccentColourPicker() {
               role="radio"
               aria-checked={isSelected}
               aria-label={entry.label}
-              title={`${entry.label} — ${entry.a11y}`}
+              title={`${entry.label} \u2014 ${entry.a11y}`}
               tabIndex={isSelected ? 0 : -1}
               className={[
                 "accent-colour-picker__swatch",
