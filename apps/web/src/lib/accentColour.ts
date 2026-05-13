@@ -8,7 +8,11 @@ export interface AccentColour {
   label: string;
   /** CSS hex value */
   value: string;
-  /** Tailwind-compatible text class for light background contrast */
+  /**
+   * Tailwind-compatible text class for use on light backgrounds.
+   * Reserved for future use — e.g. rendering the colour label or an icon
+   * in the accent colour without a full background swatch.
+   */
   textClass: string;
 }
 
