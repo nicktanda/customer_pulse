@@ -56,7 +56,7 @@
 
 .accent-picker__hint {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--color-muted, #6b7280);
   margin: 0;
   display: flex;
   align-items: center;
@@ -71,43 +71,4 @@
   font-weight: 500;
   line-height: 1.5;
   letter-spacing: 0.01em;
-}
-
-/*
- * Global accent token defaults — override with data-accent on <html>.
- * These are the fallback values (matches the 'indigo' palette entry).
- */
-:root {
-  --accent: #4f46e5;
-  --accent-dark: #3730a3;
-  --accent-on: #ffffff;
-}
-
-/*
- * Utility classes you can apply to any element to opt-in to the accent colour.
- * Example: <button class="btn-accent">Save</button>
- */
-.btn-accent {
-  background-color: var(--accent);
-  color: var(--accent-on);
-  border-color: var(--accent);
-}
-
-.btn-accent:hover,
-.btn-accent:focus-visible {
-  background-color: var(--accent-dark);
-  border-color: var(--accent-dark);
-}
-
-.text-accent {
-  color: var(--accent);
-}
-
-.border-accent {
-  border-color: var(--accent);
-}
-
-.ring-accent:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
