@@ -1,10 +1,11 @@
+import React from "react";
 import type { Metadata } from "next";
-import { AccentColorProvider } from "./contexts/accent-color-context";
 import "./globals.css";
+import { AccentColorProvider } from "./contexts/accent-color-context";
 
 export const metadata: Metadata = {
-  title: "App",
-  description: "Your application",
+  title: "xenoform.ai",
+  description: "Feedback intelligence platform",
 };
 
 export default function RootLayout({
@@ -13,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body>
         <AccentColorProvider>{children}</AccentColorProvider>
       </body>
