@@ -19,6 +19,7 @@ import {
   PageShell,
   ProjectAccessDenied,
 } from "@/components/ui";
+import { AccentColourPickerSection } from "../../components/AccentColourPickerSection";
 
 const DEFAULT_SETTINGS = {
   pulseSendTime: "09:00",
@@ -209,6 +210,19 @@ export default async function SettingsPage({
           )}
         </div>
       </section>
+
+      {process.env.NEXT_PUBLIC_FEATURE_ACCENT_COLOUR === "true" ? (
+        <section className="card shadow-sm border-secondary-subtle">
+          <div className="card-body">
+            <h2 className="h5 text-body-emphasis">Appearance</h2>
+            <p className="small text-body-secondary mt-1 mb-3">
+              Personalise the highlight colour used throughout the app. Your preference is saved locally and applied on
+              every visit.
+            </p>
+            <AccentColourPickerSection />
+          </div>
+        </section>
+      ) : null}
 
     </PageShell>
   );

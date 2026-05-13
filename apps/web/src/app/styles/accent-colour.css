@@ -1,0 +1,109 @@
+/*
+ * Accent Colour Design Tokens
+ * ─────────────────────────────────────────────────────────────────────────────
+ * The runtime value of --colour-accent is injected by AccentColourPicker.tsx.
+ * All interactive / highlight elements should reference these tokens so that a
+ * single JS write to the custom property cascades everywhere.
+ *
+ * Palette default: Indigo (#4F46E5) — WCAG AA compliant on white & near-black.
+ *
+ * Note: --colour-accent-hover and --colour-accent-subtle use color-mix() which
+ * requires Chromium ≥105, Firefox ≥111, Safari ≥16.2 (Baseline 2023).
+ * Older browsers will fall back to the raw --colour-accent value with no
+ * hover/subtle differentiation — an acceptable visual-only degradation.
+ */
+
+:root {
+  --colour-accent: #4f46e5; /* default: indigo */
+  --colour-accent-hover: color-mix(in srgb, var(--colour-accent) 85%, black);
+  --colour-accent-subtle: color-mix(in srgb, var(--colour-accent) 12%, white);
+  /* Per-colour foreground is set at runtime by applyAccentColour() to ensure
+     WCAG AA contrast. Default matches the indigo swatch. */
+  --colour-accent-foreground: #ffffff;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+.btn-primary,
+button[data-variant="primary"] {
+  background-color: var(--colour-accent);
+  color: var(--colour-accent-foreground);
+  border-color: var(--colour-accent);
+}
+
+.btn-primary:hover,
+button[data-variant="primary"]:hover {
+  background-color: var(--colour-accent-hover);
+  border-color: var(--colour-accent-hover);
+}
+
+/* ── Focus rings ────────────────────────────────────────────────────────────── */
+*:focus-visible {
+  outline-color: var(--colour-accent);
+}
+
+/* ── Links ──────────────────────────────────────────────────────────────────── */
+a.accent-link {
+  color: var(--colour-accent);
+}
+
+a.accent-link:hover {
+  color: var(--colour-accent-hover);
+}
+
+/*
+ * ── Active / selected states ──────────────────────────────────────────────────
+ * Scoped to .accent-nav to avoid clobbering Bootstrap tabs, comboboxes, or
+ * any third-party component that uses [aria-selected] or [data-state].
+ */
+.accent-nav [data-state="active"],
+.accent-nav [aria-selected="true"] {
+  background-color: var(--colour-accent-subtle);
+  color: var(--colour-accent);
+}
+
+/* ── Accent Colour Picker UI ────────────────────────────────────────────────── */
+.accent-picker__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: inherit;
+}
+
+.accent-picker__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.accent-picker__swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+  padding: 0;
+}
+
+.accent-picker__swatch:hover {
+  transform: scale(1.15);
+}
+
+.accent-picker__swatch--active {
+  border-color: #ffffff;
+  /* Use var(--colour-accent) explicitly rather than currentColor to avoid
+     inheriting an unrelated colour from an ancestor element. */
+  box-shadow: 0 0 0 2px var(--colour-accent);
+  transform: scale(1.15);
+}
+
+.accent-picker__swatch:focus-visible {
+  outline: 2px solid var(--colour-accent);
+  outline-offset: 2px;
+}
+
+/* ── Helper utility ─────────────────────────────────────────────────────────── */
+.text-accent-hint {
+  font-size: 0.875rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
