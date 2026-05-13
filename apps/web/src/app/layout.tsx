@@ -3,8 +3,8 @@ import "./globals.css";
 import { AccentColorProvider } from "./contexts/accent-color-context";
 
 export const metadata: Metadata = {
-  title: "App",
-  description: "App",
+  title: "xenoform.ai",
+  description: "Xenoform AI feedback platform",
 };
 
 export default function RootLayout({
