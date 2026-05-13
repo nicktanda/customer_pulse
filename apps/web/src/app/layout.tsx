@@ -5,7 +5,7 @@ import AccentColourProvider from "./components/AccentColourProvider";
 
 export const metadata: Metadata = {
   title: "CustomerPulse",
-  description: "Customer feedback, simplified.",
+  description: "Customer feedback intelligence platform",
 };
 
 export default function RootLayout({
@@ -16,11 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Inline script to restore accent colour before hydration, preventing FOUC */}
+        {/* Inline script to apply accent colour before first paint — prevents FOUC */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-(function() {
+(function(){
   try {
     var accent = localStorage.getItem('accentColour');
     var valid = ['indigo','violet','sky','teal','emerald','amber','rose','slate'];
@@ -38,7 +38,9 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <AccentColourProvider>{children}</AccentColourProvider>
+        <AccentColourProvider>
+          {children}
+        </AccentColourProvider>
       </body>
     </html>
   );
