@@ -41,7 +41,16 @@ describe("AccentColourProvider", () => {
     expect(getByTestId("accent").textContent).toBe("indigo");
   });
 
-  it("reads accent from localStorage on mount", () => {
+  it("applies data-accent attribute to <html> on mount", () => {
+    render(
+      <AccentColourProvider>
+        <Consumer />
+      </AccentColourProvider>
+    );
+    expect(document.documentElement.getAttribute("data-accent")).toBe("indigo");
+  });
+
+  it("restores accent from localStorage on mount", () => {
     localStorage.setItem("accentColour", "rose");
     const { getByTestId } = render(
       <AccentColourProvider>
@@ -49,10 +58,11 @@ describe("AccentColourProvider", () => {
       </AccentColourProvider>
     );
     expect(getByTestId("accent").textContent).toBe("rose");
+    expect(document.documentElement.getAttribute("data-accent")).toBe("rose");
   });
 
-  it("falls back to default when localStorage value is invalid", () => {
-    localStorage.setItem("accentColour", "banana");
+  it("ignores invalid localStorage values and falls back to default", () => {
+    localStorage.setItem("accentColour", "hotpink");
     const { getByTestId } = render(
       <AccentColourProvider>
         <Consumer />
@@ -61,35 +71,64 @@ describe("AccentColourProvider", () => {
     expect(getByTestId("accent").textContent).toBe("indigo");
   });
 
-  it("setAccent updates localStorage and data-accent attribute", () => {
+  it("updates accent and data-accent when setAccent is called", () => {
+    const { getByTestId } = render(
+      <AccentColourProvider>
+        <Consumer />
+      </AccentColourProvider>
+    );
+    act(() => {
+      getByTestId("set-violet").click();
+    });
+    expect(getByTestId("accent").textContent).toBe("violet");
+    expect(document.documentElement.getAttribute("data-accent")).toBe("violet");
+  });
+
+  it("persists accent to localStorage when setAccent is called", () => {
+    const { getByTestId } = render(
+      <AccentColourProvider>
+        <Consumer />
+      </AccentColourProvider>
+    );
+    act(() => {
+      getByTestId("set-violet").click();
+    });
+    expect(localStorage.getItem("accentColour")).toBe("violet");
+  });
+
+  it("ACCENT_PALETTE has 8 entries", () => {
+    expect(ACCENT_PALETTE).toHaveLength(8);
+  });
+
+  it("all palette entries have required fields", () => {
+    for (const entry of ACCENT_PALETTE) {
+      expect(entry.id).toBeTruthy();
+      expect(entry.label).toBeTruthy();
+      expect(entry.swatch).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(entry.a11y).toBeTruthy();
+    }
+  });
+
+  it("handles localStorage being unavailable gracefully", () => {
+    const setItemSpy = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("QuotaExceededError");
+      });
+
     const { getByTestId } = render(
       <AccentColourProvider>
         <Consumer />
       </AccentColourProvider>
     );
 
-    act(() => {
-      getByTestId("set-violet").click();
-    });
+    // Should not throw even when localStorage.setItem fails
+    expect(() => {
+      act(() => {
+        getByTestId("set-violet").click();
+      });
+    }).not.toThrow();
 
-    expect(localStorage.getItem("accentColour")).toBe("violet");
-    expect(document.documentElement.getAttribute("data-accent")).toBe("violet");
-    expect(getByTestId("accent").textContent).toBe("violet");
-  });
-
-  it("ACCENT_PALETTE contains exactly 8 entries", () => {
-    expect(ACCENT_PALETTE).toHaveLength(8);
-  });
-
-  it("all ACCENT_PALETTE ids are valid AccentColour values", () => {
-    const ids = ACCENT_PALETTE.map((e) => e.id);
-    expect(ids).toContain("indigo");
-    expect(ids).toContain("violet");
-    expect(ids).toContain("sky");
-    expect(ids).toContain("teal");
-    expect(ids).toContain("emerald");
-    expect(ids).toContain("amber");
-    expect(ids).toContain("rose");
-    expect(ids).toContain("slate");
+    setItemSpy.mockRestore();
   });
 });
