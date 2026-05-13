@@ -18,23 +18,21 @@ function PreviewSnippet({ accentValue }: { accentValue: string }) {
       </p>
       <button
         type="button"
-        style={{ backgroundColor: accentValue }}
-        className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-white font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2"
+        className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-white font-medium shadow-sm focus:outline-none"
         style={{
           backgroundColor: accentValue,
-          // @ts-expect-error CSS custom property
-          "--tw-ring-color": accentValue,
-        }}
+          boxShadow: `0 0 0 2px ${accentValue}40`,
+        } as React.CSSProperties}
       >
         Save changes
       </button>
       <div className="flex items-center gap-2">
         <div
-          className="h-4 w-4 rounded-full ring-2 ring-offset-2"
+          className="h-4 w-4 rounded-full"
           style={{
             backgroundColor: accentValue,
-            ringColor: accentValue,
-          }}
+            boxShadow: `0 0 0 2px white, 0 0 0 4px ${accentValue}`,
+          } as React.CSSProperties}
         />
         <span
           className="font-medium"
@@ -43,9 +41,7 @@ function PreviewSnippet({ accentValue }: { accentValue: string }) {
           Highlighted text
         </span>
       </div>
-      <div
-        className="h-1 rounded-full w-full bg-gray-200 dark:bg-gray-700 overflow-hidden"
-      >
+      <div className="h-1 rounded-full w-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
         <div
           className="h-full rounded-full w-2/3 transition-all"
           style={{ backgroundColor: accentValue }}
@@ -90,17 +86,17 @@ export function AccentColorPicker() {
               aria-label={color.label}
               title={color.label}
               className={[
-                "h-8 w-8 rounded-full transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                "h-8 w-8 rounded-full transition-transform focus:outline-none",
                 isSelected
-                  ? "ring-2 ring-offset-2 scale-110"
+                  ? "scale-110"
                   : "hover:scale-105",
               ].join(" ")}
               style={{
                 backgroundColor: color.value,
-                // @ts-expect-error CSS custom property
-                "--tw-ring-color": color.value,
-                ringColor: isSelected ? color.value : undefined,
-              }}
+                boxShadow: isSelected
+                  ? `0 0 0 2px white, 0 0 0 4px ${color.value}`
+                  : undefined,
+              } as React.CSSProperties}
               onMouseEnter={() => setPreviewId(color.id)}
               onMouseLeave={() => setPreviewId(null)}
               onFocus={() => setPreviewId(color.id)}
