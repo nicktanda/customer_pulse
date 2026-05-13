@@ -51,7 +51,16 @@ PATH RULES (hard requirements):
 - Every \`path\` you emit MUST sit under a directory that already exists in the repository tree.
 - The user message lists the repo's allowed directory prefixes verbatim. Place new files only under one of those prefixes.
 - If a similar component already lives at \`apps/web/src/components/...\`, NEW components belong at \`apps/web/src/components/...\` — never at \`apps/web/components/...\`. The same rule applies to \`lib/\`, \`hooks/\`, \`app/\`, \`styles/\`, etc.
-- Do NOT invent new top-level directories. If you think a new subtree is genuinely needed, place it under an existing prefix instead.`;
+- Do NOT invent new top-level directories. If you think a new subtree is genuinely needed, place it under an existing prefix instead.
+
+NO FEATURE FLAGS (hard requirement):
+- DO NOT wrap the new feature in a \`process.env.NEXT_PUBLIC_*\`, \`process.env.FEATURE_*\`, or any similar environment-variable gate.
+- DO NOT introduce a constant like \`ACCENT_COLOUR_ENABLED\`, \`FEATURE_ENABLED\`, \`isXEnabled\`, etc. that defaults to \`false\` and short-circuits rendering.
+- DO NOT add conditional \`return null\` / hidden-render guards based on env vars or hardcoded booleans.
+- DO NOT add JSX wrappers like \`{process.env.NEXT_PUBLIC_X === "true" ? <Section /> : null}\` around the user-facing surface.
+- The idea is to SHIP the feature so users can see and use it. A default-disabled flag means the user clicked Generate-PR, the loop merged a PR, and yet nothing is visible — this has happened four times in a row on accent-colour PRs. STOP doing it.
+- If you genuinely think the feature is risky to ship without a flag, ship it without one anyway. Risk-gating is the human reviewer's call, not yours.
+- The ONLY case where an env var is acceptable is when the idea EXPLICITLY asks for one (e.g. "add a kill switch for X" or "make Y opt-in"). In that case, document it in \`.env.example\` and default it to ON unless the idea says otherwise.`;
 
 function buildAllowedPrefixes(repoContext: RepoContext): string[] {
   const structure = repoContext.structure as { existingDirs?: string[] };

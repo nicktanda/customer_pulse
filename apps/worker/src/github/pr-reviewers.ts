@@ -184,6 +184,14 @@ When a test legitimately needs DOM globals (\`document\`, \`window\`):
 
 If a fix genuinely requires adding/removing/upgrading an npm package, emit ONLY a \`modify\` on the relevant \`package.json\` (root or workspace, e.g. \`apps/web/package.json\`). Do NOT emit changes to \`yarn.lock\` — the model cannot produce a valid lockfile by hand, and CI runs with \`--frozen-lockfile\` which will reject any package.json change whose dependency tree isn't reflected in the lockfile. The harness will automatically run \`yarn install\` after your commit lands and push the regenerated \`yarn.lock\` in a follow-up commit. Trust this; do not try to handcraft a lockfile.
 
+### NO FEATURE FLAGS (hard requirement)
+
+- DO NOT introduce a \`process.env.NEXT_PUBLIC_*\` or \`process.env.FEATURE_*\` env-var gate around the new feature.
+- DO NOT introduce a constant like \`ACCENT_COLOUR_ENABLED\`, \`FEATURE_ENABLED\`, \`isXEnabled\`, etc. that defaults to \`false\` and short-circuits rendering with \`return null\` / \`if (!enabled) return ...\`.
+- DO NOT add conditional JSX wrappers like \`{process.env.NEXT_PUBLIC_X === "true" ? <Component /> : null}\` around the user-facing surface.
+- If a previous round of this loop ADDED such a gate, your fix MUST REMOVE it. Strip the env check, strip the constant, and render the feature unconditionally. The accent-colour insight has now shipped four times in a row behind a default-off flag — the user clicks Generate-PR, the PR merges, and nothing is visible in the product. That is the failure mode this rule is designed to eliminate. STOP doing it.
+- The ONLY case where an env-var gate is acceptable is when the original idea EXPLICITLY asks for one (e.g. "add a kill switch for X"). In every other case, ship the feature unconditionally — risk-gating is the human reviewer's call, not yours.
+
 Return a JSON object with:
 - "files": array of file changes
 - "commit_message": concise commit message describing the fixes
