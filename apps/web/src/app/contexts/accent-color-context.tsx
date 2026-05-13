@@ -29,15 +29,14 @@ interface AccentColorContextValue {
   setAccentId: (id: AccentColorId) => void;
 }
 
-const AccentColorContext = createContext<AccentColorContextValue>({
-  accentId: DEFAULT_ACCENT,
-  setAccentId: () => undefined,
-});
+const AccentColorContext = createContext<AccentColorContextValue | null>(null);
 
 function applyAccentColor(id: AccentColorId): void {
   const color = ACCENT_COLORS.find((c) => c.id === id);
   if (color) {
     document.documentElement.style.setProperty("--accent", color.value);
+    // Also wire up accent-color for native browser controls (checkboxes, radios, range, progress)
+    document.documentElement.style.setProperty("accent-color", color.value);
   }
 }
 
@@ -71,15 +70,6 @@ export function AccentColorProvider({
     } catch {
       // storage unavailable — best-effort
     }
-    // Track selection for analytics / future theming priorities
-    try {
-      const raw = localStorage.getItem("accent-color-counts");
-      const counts: Record<string, number> = raw ? JSON.parse(raw) : {};
-      counts[id] = (counts[id] ?? 0) + 1;
-      localStorage.setItem("accent-color-counts", JSON.stringify(counts));
-    } catch {
-      // non-critical
-    }
   }, []);
 
   return (
@@ -90,5 +80,9 @@ export function AccentColorProvider({
 }
 
 export function useAccentColor(): AccentColorContextValue {
-  return useContext(AccentColorContext);
+  const ctx = useContext(AccentColorContext);
+  if (!ctx) {
+    throw new Error("useAccentColor must be used within an AccentColorProvider");
+  }
+  return ctx;
 }
