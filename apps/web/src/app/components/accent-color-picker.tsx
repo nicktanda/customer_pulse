@@ -16,13 +16,16 @@ function PreviewSnippet({ accentValue }: { accentValue: string }) {
       <p className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide font-medium">
         Preview
       </p>
+      {/* aria-hidden + tabIndex={-1}: purely decorative, not an actionable control */}
       <button
         type="button"
+        aria-hidden="true"
+        tabIndex={-1}
         className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-white font-medium shadow-sm focus:outline-none"
         style={{
           backgroundColor: accentValue,
           boxShadow: `0 0 0 2px ${accentValue}40`,
-        } as React.CSSProperties}
+        }}
       >
         Save changes
       </button>
@@ -32,7 +35,7 @@ function PreviewSnippet({ accentValue }: { accentValue: string }) {
           style={{
             backgroundColor: accentValue,
             boxShadow: `0 0 0 2px white, 0 0 0 4px ${accentValue}`,
-          } as React.CSSProperties}
+          }}
         />
         <span
           className="font-medium"
@@ -87,6 +90,8 @@ export function AccentColorPicker() {
               title={color.label}
               className={[
                 "h-8 w-8 rounded-full transition-transform focus:outline-none",
+                // Provide a visible outline fallback for forced-colors / Windows High Contrast mode
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
                 isSelected
                   ? "scale-110"
                   : "hover:scale-105",
@@ -96,7 +101,7 @@ export function AccentColorPicker() {
                 boxShadow: isSelected
                   ? `0 0 0 2px white, 0 0 0 4px ${color.value}`
                   : undefined,
-              } as React.CSSProperties}
+              }}
               onMouseEnter={() => setPreviewId(color.id)}
               onMouseLeave={() => setPreviewId(null)}
               onFocus={() => setPreviewId(color.id)}
