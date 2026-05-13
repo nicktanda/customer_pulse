@@ -6,12 +6,19 @@
  * single JS write to the custom property cascades everywhere.
  *
  * Palette default: Indigo (#4F46E5) — WCAG AA compliant on white & near-black.
+ *
+ * Note: --colour-accent-hover and --colour-accent-subtle use color-mix() which
+ * requires Chromium ≥105, Firefox ≥111, Safari ≥16.2 (Baseline 2023).
+ * Older browsers will fall back to the raw --colour-accent value with no
+ * hover/subtle differentiation — an acceptable visual-only degradation.
  */
 
 :root {
   --colour-accent: #4f46e5; /* default: indigo */
   --colour-accent-hover: color-mix(in srgb, var(--colour-accent) 85%, black);
   --colour-accent-subtle: color-mix(in srgb, var(--colour-accent) 12%, white);
+  /* Per-colour foreground is set at runtime by applyAccentColour() to ensure
+     WCAG AA contrast. Default matches the indigo swatch. */
   --colour-accent-foreground: #ffffff;
 }
 
@@ -80,7 +87,9 @@ a.accent-link:hover {
 
 .accent-picker__swatch--active {
   border-color: #ffffff;
-  box-shadow: 0 0 0 2px currentColor;
+  /* Use var(--colour-accent) explicitly rather than currentColor to avoid
+     inheriting an unrelated colour from an ancestor element. */
+  box-shadow: 0 0 0 2px var(--colour-accent);
   transform: scale(1.15);
 }
 
