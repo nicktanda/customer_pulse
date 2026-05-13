@@ -57,7 +57,22 @@ export async function createPullRequest(
     // Step 2: Generate code
     await updateProgress(db, pullRequestId, 2, "Generating code changes...");
     const hints = Array.isArray(idea.implementationHints) ? idea.implementationHints.map(String) : [];
-    const codeResult = await generateCode(idea.title, idea.description, hints, repoContext);
+    const codeResult = await generateCode(
+      idea.title,
+      idea.description,
+      hints,
+      repoContext,
+      async (attempt, max) => {
+        await updateProgress(
+          db,
+          pullRequestId,
+          2,
+          attempt === 1
+            ? "Generating code changes..."
+            : `Generating code changes (attempt ${attempt} of ${max})...`,
+        );
+      },
+    );
     if (!codeResult || !codeResult.files?.length) {
       throw new Error("Code generation produced no files");
     }

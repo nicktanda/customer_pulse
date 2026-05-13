@@ -83,10 +83,17 @@ export interface ClaudeResponse {
   ok: boolean;
 }
 
+// Default per-request timeout. Long enough for 64k-token code generations
+// but short enough to surface a hang to the user instead of letting the
+// review/code-gen UI sit on a spinner indefinitely.
+const DEFAULT_TIMEOUT_MS = 180_000;
+
 export async function callClaude(options: {
   system: string;
   user: string;
   maxTokens?: number;
+  /** Per-request timeout in ms. Falls back to DEFAULT_TIMEOUT_MS. */
+  timeoutMs?: number;
 }): Promise<ClaudeResponse> {
   const apiKey = await resolveApiKey();
   if (!apiKey) {
@@ -96,6 +103,9 @@ export async function callClaude(options: {
   await rateLimitSleep();
 
   const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const abort = new AbortController();
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timer = setTimeout(() => abort.abort(), timeoutMs);
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -110,6 +120,7 @@ export async function callClaude(options: {
         system: options.system,
         messages: [{ role: "user", content: options.user }],
       }),
+      signal: abort.signal,
     });
 
     const json = (await res.json()) as {
@@ -126,8 +137,14 @@ export async function callClaude(options: {
     const text = json.content?.find((c) => c.type === "text")?.text ?? "";
     return { text, ok: true };
   } catch (err) {
-    console.error(`[ai] Anthropic fetch error: ${err instanceof Error ? err.message : String(err)}`);
+    if (abort.signal.aborted) {
+      console.error(`[ai] Anthropic call aborted after ${timeoutMs}ms timeout`);
+    } else {
+      console.error(`[ai] Anthropic fetch error: ${err instanceof Error ? err.message : String(err)}`);
+    }
     return { text: "", ok: false };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -135,6 +152,7 @@ export async function callClaudeJson<T>(options: {
   system: string;
   user: string;
   maxTokens?: number;
+  timeoutMs?: number;
 }): Promise<T | null> {
   const response = await callClaude(options);
   if (!response.ok || !response.text) {
@@ -143,6 +161,74 @@ export async function callClaudeJson<T>(options: {
 
   const parsed = parseJsonFromText<T>(response.text);
   return parsed;
+}
+
+/**
+ * Multimodal variant — sends one or more PNG/JPEG screenshots alongside the
+ * text user message. Used by the playwright QA reviewer to let the model
+ * "see" what was rendered. Images are passed as base64 image blocks per the
+ * Anthropic Messages API.
+ */
+export async function callClaudeWithImages(options: {
+  system: string;
+  user: string;
+  images: { mediaType: "image/png" | "image/jpeg"; base64: string; caption?: string }[];
+  maxTokens?: number;
+}): Promise<ClaudeResponse> {
+  const apiKey = await resolveApiKey();
+  if (!apiKey) {
+    return { text: "", ok: false };
+  }
+
+  await rateLimitSleep();
+
+  const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const content: Array<
+    | { type: "text"; text: string }
+    | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+  > = [];
+  for (const img of options.images) {
+    if (img.caption) content.push({ type: "text", text: img.caption });
+    content.push({
+      type: "image",
+      source: { type: "base64", media_type: img.mediaType, data: img.base64 },
+    });
+  }
+  content.push({ type: "text", text: options.user });
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: options.maxTokens ?? 4096,
+        system: options.system,
+        messages: [{ role: "user", content }],
+      }),
+    });
+
+    const json = (await res.json()) as {
+      content?: { type: string; text?: string }[];
+      error?: { message?: string };
+    };
+
+    if (!res.ok) {
+      const errMsg = json.error?.message ?? `HTTP ${res.status}`;
+      console.error(`[ai] Anthropic vision error: ${errMsg}`);
+      return { text: "", ok: false };
+    }
+
+    const text = json.content?.find((c) => c.type === "text")?.text ?? "";
+    return { text, ok: true };
+  } catch (err) {
+    console.error(`[ai] Anthropic vision fetch error: ${err instanceof Error ? err.message : String(err)}`);
+    return { text: "", ok: false };
+  }
 }
 
 /**

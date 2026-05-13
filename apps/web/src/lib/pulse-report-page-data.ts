@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import type { Database } from "@customer-pulse/db/client";
 import {
   feedbacks,
@@ -102,12 +102,17 @@ export async function fetchPulseReportPageData(
 
   // Fetch a wider pool, then pick the best idea per insight so all insights
   // are represented rather than one insight dominating the list.
+  // Secondary `asc(ideas.id)` makes tie-breaks deterministic — without it,
+  // Postgres returns ties in physical heap order, which can swap between
+  // renders and cause `bestPerInsight` to switch which idea wins for an
+  // insight (and therefore which idea the inline Generate-PR form is
+  // bound to). Lowest-id wins for ties — i.e. the earliest-created idea.
   const quickWinCandidates = await db
     .select({ idea: ideas, insightId: ideaInsights.insightId })
     .from(ideas)
     .innerJoin(ideaInsights, eq(ideaInsights.ideaId, ideas.id))
     .where(and(eq(ideas.projectId, projectId), eq(ideas.ideaType, IDEA_QUICK_WIN)))
-    .orderBy(desc(ideas.impactEstimate));
+    .orderBy(desc(ideas.impactEstimate), asc(ideas.id));
   const quickWins = bestPerInsight(quickWinCandidates);
 
   const highImpactCandidates = await db
@@ -121,7 +126,7 @@ export async function fetchPulseReportPageData(
         inArray(ideas.effortEstimate, [EFFORT_TRIVIAL, EFFORT_SMALL]),
       ),
     )
-    .orderBy(desc(ideas.impactEstimate));
+    .orderBy(desc(ideas.impactEstimate), asc(ideas.id));
   const highImpact = bestPerInsight(highImpactCandidates);
 
   const ideaIds = [...new Set([...quickWins.map((i) => i.id), ...highImpact.map((i) => i.id)])];

@@ -411,8 +411,40 @@ export async function runJob(job: Job): Promise<void> {
         // Check if PR is mergeable + grab head SHA for CI lookup
         const prRes = await fetch(`${apiBase}/pulls/${pr.prNumber}`, { headers });
         if (!prRes.ok) return;
-        const prData = (await prRes.json()) as { mergeable?: boolean; state?: string; head?: { sha?: string } };
-        if (prData.state !== "open" || !prData.mergeable) return;
+        const prData = (await prRes.json()) as { mergeable?: boolean | null; state?: string; head?: { sha?: string } };
+        if (prData.state !== "open") return;
+        // `mergeable: null` means GitHub is still computing — common right
+        // after a new commit lands. Treat it like pending CI: requeue with
+        // the same 60s delay so we re-check rather than silently abandon.
+        // Only `mergeable === false` is a real conflict that warrants a bail.
+        if (prData.mergeable === null) {
+          const newWait = waitedSeconds + RECHECK_DELAY_MS / 1000;
+          if (newWait > MAX_WAIT_SECONDS) {
+            await postComment(
+              `## ⏰ Auto-merge timed out waiting for GitHub to compute mergeability\n\nWaited ${Math.floor(MAX_WAIT_SECONDS / 60)} minutes but GitHub never returned a mergeability verdict. PR will remain open for human review.\n\n---\n_Automated by xenoform.ai_`,
+            );
+            console.log(`[worker] GithubAutoMergeJob timed out waiting for mergeability on PR #${pr.prNumber}`);
+            return;
+          }
+          const { Queue } = await import("bullmq");
+          const { getRedisConnection } = await import("./redis.js");
+          const { QUEUE_DEFAULT } = await import("./queue-names.js");
+          const q = new Queue(QUEUE_DEFAULT, { connection: getRedisConnection() });
+          await q.add(
+            "GithubAutoMergeJob",
+            { pullRequestId, waitedSeconds: newWait },
+            { delay: RECHECK_DELAY_MS, removeOnComplete: 100, removeOnFail: 500 },
+          );
+          console.log(`[worker] GithubAutoMergeJob PR #${pr.prNumber} mergeability still computing, waited=${newWait}s, re-checking`);
+          return;
+        }
+        if (prData.mergeable === false) {
+          await postComment(
+            `## ⚠️ Auto-merge blocked — PR has merge conflicts\n\nGitHub reports this PR is not mergeable (conflicts with the base branch). A human needs to resolve the conflicts before this can merge.\n\n---\n_Automated by xenoform.ai_`,
+          );
+          console.log(`[worker] GithubAutoMergeJob PR #${pr.prNumber} not mergeable (conflict)`);
+          return;
+        }
         const headSha = prData.head?.sha;
         if (!headSha) return;
 

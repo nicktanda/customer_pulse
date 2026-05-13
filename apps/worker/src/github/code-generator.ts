@@ -88,6 +88,11 @@ export async function generateCode(
   ideaDescription: string,
   implementationHints: string[],
   repoContext: RepoContext,
+  // Optional progress hook — invoked at the start of each Claude attempt so
+  // callers (e.g. pr-creator) can surface "attempt N of M" to the UI while
+  // the underlying request is still in flight. A hung request used to look
+  // identical to a healthy one for the full retry window.
+  onAttempt?: (attempt: number, maxAttempts: number) => void | Promise<void>,
 ): Promise<CodeGenerationResult | null> {
   const allowedPrefixes = buildAllowedPrefixes(repoContext);
 
@@ -111,7 +116,9 @@ export async function generateCode(
   // Self-validate the model's output against deterministic checks (path
   // mismatches + doc-only output) and retry on failure — the same model
   // gets told exactly what failed so it can correct on the next attempt.
+  const maxAttempts = MAX_VALIDATION_RETRIES + 1;
   for (let attempt = 0; attempt <= MAX_VALIDATION_RETRIES; attempt++) {
+    if (onAttempt) await onAttempt(attempt + 1, maxAttempts);
     const result = await callClaudeJson<CodeGenerationResult>({
       system: SYSTEM_PROMPT,
       user: retryFeedback ? `${baseUser}\n\n${retryFeedback}` : baseUser,
