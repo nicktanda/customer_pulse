@@ -1,4 +1,4 @@
-import { getAccentColour, DEFAULT_ACCENT_ID } from "./accent-colours";
+import { getAccentColour, DEFAULT_ACCENT_ID, ACCENT_COLOUR_STORAGE_KEY } from "./accent-colours";
 
 /**
  * Reads the persisted accent colour from localStorage (fallback for
@@ -6,7 +6,7 @@ import { getAccentColour, DEFAULT_ACCENT_ID } from "./accent-colours";
  */
 export function getStoredAccentColour(): string {
   if (typeof window === "undefined") return DEFAULT_ACCENT_ID;
-  return localStorage.getItem("accent-colour") ?? DEFAULT_ACCENT_ID;
+  return localStorage.getItem(ACCENT_COLOUR_STORAGE_KEY) ?? DEFAULT_ACCENT_ID;
 }
 
 /**
@@ -18,7 +18,8 @@ export function applyAccentColour(id: string): void {
   if (typeof document === "undefined") return;
 
   const colour = getAccentColour(id);
-  const [h, s, l] = colour.value.split(" ");
+  // Normalise whitespace before splitting to handle any extra spaces
+  const [h, s, l] = colour.value.trim().split(/\s+/);
 
   const root = document.documentElement;
   root.style.setProperty("--accent-h", h);
@@ -40,7 +41,7 @@ export function applyAccentColour(id: string): void {
 
 function adjustLightness(lStr: string, delta: number): string {
   const val = parseFloat(lStr);
-  return `${Math.min(100, Math.max(0, val + delta))  }%`;
+  return `${Math.min(100, Math.max(0, val + delta))}%`;
 }
 
 function hslToRgbTriple(hStr: string, sStr: string, lStr: string): string {
