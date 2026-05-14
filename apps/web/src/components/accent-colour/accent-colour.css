@@ -1,0 +1,137 @@
+/*
+ * Accent Colour System
+ *
+ * These rules consume --accent, --accent-dark, --accent-light, --accent-on
+ * set by AccentColourProvider on :root, and also override the Bootstrap
+ * primary colour tokens so existing btn-primary / link / focus-ring elements
+ * automatically reflect the user's choice.
+ */
+
+/* ── Default token values (indigo) ────────────────────────────────────────── */
+:root {
+  --accent: #4f46e5;
+  --accent-dark: #3730a3;
+  --accent-light: #e0e7ff;
+  --accent-on: #ffffff;
+
+  /* Bootstrap overrides */
+  --bs-primary: var(--accent);
+  --bs-primary-rgb: 79, 70, 229;
+  --bs-link-color: var(--accent);
+  --bs-link-hover-color: var(--accent-dark);
+  --bs-focus-ring-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* ── btn-primary ───────────────────────────────────────────────────────────── */
+.btn-primary {
+  --bs-btn-bg: var(--accent);
+  --bs-btn-border-color: var(--accent);
+  --bs-btn-hover-bg: var(--accent-dark);
+  --bs-btn-hover-border-color: var(--accent-dark);
+  --bs-btn-active-bg: var(--accent-dark);
+  --bs-btn-active-border-color: var(--accent-dark);
+  --bs-btn-disabled-bg: var(--accent);
+  --bs-btn-disabled-border-color: var(--accent);
+  --bs-btn-color: var(--accent-on);
+  --bs-btn-hover-color: var(--accent-on);
+  --bs-btn-active-color: var(--accent-on);
+}
+
+/* ── btn-outline-primary ───────────────────────────────────────────────────── */
+.btn-outline-primary {
+  --bs-btn-color: var(--accent);
+  --bs-btn-border-color: var(--accent);
+  --bs-btn-hover-bg: var(--accent);
+  --bs-btn-hover-border-color: var(--accent);
+  --bs-btn-hover-color: var(--accent-on);
+  --bs-btn-active-bg: var(--accent);
+  --bs-btn-active-border-color: var(--accent);
+  --bs-btn-active-color: var(--accent-on);
+}
+
+/* ── Links ─────────────────────────────────────────────────────────────────── */
+a {
+  color: var(--accent);
+}
+a:hover {
+  color: var(--accent-dark);
+}
+
+/* ── nav-link active ───────────────────────────────────────────────────────── */
+.nav-link.active,
+.nav-pills .nav-link.active {
+  background-color: var(--accent);
+  color: var(--accent-on);
+}
+
+.nav-link:hover,
+.nav-link:focus {
+  color: var(--accent);
+}
+
+/* ── Form focus rings ──────────────────────────────────────────────────────── */
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* ── Checkbox / radio checked ──────────────────────────────────────────────── */
+.form-check-input:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Badge primary ─────────────────────────────────────────────────────────── */
+.badge.bg-primary,
+.badge.text-bg-primary {
+  background-color: var(--accent) !important;
+  color: var(--accent-on) !important;
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────────────── */
+.progress-bar {
+  background-color: var(--accent);
+}
+
+/* ── Spinner (border type) ─────────────────────────────────────────────────── */
+.spinner-border.text-primary,
+.spinner-grow.text-primary {
+  color: var(--accent) !important;
+}
+
+/* ── Sidebar / nav active highlight (app-specific) ─────────────────────────── */
+[data-accent] .sidebar-link.active,
+[data-accent] .sidebar-nav-item.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+/* ── Accent swatch preview (used in picker) ────────────────────────────────── */
+.accent-swatch {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+  flex-shrink: 0;
+}
+
+.accent-swatch:hover {
+  transform: scale(1.15);
+}
+
+.accent-swatch.selected {
+  border-color: #000;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor;
+  transform: scale(1.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .accent-swatch.selected {
+    border-color: #fff;
+  }
+}
