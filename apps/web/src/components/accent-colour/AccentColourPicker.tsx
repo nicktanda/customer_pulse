@@ -3,7 +3,6 @@
 import React from "react";
 import { ACCENT_COLOURS } from "./accent-colours";
 import { useAccentColour } from "./accent-colour-context";
-import "./accent-colour.css";
 
 export function AccentColourPicker() {
   const { accent, setAccentId } = useAccentColour();
