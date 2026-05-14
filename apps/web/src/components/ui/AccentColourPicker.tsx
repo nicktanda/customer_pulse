@@ -65,6 +65,8 @@ export function AccentColourPicker() {
           type="button"
           className="btn btn-primary btn-sm"
           onClick={handleSave}
+          {/* Inline style previews the selected colour before the user clicks Apply;
+              after Apply, accent.css takes over via var(--accent-colour). */}
           style={{ background: ACCENT_COLOURS[selected].value, borderColor: ACCENT_COLOURS[selected].hover }}
         >
           Apply colour
