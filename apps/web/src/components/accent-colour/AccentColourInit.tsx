@@ -3,10 +3,11 @@
 /**
  * Reads the stored accent colour from localStorage on first render and
  * applies it to the document root before the rest of the UI paints.
- * Mount this high in the component tree (e.g. the root layout) so the
- * correct CSS variables are set before any visible element renders.
+ * Also imports the accent-colour CSS so the variables cascade everywhere.
+ * Mount this high in the component tree (e.g. the root layout).
  */
 import { useEffect } from "react";
+import "@/app/accent-colour.css";
 import {
   ACCENT_STORAGE_KEY,
   DEFAULT_ACCENT_ID,
