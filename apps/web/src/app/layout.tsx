@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AccentColourInit } from "@/components/AccentColourInit";
 import "./globals.css";
 import { Providers } from "./providers";
 
