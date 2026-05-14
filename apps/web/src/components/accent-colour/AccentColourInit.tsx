@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { AccentColourProvider } from './AccentColourProvider';
 import './accent-globals.css';
 
