@@ -15,7 +15,10 @@ interface AccentColourProviderProps {
  */
 export function AccentColourProvider({ children, initialAccent }: AccentColourProviderProps) {
   useEffect(() => {
-    const stored = (typeof window !== "undefined" ? localStorage.getItem("accentColour") : null) ?? initialAccent ?? DEFAULT_ACCENT_KEY;
+    // useEffect only runs in the browser, so localStorage is always available here.
+    // We re-apply (not just set) so a hard refresh after changing accent shows the right colour
+    // before the inline script has a chance to run on slower connections.
+    const stored = localStorage.getItem("accentColour") ?? initialAccent ?? DEFAULT_ACCENT_KEY;
     const key = Object.prototype.hasOwnProperty.call(ACCENT_COLOURS, stored) ? stored as AccentColourKey : DEFAULT_ACCENT_KEY;
     applyAccent(key);
   }, [initialAccent]);
