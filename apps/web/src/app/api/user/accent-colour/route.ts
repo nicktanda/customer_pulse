@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { ACCENT_COLOURS } from "@/components/accent-colour/accent-colours";
+import { ACCENT_COLOURS, ACCENT_COLOUR_STORAGE_KEY } from "@/components/accent-colour/accent-colours";
 
-const COOKIE_NAME = "accent-colour";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 /**
@@ -11,7 +10,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
  */
 export async function GET() {
   const cookieStore = await cookies();
-  const stored = cookieStore.get(COOKIE_NAME)?.value ?? "blue";
+  const stored = cookieStore.get(ACCENT_COLOUR_STORAGE_KEY)?.value ?? "blue";
   const valid = ACCENT_COLOURS.find((c) => c.id === stored) ? stored : "blue";
   return NextResponse.json({ colourId: valid });
 }
@@ -19,8 +18,12 @@ export async function GET() {
 /**
  * POST /api/user/accent-colour
  * Body: { colourId: string }
- * Persists the accent colour via a secure HTTP-only cookie.
+ * Persists the accent colour via an HTTP cookie.
  * In a full auth-backed implementation this would also write to the DB.
+ *
+ * The cookie is NOT httpOnly so the client can read it during hydration
+ * to avoid a flash of the default colour. Since it holds only a colour
+ * preference (no sensitive data), this is an acceptable trade-off.
  */
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -44,8 +47,8 @@ export async function POST(req: NextRequest) {
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, colourId, {
-    httpOnly: false, // needs to be readable client-side for initial hydration
+  cookieStore.set(ACCENT_COLOUR_STORAGE_KEY, colourId, {
+    httpOnly: false, // readable client-side for hydration (holds no sensitive data)
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     maxAge: COOKIE_MAX_AGE,
