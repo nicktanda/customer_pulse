@@ -1,0 +1,105 @@
+/*
+ * Accent Colour CSS
+ * Sets Bootstrap and app-wide colour variables from the --accent-colour custom property.
+ * This file is imported by AccentColourProvider and applied globally.
+ */
+
+:root {
+  --accent-colour: #6366f1;
+}
+
+[data-accent] {
+  --bs-primary: var(--accent-colour);
+  --bs-primary-rgb: var(--accent-colour-rgb, 99, 102, 241);
+  --bs-link-color: var(--accent-colour);
+  --bs-link-hover-color: var(--accent-colour);
+  --bs-btn-bg: var(--accent-colour);
+  --bs-btn-border-color: var(--accent-colour);
+  --bs-btn-hover-bg: var(--accent-colour);
+  --bs-btn-hover-border-color: var(--accent-colour);
+  --bs-focus-ring-color: color-mix(in srgb, var(--accent-colour) 25%, transparent);
+}
+
+/* Primary buttons */
+[data-accent] .btn-primary {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+  color: #fff !important;
+}
+
+[data-accent] .btn-primary:hover,
+[data-accent] .btn-primary:focus,
+[data-accent] .btn-primary:active {
+  background-color: color-mix(in srgb, var(--accent-colour) 85%, #000) !important;
+  border-color: color-mix(in srgb, var(--accent-colour) 85%, #000) !important;
+  color: #fff !important;
+}
+
+/* Outline primary buttons */
+[data-accent] .btn-outline-primary {
+  color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+}
+
+[data-accent] .btn-outline-primary:hover,
+[data-accent] .btn-outline-primary:focus,
+[data-accent] .btn-outline-primary:active {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+  color: #fff !important;
+}
+
+/* Links */
+[data-accent] a:not(.btn):not(.nav-link):not(.dropdown-item) {
+  color: var(--accent-colour);
+}
+
+[data-accent] a:not(.btn):not(.nav-link):not(.dropdown-item):hover {
+  color: color-mix(in srgb, var(--accent-colour) 80%, #000);
+}
+
+/* Nav links active state */
+[data-accent] .nav-link.active,
+[data-accent] .nav-link:hover {
+  color: var(--accent-colour) !important;
+}
+
+/* Focus rings */
+[data-accent] .form-control:focus,
+[data-accent] .form-select:focus,
+[data-accent] .form-check-input:focus {
+  border-color: var(--accent-colour);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--accent-colour) 25%, transparent);
+}
+
+/* Checkbox / radio checked state */
+[data-accent] .form-check-input:checked {
+  background-color: var(--accent-colour);
+  border-color: var(--accent-colour);
+}
+
+/* Badge primary */
+[data-accent] .badge.bg-primary,
+[data-accent] .badge.text-bg-primary {
+  background-color: var(--accent-colour) !important;
+}
+
+/* Progress bar */
+[data-accent] .progress-bar {
+  background-color: var(--accent-colour);
+}
+
+/* Text primary */
+[data-accent] .text-primary {
+  color: var(--accent-colour) !important;
+}
+
+/* Background primary */
+[data-accent] .bg-primary {
+  background-color: var(--accent-colour) !important;
+}
+
+/* Border primary */
+[data-accent] .border-primary {
+  border-color: var(--accent-colour) !important;
+}
