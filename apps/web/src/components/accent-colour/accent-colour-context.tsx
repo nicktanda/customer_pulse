@@ -38,8 +38,17 @@ function applyAccentToDOM(accent: AccentColour) {
   root.style.setProperty("--bs-focus-ring-color", accent.hex + "40");
 }
 
+/**
+ * Convert a 6-digit hex colour string to a CSS RGB string.
+ * Only handles 6-digit hex (e.g. "#4f46e5" or "4f46e5").
+ * All AccentColour entries are hardcoded as 6-digit hex values.
+ */
 function hexToRgbString(hex: string): string {
   const clean = hex.replace("#", "");
+  if (clean.length !== 6) {
+    // Fallback: return zeros rather than "NaN, NaN, NaN"
+    return "0, 0, 0";
+  }
   const bigint = parseInt(clean, 16);
   const r = (bigint >> 16) & 255;
   const g = (bigint >> 8) & 255;
