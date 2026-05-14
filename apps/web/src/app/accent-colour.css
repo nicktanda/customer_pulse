@@ -1,0 +1,121 @@
+/*
+ * Accent Colour CSS
+ * -----------------
+ * These rules make the --accent-colour CSS custom properties (set by
+ * AccentColourInit / useAccentColour) propagate into Bootstrap variables
+ * and shared interactive element styles across the app.
+ *
+ * This file is imported by AccentColourInit so it is lazily loaded only
+ * when the component is mounted, without touching globals.css.
+ */
+
+:root {
+  /* Fallback to indigo when no JS has run yet */
+  --accent-colour: #4f46e5;
+  --accent-colour-dark: #3730a3;
+  --accent-colour-light: #a5b4fc;
+}
+
+/* ── Bootstrap primary alias ────────────────────────────────────────────── */
+:root {
+  --bs-primary: var(--accent-colour);
+  --bs-primary-hover: var(--accent-colour-dark);
+  --bs-link-color: var(--accent-colour);
+  --bs-link-hover-color: var(--accent-colour-dark);
+  --bs-focus-ring-color: var(--accent-colour-light);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.btn-primary,
+[class*="btn-primary"] {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+  color: #fff !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+[class*="btn-primary"]:hover,
+[class*="btn-primary"]:focus {
+  background-color: var(--accent-colour-dark) !important;
+  border-color: var(--accent-colour-dark) !important;
+}
+
+.btn-outline-primary,
+[class*="btn-outline-primary"] {
+  color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+}
+
+.btn-outline-primary:hover,
+[class*="btn-outline-primary"]:hover {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+  color: #fff !important;
+}
+
+/* ── Links ──────────────────────────────────────────────────────────────── */
+a {
+  color: var(--accent-colour);
+}
+
+a:hover {
+  color: var(--accent-colour-dark);
+}
+
+/* ── Focus rings ────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline-color: var(--accent-colour);
+  box-shadow: 0 0 0 3px var(--accent-colour-light);
+}
+
+/* ── Active / selected nav items ────────────────────────────────────────── */
+.nav-link.active,
+.nav-link:focus,
+[aria-current="page"] {
+  color: var(--accent-colour) !important;
+}
+
+/* ── Checkboxes & radios (Bootstrap 5) ──────────────────────────────────── */
+.form-check-input:checked {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+}
+
+.form-check-input:focus {
+  border-color: var(--accent-colour) !important;
+  box-shadow: 0 0 0 0.25rem var(--accent-colour-light) !important;
+}
+
+/* ── Range inputs ───────────────────────────────────────────────────────── */
+.form-range::-webkit-slider-thumb {
+  background-color: var(--accent-colour);
+}
+
+.form-range::-moz-range-thumb {
+  background-color: var(--accent-colour);
+}
+
+/* ── Progress bars ──────────────────────────────────────────────────────── */
+.progress-bar {
+  background-color: var(--accent-colour) !important;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+.badge.bg-primary {
+  background-color: var(--accent-colour) !important;
+}
+
+/* ── Pagination ─────────────────────────────────────────────────────────── */
+.page-item.active .page-link {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+}
+
+.page-link {
+  color: var(--accent-colour) !important;
+}
+
+.page-link:hover {
+  color: var(--accent-colour-dark) !important;
+}
