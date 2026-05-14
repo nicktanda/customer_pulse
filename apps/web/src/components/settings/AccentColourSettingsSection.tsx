@@ -17,7 +17,14 @@ export function AccentColourSettingsSection() {
         className="d-flex align-items-center justify-content-between"
         style={{ cursor: "pointer" }}
         onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}
         role="button"
+        tabIndex={0}
         aria-expanded={open}
       >
         <div>
