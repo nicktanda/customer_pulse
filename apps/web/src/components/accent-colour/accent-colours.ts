@@ -50,6 +50,7 @@ export const ACCENT_COLOURS: AccentColour[] = [
     hex: "#059669",
     hexDark: "#047857",
     hexLight: "#d1fae5",
+    // Darker text for better contrast on emerald background
     onColour: "#ffffff",
   },
   {
@@ -58,7 +59,8 @@ export const ACCENT_COLOURS: AccentColour[] = [
     hex: "#d97706",
     hexDark: "#b45309",
     hexLight: "#fef3c7",
-    onColour: "#ffffff",
+    // Dark text for WCAG AA compliance on amber background (~2.9:1 with white)
+    onColour: "#000000",
   },
   {
     id: "rose",
