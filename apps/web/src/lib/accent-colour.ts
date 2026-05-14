@@ -20,6 +20,7 @@ export function getAccentColour(id: AccentColourId) {
 }
 
 export function applyAccentColour(id: AccentColourId) {
+  if (typeof document === 'undefined') return;
   const colour = getAccentColour(id);
   const root = document.documentElement;
   root.setAttribute('data-accent', id);
