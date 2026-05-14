@@ -15,6 +15,7 @@ import { ensureCurrentProjectCookie } from "@/lib/current-project";
 import { ResponsiveSidebar } from "./ResponsiveSidebar";
 import { MobileTopBar } from "./MobileTopBar";
 import { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "@/components/SidebarNav";
+import { AccentColourInit } from "@/components/accent-colour/AccentColourInit";
 /** Each group is rendered with the same heading toggle + sub-links (`NavGroupSection` in `SidebarNav`). */
 function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
   const workspaceItems: SidebarNavItem[] = [];
@@ -27,6 +28,7 @@ function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
     { href: "/app/skills", label: "Skills" },
     { href: "/app/settings", label: "Settings" },
     { href: "/app/projects", label: "Projects" },
+    { href: "/app/settings/appearance", label: "Appearance" },
   );
 
   return [
@@ -171,81 +173,85 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!onboardingComplete) {
     return (
-      <div className="min-vh-100 bg-body-tertiary">
-        <header className="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-secondary-subtle bg-body">
-          <div className="d-flex align-items-center gap-2">
+      <AccentColourInit>
+        <div className="min-vh-100 bg-body-tertiary">
+          <header className="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-secondary-subtle bg-body">
+            <div className="d-flex align-items-center gap-2">
+              <span aria-hidden="true" className="xf-brand-mark" />
+              <p
+                className="small fw-semibold text-uppercase mb-0"
+                style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.7rem" }}
+              >
+                xenoform.ai
+              </p>
+            </div>
+            <div className="d-flex align-items-center gap-3">
+              <span className="small text-body-secondary">{session.user.email}</span>
+              <form action={signOutAction}>
+                <button type="submit" className="btn btn-link btn-sm p-0 text-decoration-none">
+                  Sign out
+                </button>
+              </form>
+            </div>
+          </header>
+          <main className="px-4 pb-4 pt-5 p-lg-5" style={{ maxWidth: "48rem", margin: "0 auto" }}>
+            {children}
+          </main>
+        </div>
+      </AccentColourInit>
+    );
+  }
+
+  return (
+    <AccentColourInit>
+      <div className="d-flex min-vh-100 app-layout-shell">
+        <ResponsiveSidebar>
+          <div className="d-flex align-items-center gap-2 pb-3 mb-3 border-bottom border-secondary-subtle">
+            {/* Bio-mechanical accent plate — acts as the app logo mark */}
             <span aria-hidden="true" className="xf-brand-mark" />
             <p
               className="small fw-semibold text-uppercase mb-0"
-              style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.7rem" }}
+              style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.72rem" }}
             >
               xenoform.ai
             </p>
           </div>
-          <div className="d-flex align-items-center gap-3">
-            <span className="small text-body-secondary">{session.user.email}</span>
+          <SidebarNav groups={sidebarNavGroups(true)}>
+            {isAdmin && bullBoardUrl ? (
+              <a
+                href={bullBoardUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="nav-link py-2 px-2 rounded text-body-secondary"
+              >
+                Job queue (admin)
+              </a>
+            ) : null}
+          </SidebarNav>
+          <div className="mt-auto pt-4 border-top border-secondary-subtle">
+            <p className="small text-truncate text-body-secondary mb-1">
+              <span className="fw-medium text-body">{session.user.email}</span>
+            </p>
             <form action={signOutAction}>
               <button type="submit" className="btn btn-link btn-sm p-0 text-decoration-none">
                 Sign out
               </button>
             </form>
           </div>
-        </header>
-        <main className="px-4 pb-4 pt-5 p-lg-5" style={{ maxWidth: "48rem", margin: "0 auto" }}>
-          {children}
-        </main>
-      </div>
-    );
-  }
-
-  return (
-    <div className="d-flex min-vh-100 app-layout-shell">
-      <ResponsiveSidebar>
-        <div className="d-flex align-items-center gap-2 pb-3 mb-3 border-bottom border-secondary-subtle">
-          {/* Bio-mechanical accent plate — acts as the app logo mark */}
-          <span aria-hidden="true" className="xf-brand-mark" />
-          <p
-            className="small fw-semibold text-uppercase mb-0"
-            style={{ color: "var(--xf-accent)", letterSpacing: "0.08em", fontSize: "0.72rem" }}
-          >
-            xenoform.ai
-          </p>
+        </ResponsiveSidebar>
+        {/*
+         * Right-hand column: the mode bar sits above the page content so it
+         * spans the full content width on every page without each page needing
+         * to include it themselves.
+         */}
+        <div className="d-flex flex-column flex-grow-1 min-w-0">
+          <MobileTopBar />
+          <main className="flex-grow-1 bg-body-tertiary px-4 pb-4 pt-3 p-lg-5 app-main-pane">
+            {children}
+          </main>
         </div>
-        <SidebarNav groups={sidebarNavGroups(true)}>
-          {isAdmin && bullBoardUrl ? (
-            <a
-              href={bullBoardUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="nav-link py-2 px-2 rounded text-body-secondary"
-            >
-              Job queue (admin)
-            </a>
-          ) : null}
-        </SidebarNav>
-        <div className="mt-auto pt-4 border-top border-secondary-subtle">
-          <p className="small text-truncate text-body-secondary mb-1">
-            <span className="fw-medium text-body">{session.user.email}</span>
-          </p>
-          <form action={signOutAction}>
-            <button type="submit" className="btn btn-link btn-sm p-0 text-decoration-none">
-              Sign out
-            </button>
-          </form>
-        </div>
-      </ResponsiveSidebar>
-      {/*
-       * Right-hand column: the mode bar sits above the page content so it
-       * spans the full content width on every page without each page needing
-       * to include it themselves.
-       */}
-      <div className="d-flex flex-column flex-grow-1 min-w-0">
-        <MobileTopBar />
-        <main className="flex-grow-1 bg-body-tertiary px-4 pb-4 pt-3 p-lg-5 app-main-pane">
-          {children}
-        </main>
       </div>
-    </div>
+    </AccentColourInit>
   );
 }
 
