@@ -1,6 +1,6 @@
 'use client';
 
-import { ACCENT_COLOURS, AccentColourId } from '@/lib/accent-colour';
+import { ACCENT_COLOURS } from '@/lib/accent-colour';
 import { useAccentColour } from './AccentColourProvider';
 import styles from './AccentColourPicker.module.css';
 
@@ -27,9 +27,8 @@ export function AccentColourPicker() {
               className={`${styles.swatch} ${isSelected ? styles.selected : ''}`}
               style={{
                 '--swatch-colour': colour.value,
-                '--swatch-dark': colour.dark,
               } as React.CSSProperties}
-              onClick={() => setAccent(colour.id as AccentColourId)}
+              onClick={() => setAccent(colour.id)}
             />
           );
         })}
