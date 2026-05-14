@@ -1,0 +1,85 @@
+/*
+  Accent Colour global wiring
+  Imported once from AccentColourProvider — makes all Bootstrap-derived
+  components respond to the --accent custom property set by the picker.
+*/
+
+:root {
+  --accent: #4f46e5;
+  --accent-light: #4f46e5;
+  --accent-dark: #6366f1;
+  --bs-primary: var(--accent);
+  --bs-link-color: var(--accent);
+  --bs-focus-ring-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* Bootstrap .btn-primary reads --bs-btn-bg; override to track accent */
+.btn-primary,
+.btn-primary:not(:disabled):not(.disabled) {
+  --bs-btn-bg: var(--accent);
+  --bs-btn-border-color: var(--accent);
+  --bs-btn-hover-bg: color-mix(in srgb, var(--accent) 85%, black);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--accent) 85%, black);
+  --bs-btn-active-bg: color-mix(in srgb, var(--accent) 75%, black);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--accent) 75%, black);
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+
+/* Outline primary button */
+.btn-outline-primary {
+  --bs-btn-color: var(--accent);
+  --bs-btn-border-color: var(--accent);
+  --bs-btn-hover-bg: var(--accent);
+  --bs-btn-hover-border-color: var(--accent);
+  --bs-btn-active-bg: var(--accent);
+  --bs-btn-active-border-color: var(--accent);
+}
+
+/* Links */
+a:not(.btn):not([class*="nav-"]) {
+  color: var(--accent);
+}
+a:not(.btn):not([class*="nav-"]):hover {
+  color: color-mix(in srgb, var(--accent) 80%, black);
+}
+
+/* Active nav links */
+.nav-link.active,
+.nav-link:hover {
+  color: var(--accent) !important;
+}
+
+/* Focus rings */
+*:focus-visible {
+  outline-color: var(--accent);
+}
+
+/* Badge primary */
+.badge.bg-primary {
+  background-color: var(--accent) !important;
+}
+
+/* Progress bar */
+.progress-bar {
+  background-color: var(--accent);
+}
+
+/* Checkbox / radio checked state (Bootstrap 5) */
+.form-check-input:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Range input thumb */
+.form-range::-webkit-slider-thumb {
+  background: var(--accent);
+}
+.form-range::-moz-range-thumb {
+  background: var(--accent);
+}
+
+/* Spinner */
+.spinner-border.text-primary,
+.spinner-grow.text-primary {
+  color: var(--accent) !important;
+}
