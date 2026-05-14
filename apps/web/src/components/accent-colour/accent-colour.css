@@ -1,0 +1,135 @@
+/*
+ * Accent Colour System
+ * ────────────────────────────────────────────────────────────────────────────
+ * CSS custom properties that the rest of the app reads to express the user's
+ * chosen accent colour.  `applyAccentColour()` in accent-colour-utils.ts sets
+ * these on :root at runtime; the defaults here give us the same Ocean Blue
+ * that was previously hardcoded.
+ */
+
+:root {
+  --accent-h: 214;
+  --accent-s: 80%;
+  --accent-l: 46%;
+
+  /* Derived shades */
+  --accent:           hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+  --accent-hover:     hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) - 8%));
+  --accent-light:     hsl(var(--accent-h) var(--accent-s) 94%);
+  --accent-dark:      hsl(var(--accent-h) var(--accent-s) 28%);
+  --accent-text:      hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) - 10%));
+
+  /* Bootstrap 5 aliases — keeps existing btn-primary, links, focus rings in sync */
+  --bs-primary:       var(--accent);
+  --bs-link-color:    var(--accent);
+  --bs-link-hover-color: var(--accent-hover);
+}
+
+/* ── Focus rings ──────────────────────────────────────────────────────────── */
+*:focus-visible {
+  outline-color: var(--accent) !important;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn-primary,
+.btn-primary:not(:disabled):not(.disabled) {
+  background-color: var(--accent) !important;
+  border-color:     var(--accent) !important;
+  color:            #fff !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active {
+  background-color: var(--accent-hover) !important;
+  border-color:     var(--accent-hover) !important;
+}
+
+/* ── Links ────────────────────────────────────────────────────────────────── */
+a:not(.btn):not([class*="nav-"]) {
+  color: var(--accent);
+}
+
+a:not(.btn):not([class*="nav-"]):hover {
+  color: var(--accent-hover);
+}
+
+/* ── Active nav items ─────────────────────────────────────────────────────── */
+.nav-link.active,
+.nav-link:focus,
+.nav-pills .nav-link.active {
+  background-color: var(--accent) !important;
+  color:            #fff !important;
+}
+
+.nav-link:hover {
+  color: var(--accent) !important;
+}
+
+/* ── Badges / pills ───────────────────────────────────────────────────────── */
+.badge.bg-primary {
+  background-color: var(--accent) !important;
+}
+
+/* ── Form controls (checkbox / radio / range checked state) ───────────────── */
+.form-check-input:checked {
+  background-color: var(--accent) !important;
+  border-color:     var(--accent) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 0.25rem hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.25) !important;
+}
+
+/* ── Accent Colour Picker widget ──────────────────────────────────────────── */
+.accent-colour-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.accent-colour-picker__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.accent-colour-picker__swatch {
+  width:  2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background-color: var(--swatch-colour);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  position: relative;
+}
+
+.accent-colour-picker__swatch:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.15);
+}
+
+.accent-colour-picker__swatch--selected {
+  border-color: #1a1a1a;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.25);
+  transform: scale(1.1);
+}
+
+.accent-colour-picker__swatch--selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+}
+
+.accent-colour-picker__status {
+  font-size: 0.8125rem;
+  color: var(--accent);
+  margin: 0;
+}
