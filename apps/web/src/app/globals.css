@@ -1,120 +1,1184 @@
-/* =========================================================
-   ACCENT COLOUR SYSTEM
-   --accent-colour is set at runtime by AccentColourProvider
-   and useAccentColour hook (defaults to Indigo #4F46E5).
-   All interactive highlight colours derive from this variable.
-   ========================================================= */
+/* Bootstrap 5 provides base typography, reboot, and theme tokens (`data-bs-theme` on `<html>`). */
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+/* Keep Tailwind utilities for any remaining helpers; disable preflight so it does not fight Bootstrap. */
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   xenoform.ai theme — dark, organic, alien-inspired.
+
+   Single dark theme (no light mode). Bootstrap is forced into dark mode at the
+   document root and every `--bs-*` variable below is re-pointed at the
+   xenoform palette so buttons, links, focus rings, and pills pick up the
+   neon-green accent automatically.
+
+   Body text is off-white (`--xf-text`); the neon accent (`--xf-accent`) is
+   reserved for borders, CTAs, focus, and active state — never for paragraph
+   text. Reduced-motion preferences are respected: glow/shimmer animations
+   collapse to static styles.
+   --------------------------------------------------------------------------- */
+
 :root {
-  --accent-colour: #4F46E5;
+  /* xenoform palette */
+  --xf-bg:                #020403;
+  --xf-surface:           #07110c;
+  --xf-surface-elevated:  #0b1a12;
+  --xf-surface-raised:    #0f2418;
+  --xf-border:            rgba(90, 255, 150, 0.22);
+  --xf-border-soft:       rgba(90, 255, 150, 0.10);
+  --xf-border-strong:     rgba(90, 255, 150, 0.45);
 
-  /* Bootstrap / Tailwind compat aliases */
-  --bs-primary: var(--accent-colour);
-  --bs-link-color: var(--accent-colour);
-  --bs-btn-bg: var(--accent-colour);
-  --bs-btn-border-color: var(--accent-colour);
+  --xf-text:              #e8f5ee;
+  --xf-text-muted:        #8fa99a;
+  --xf-text-dim:          #5f776b;
+
+  --xf-accent:            #39ff88;
+  --xf-accent-soft:       #20c866;
+  --xf-accent-deep:       #0e6d3a;
+  --xf-accent-glow:       rgba(57, 255, 136, 0.35);
+  --xf-accent-glow-soft:  rgba(57, 255, 136, 0.12);
+
+  --xf-danger:            #ff4f6d;
+  --xf-warning:           #ffd166;
 }
 
-/* ---- Global link colour ---- */
-a {
-  color: var(--accent-colour);
+/*
+ * Bootstrap variable overrides. Both selectors are listed so we win the cascade
+ * over Bootstrap's own `[data-bs-theme="dark"]` declarations regardless of
+ * import order in the bundle.
+ */
+:root,
+[data-bs-theme="dark"] {
+  /* Primary — neon green replaces Bootstrap blue */
+  --bs-primary:               #39ff88;
+  --bs-primary-rgb:           57, 255, 136;
+  --bs-primary-text-emphasis: #b6ffd2;
+  --bs-primary-bg-subtle:     #0a2014;
+  --bs-primary-border-subtle: #1f5a37;
+
+  /* Hyperlinks — neon accent, brighter on hover */
+  --bs-link-color:            #39ff88;
+  --bs-link-color-rgb:        57, 255, 136;
+  --bs-link-hover-color:      #b6ffd2;
+  --bs-link-hover-color-rgb:  182, 255, 210;
+  --bs-link-decoration:       none;
+
+  /* Focus ring — neon glow */
+  --bs-focus-ring-color:      rgba(57, 255, 136, 0.38);
+
+  /* Body + surface palette — near-black with a faint green wash */
+  --bs-body-bg:               #020403;
+  --bs-body-bg-rgb:           2, 4, 3;
+  --bs-body-color:            #e8f5ee;
+  --bs-body-color-rgb:        232, 245, 238;
+  --bs-secondary-bg:          #07110c;
+  --bs-secondary-bg-rgb:      7, 17, 12;
+  --bs-tertiary-bg:           #0b1a12;
+  --bs-tertiary-bg-rgb:       11, 26, 18;
+
+  --bs-secondary-color:       rgba(143, 169, 154, 0.85);
+  --bs-secondary-color-rgb:   143, 169, 154;
+  --bs-tertiary-color:        rgba(95, 119, 107, 0.75);
+
+  /* Borders — vein-thin neon */
+  --bs-border-color:          rgba(90, 255, 150, 0.18);
+  --bs-border-color-translucent: rgba(90, 255, 150, 0.10);
+
+  /* Success — readable green that's distinct from the accent (brighter, less neon) */
+  --bs-success:               #5aff9a;
+  --bs-success-rgb:           90, 255, 154;
+  --bs-success-text-emphasis: #c8ffdc;
+  --bs-success-bg-subtle:     #0a2418;
+  --bs-success-border-subtle: #1e5a3a;
+
+  /* Warning — sodium amber, distinguishable from neon */
+  --bs-warning:               #ffd166;
+  --bs-warning-rgb:           255, 209, 102;
+  --bs-warning-text-emphasis: #ffe5a8;
+  --bs-warning-bg-subtle:     #2a2010;
+  --bs-warning-border-subtle: #6a5320;
+
+  /* Danger — alien rose */
+  --bs-danger:                #ff4f6d;
+  --bs-danger-rgb:            255, 79, 109;
+  --bs-danger-text-emphasis:  #ffb0bf;
+  --bs-danger-bg-subtle:      #2a0e14;
+  --bs-danger-border-subtle:  #6e2030;
+
+  /* Info — muted teal-green */
+  --bs-info:                  #6fb89a;
+  --bs-info-rgb:              111, 184, 154;
+  --bs-info-text-emphasis:    #c0e8d4;
+  --bs-info-bg-subtle:        #0a1c14;
+  --bs-info-border-subtle:    #2a4a3a;
+
+  /* Inline <code> */
+  --bs-code-color:            #b6ffd2;
 }
 
+/*
+ * Body backdrop: layered radial wash + a faint biological grain. The grain is
+ * a tiny SVG noise pattern; it stays static so it adds texture without
+ * distracting motion. The two soft radials feel like ambient bio-luminescence
+ * rather than a flat black.
+ */
+body {
+  background-color: var(--xf-bg);
+  background-image:
+    radial-gradient(ellipse at 18% 12%, rgba(57, 255, 136, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 82% 88%, rgba(32, 200, 102, 0.05) 0%, transparent 60%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.22 0 0 0 0 1 0 0 0 0 0.53 0 0 0 0.04 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-attachment: fixed;
+  background-repeat: no-repeat, no-repeat, repeat;
+}
+
+/*
+ * Bootstrap 5 hard-codes #0d6efd (blue) directly on several component selectors
+ * rather than reading --bs-primary, so our :root override alone is not enough.
+ * We re-declare those same selectors here (after the Bootstrap import) with
+ * neon values so they win via cascade.
+ *
+ * Components covered: btn-primary, btn-outline-primary, form-check-input,
+ * pagination active, list-group active.
+ */
+
+/* --- Filled primary button --- */
+.btn-primary {
+  --bs-btn-color:                 #02110a;
+  --bs-btn-bg:                    #39ff88;
+  --bs-btn-border-color:          #39ff88;
+  --bs-btn-hover-color:           #02110a;
+  --bs-btn-hover-bg:              #5dffa2;
+  --bs-btn-hover-border-color:    #5dffa2;
+  --bs-btn-focus-shadow-rgb:      57, 255, 136;
+  --bs-btn-active-color:          #02110a;
+  --bs-btn-active-bg:             #20c866;
+  --bs-btn-active-border-color:   #20c866;
+  --bs-btn-disabled-color:        #02110a;
+  --bs-btn-disabled-bg:           #20c866;
+  --bs-btn-disabled-border-color: #20c866;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 0 0 0 var(--xf-accent-glow);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.2s ease,
+    transform 0.1s ease;
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  box-shadow: 0 0 14px var(--xf-accent-glow);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+/* --- Outline primary button --- */
+.btn-outline-primary {
+  --bs-btn-color:                 #39ff88;
+  --bs-btn-border-color:          #39ff88;
+  --bs-btn-hover-color:           #02110a;
+  --bs-btn-hover-bg:              #39ff88;
+  --bs-btn-hover-border-color:    #39ff88;
+  --bs-btn-focus-shadow-rgb:      57, 255, 136;
+  --bs-btn-active-color:          #02110a;
+  --bs-btn-active-bg:             #39ff88;
+  --bs-btn-active-border-color:   #39ff88;
+  --bs-btn-disabled-color:        #39ff88;
+  --bs-btn-disabled-border-color: #39ff88;
+}
+
+/* --- Form checkboxes and radio buttons checked state --- */
+.form-check-input {
+  background-color: var(--xf-surface);
+  border-color: var(--xf-border);
+}
+
+.form-check-input:checked {
+  background-color: #39ff88;
+  border-color:     #39ff88;
+}
+
+.form-check-input[type=checkbox]:indeterminate {
+  background-color: #39ff88;
+  border-color:     #39ff88;
+}
+
+.form-check-input:focus {
+  border-color: #39ff88;
+  box-shadow:   0 0 0 0.25rem rgba(57, 255, 136, 0.30);
+}
+
+/* --- Form controls (inputs/selects/textareas) --- */
+.form-control,
+.form-select {
+  background-color: var(--xf-surface);
+  border-color: var(--xf-border);
+  color: var(--xf-text);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--xf-surface-elevated);
+  border-color: var(--xf-accent-soft);
+  color: var(--xf-text);
+  box-shadow: 0 0 0 0.25rem rgba(57, 255, 136, 0.18);
+}
+
+.form-control::placeholder {
+  color: var(--xf-text-dim);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  background-color: var(--xf-bg);
+  color: var(--xf-text-dim);
+}
+
+/* --- Pagination active page --- */
+.pagination {
+  --bs-pagination-bg:                  transparent;
+  --bs-pagination-border-color:        var(--xf-border);
+  --bs-pagination-color:               var(--xf-text-muted);
+  --bs-pagination-hover-bg:            var(--xf-surface-elevated);
+  --bs-pagination-hover-color:         var(--xf-text);
+  --bs-pagination-hover-border-color:  var(--xf-border);
+  --bs-pagination-active-bg:           #39ff88;
+  --bs-pagination-active-color:        #02110a;
+  --bs-pagination-active-border-color: #39ff88;
+  --bs-pagination-focus-box-shadow:    0 0 0 0.25rem rgba(57, 255, 136, 0.30);
+  --bs-pagination-focus-color:         #39ff88;
+  --bs-pagination-focus-bg:            var(--xf-surface);
+}
+
+/* --- List-group active item --- */
+.list-group {
+  --bs-list-group-bg:                  var(--xf-surface);
+  --bs-list-group-color:               var(--xf-text);
+  --bs-list-group-border-color:        var(--xf-border);
+  --bs-list-group-action-color:        var(--xf-text);
+  --bs-list-group-action-hover-bg:     var(--xf-surface-elevated);
+  --bs-list-group-action-hover-color:  var(--xf-text);
+  --bs-list-group-active-bg:           #39ff88;
+  --bs-list-group-active-color:        #02110a;
+  --bs-list-group-active-border-color: #39ff88;
+}
+
+/* --- .link-primary hover / focus --- */
+.link-primary:hover,
+.link-primary:focus {
+  color: RGBA(var(--bs-link-hover-color-rgb), var(--bs-link-opacity, 1)) !important;
+  -webkit-text-decoration-color: RGBA(var(--bs-link-hover-color-rgb), var(--bs-link-underline-opacity, 1)) !important;
+  text-decoration-color: RGBA(var(--bs-link-hover-color-rgb), var(--bs-link-underline-opacity, 1)) !important;
+}
+
+/* --- Text selection highlight --- */
+::selection {
+  background-color: rgba(57, 255, 136, 0.32);
+  color: #02110a;
+}
+
+/*
+ * accent-color controls the native browser tint for checkboxes, radios,
+ * range sliders, and progress elements.
+ */
+:root {
+  accent-color: #39ff88;
+}
+
+/*
+ * Sidebar nav pills: Bootstrap hard-codes the active pill background to blue.
+ * Point those variables at our primary token so active state stays on-brand.
+ */
+.nav-pills {
+  --bs-nav-pills-link-active-bg: var(--bs-primary);
+  --bs-nav-pills-link-active-color: #02110a;
+}
+
+.nav-pills .nav-link {
+  color: var(--bs-body-secondary);
+  border-radius: 0.4rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-pills .nav-link:not(.active):hover {
+  color: var(--xf-text);
+  background-color: var(--xf-accent-glow-soft);
+}
+
+.nav-pills .nav-link.active {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 0 12px rgba(57, 255, 136, 0.22);
+}
+
+/* "Sign out" / ghost actions: muted text, not a loud link color */
+.btn-link:not(.text-danger) {
+  --bs-btn-color: var(--bs-secondary-color);
+  --bs-btn-hover-color: var(--xf-text);
+  --bs-btn-active-color: var(--xf-text);
+}
+
+/* Underline on hover so links stay obvious */
 a:hover,
-a:focus {
-  color: var(--accent-colour);
+.link-primary:hover,
+.link-secondary:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+/* Sidebar nav uses pill styling — no hover underline */
+.app-sidebar a:hover,
+.app-sidebar a:focus-visible {
+  text-decoration: none;
+}
+
+/*
+ * Cards: lift above the page background with surface tint + a vein-thin border
+ * and a faint internal glow on hover. This is where the "alien control panel"
+ * reading lives — a layered surface with restrained accent.
+ */
+.card {
+  background-color: var(--xf-surface);
+  border: 1px solid var(--xf-border-soft);
+  border-radius: 0.5rem;
+}
+
+.card.shadow-sm {
+  box-shadow:
+    0 1px 0 rgba(57, 255, 136, 0.04) inset,
+    0 1px 3px rgba(0, 0, 0, 0.55) !important;
+  transition:
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+a:hover > .card.shadow-sm,
+a:focus-visible > .card.shadow-sm {
+  border-color: var(--xf-border);
+  box-shadow:
+    0 1px 0 rgba(57, 255, 136, 0.08) inset,
+    0 4px 22px rgba(57, 255, 136, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Modal / dialog surfaces */
+.modal-content,
+.dropdown-menu,
+.offcanvas {
+  background-color: var(--xf-surface-elevated);
+  border: 1px solid var(--xf-border);
+  color: var(--xf-text);
+}
+
+.dropdown-item {
+  color: var(--xf-text);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--xf-accent-glow-soft);
+  color: var(--xf-text);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: var(--xf-accent);
+  color: #02110a;
+}
+
+.dropdown-divider {
+  border-top-color: var(--xf-border-soft);
+}
+
+/* Tables — vein dividers, no zebra stripes (those clash with the dark theme) */
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--xf-text);
+  --bs-table-border-color: var(--xf-border-soft);
+  --bs-table-striped-bg: rgba(57, 255, 136, 0.03);
+  --bs-table-hover-bg: var(--xf-accent-glow-soft);
+}
+
+/* Alerts / toasts — translucent panels with a colored accent edge */
+.alert {
+  border-radius: 0.5rem;
+  border-width: 1px;
+  border-style: solid;
+  backdrop-filter: blur(6px);
+}
+
+.toast {
+  background-color: var(--xf-surface-elevated);
+  border: 1px solid var(--xf-border);
+  color: var(--xf-text);
+}
+
+/* Badges */
+.badge.bg-primary {
+  color: #02110a;
+}
+
+/* Two-line clamp for feedback previews. */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   xenoform utilities — glow, shimmer, organic dividers, biological pulse.
+   All animations respect prefers-reduced-motion.
+   --------------------------------------------------------------------------- */
+
+.xf-glow {
+  box-shadow: 0 0 0 1px var(--xf-border), 0 0 18px var(--xf-accent-glow-soft);
+}
+
+.xf-divider-organic {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--xf-border) 18%,
+    var(--xf-border-strong) 50%,
+    var(--xf-border) 82%,
+    transparent 100%
+  );
+  border: 0;
+}
+
+.xf-pulse {
+  animation: xf-pulse 3.6s ease-in-out infinite;
+}
+
+@keyframes xf-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--xf-accent-glow-soft);
+    opacity: 0.85;
+  }
+  50% {
+    box-shadow: 0 0 18px 2px var(--xf-accent-glow);
+    opacity: 1;
+  }
+}
+
+.xf-loading-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--xf-accent);
+  box-shadow: 0 0 8px var(--xf-accent-glow);
+  animation: xf-pulse 1.6s ease-in-out infinite;
+}
+
+/*
+ * Brand mark — "alien biological control surface" plate used as a logo cell.
+ * Off-square radius gives the asymmetrical feel without going full organic.
+ */
+.xf-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 0.45rem 0.15rem 0.45rem 0.15rem;
+  background:
+    radial-gradient(circle at 30% 30%, var(--xf-accent) 0%, var(--xf-accent-deep) 70%, var(--xf-bg) 100%);
+  border: 1px solid var(--xf-border-strong);
+  box-shadow:
+    inset 0 0 6px rgba(0, 0, 0, 0.6),
+    0 0 10px var(--xf-accent-glow-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xf-pulse,
+  .xf-loading-dot {
+    animation: none;
+  }
+  body {
+    background-attachment: scroll;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   App layout primitives (PageShell, BackLink)
+   --------------------------------------------------------------------------- */
+
+.app-page-shell {
+  width: 100%;
+}
+
+.app-page-shell--narrow {
+  max-width: 32rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.app-page-shell--medium {
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.app-page-shell--wide {
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Dashboard: clickable KPI card focus/hover (whole card is a link). */
+.feedback-stat-card-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
+  border-radius: var(--bs-border-radius);
+}
+
+.feedback-stat-card-link:hover .card {
+  border-color: var(--xf-border-strong);
+}
+
+/* Dashboard breakdown: proportion bar inside each row. */
+.feedback-breakdown-bar {
+  height: 0.4rem;
+  background-color: var(--xf-surface-elevated);
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.feedback-breakdown-bar__fill {
+  height: 100%;
+  min-width: 3px;
+  background: linear-gradient(90deg, var(--xf-accent-soft), var(--xf-accent));
+  box-shadow: 0 0 8px var(--xf-accent-glow-soft);
+  transition: width 0.4s ease;
+  border-radius: 999px;
+}
+
+/* Feedback list: removable filter chips (links styled as pills). */
+a.feedback-filter-chip:hover {
+  background-color: var(--xf-surface-elevated) !important;
+}
+
+/*
+ * Feedback priority badges (P2 / P3): vivid fixed accent colors so they stand
+ * out from the neon primary without clashing.
+ */
+.badge.feedback-priority-badge--p2 {
+  background-color: var(--xf-danger);
+  color: #1a0509;
+}
+
+.badge.feedback-priority-badge--p3 {
+  background-color: var(--xf-warning);
+  color: #2a1f08;
+}
+
+/* Feedback list: thead matches the rest of the app */
+.feedback-results-table thead th {
+  background-color: var(--xf-surface-elevated) !important;
+  color: var(--xf-text) !important;
+  border-bottom-color: var(--xf-border) !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+/* Master–detail row: pointer + subtle highlight */
+.feedback-results-table tbody tr {
+  cursor: pointer;
+}
+
+.feedback-list-row-selected td {
+  background-color: rgba(var(--bs-primary-rgb), 0.10) !important;
+  box-shadow: inset 3px 0 0 0 var(--xf-accent);
+}
+
+/* List groups / cards: whole row opens detail panel */
+.app-clickable-list-row {
+  cursor: pointer;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.app-clickable-list-row:hover {
+  background-color: var(--xf-surface-elevated);
+}
+
+/*
+ * List-group items that are links (e.g. recent activity, high-priority feedback)
+ * get a subtle background transition and a left-border peek on hover.
+ */
+.list-group-item a.d-block,
+.list-group-item > a.d-block {
+  transition: background-color 0.12s ease;
+}
+
+.list-group-item > a.d-block:hover {
+  background-color: var(--xf-surface-elevated);
+}
+
+/* Selected row in master–detail lists */
+.app-list-row-selected {
+  background-color: rgba(var(--bs-primary-rgb), 0.10) !important;
+  box-shadow: inset 3px 0 0 0 var(--xf-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Mode bar tab hover — muted underline on non-active tabs for discoverability.
+   --------------------------------------------------------------------------- */
+.mode-bar-tab:not([data-active="true"]):hover {
+  color: var(--xf-text) !important;
+  border-bottom-color: var(--xf-border) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   App tab bar (shared) — page-level tabs aligned with the mode bar.
+   active = neon underline; inactive accent tabs get a quiet vein border.
+   --------------------------------------------------------------------------- */
+.app-tab-bar {
+  gap: 0.125rem;
+  border-bottom: 1px solid var(--xf-border-soft);
+}
+
+.app-tab-bar__link {
+  padding: 0.625rem 0.875rem;
+  margin-bottom: -1px;
+  border-radius: 0.375rem 0.375rem 0 0;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  color: var(--xf-text-muted);
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.app-tab-bar__link:hover {
+  color: var(--xf-text);
+  background-color: var(--xf-surface-elevated);
+  border-color: var(--xf-border-soft);
+  border-bottom-color: transparent;
+}
+
+.app-tab-bar__link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
+  position: relative;
+  z-index: 1;
+}
+
+.app-tab-bar__link--active {
+  color: var(--xf-accent);
+  font-weight: 600;
+  background-color: rgba(var(--bs-primary-rgb), 0.08);
+  border-color: var(--xf-border-soft);
+  border-bottom-color: var(--xf-accent);
+}
+
+/* Optional "AI"-style tab: visible chrome when not selected */
+.app-tab-bar__link--accent:not(.app-tab-bar__link--active) {
+  border-color: rgba(var(--bs-primary-rgb), 0.32);
+  background-color: rgba(var(--bs-primary-rgb), 0.05);
+}
+
+.app-tab-bar__link--accent:not(.app-tab-bar__link--active):hover {
+  border-color: rgba(var(--bs-primary-rgb), 0.50);
+  background-color: rgba(var(--bs-primary-rgb), 0.09);
+}
+
+.app-tab-bar__accent-icon {
+  font-size: 0.75em;
   opacity: 0.85;
 }
 
-/* ---- Primary buttons ---- */
-button.btn-primary,
-.btn-primary,
-button[data-variant='primary'],
-input[type='submit'] {
-  background-color: var(--accent-colour) !important;
-  border-color: var(--accent-colour) !important;
+/* ---------------------------------------------------------------------------
+   ModeLandingPage primitives (Build, Monitor area landing pages).
+   --------------------------------------------------------------------------- */
+
+.mode-section-label {
+  @apply text-xs font-semibold uppercase tracking-widest;
+  color: var(--xf-text-muted);
 }
 
-button.btn-primary:hover,
-.btn-primary:hover,
-button[data-variant='primary']:hover {
-  filter: brightness(0.9);
+.mode-step-circle {
+  @apply flex items-center justify-center flex-shrink-0 text-sm font-semibold rounded;
+  width: 2rem;
+  height: 2rem;
+  background-color: var(--xf-surface-elevated);
+  color: var(--xf-text-muted);
+  border: 1px solid var(--xf-border-soft);
 }
 
-/* ---- Focus rings ---- */
-*:focus-visible {
-  outline: 2px solid var(--accent-colour);
-  outline-offset: 2px;
+.mode-feature-number {
+  @apply flex-shrink-0 font-semibold;
+  font-size: 0.75rem;
+  color: var(--xf-text-muted);
+  width: 1.75rem;
+  padding-top: 0.2rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
-/* ---- Accent text utility ---- */
-.text-accent {
-  color: var(--accent-colour) !important;
+/* ---------------------------------------------------------------------------
+   App layout: main pane scrolls on lg+ so detail panels stick to its top.
+   --------------------------------------------------------------------------- */
+
+.app-layout-shell {
+  min-height: 100dvh;
 }
 
-/* ---- Accent background utility ---- */
-.bg-accent {
-  background-color: var(--accent-colour) !important;
+@media (min-width: 992px) {
+  .app-layout-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .app-main-pane {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
 }
 
-/* ---- Active nav / sidebar items ---- */
-[data-active='true'],
-.nav-link.active,
-.sidebar-item--active {
-  color: var(--accent-colour) !important;
-  border-left-color: var(--accent-colour) !important;
+/* Master–detail: panel pins to top of `.app-main-pane` scrollport */
+@media (min-width: 992px) {
+  .feedback-detail-aside-shell {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 5.5rem);
+    min-height: 0;
+    background-color: var(--xf-bg);
+  }
+
+  .feedback-detail-aside-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .app-detail-aside {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    max-height: calc(100dvh - 5.5rem);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background-color: var(--xf-bg);
+  }
+
+  .app-detail-aside__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-top: 0.75rem;
+    padding-bottom: 1rem;
+  }
 }
 
-/* =========================================================
-   ACCENT COLOUR PICKER COMPONENT STYLES
-   ========================================================= */
-.accent-colour-picker {
+.feedback-detail-aside-scroll {
+  padding-top: 0.75rem;
+  padding-bottom: 1rem;
+}
+
+/* Shared master–detail peek header */
+.peek-panel-header {
+  padding-top: 0.25rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--xf-border-soft);
+}
+
+.peek-panel-header__main {
+  margin-top: 0.35rem;
+}
+
+.peek-panel-title {
+  margin-top: 0.65rem;
+  line-height: 1.35;
+}
+
+.peek-panel-toolbar {
+  justify-content: flex-start;
+  gap: 0.2rem 0.45rem !important;
+  row-gap: 0.35rem !important;
+  max-width: 100%;
+}
+
+.peek-panel-toolbar__rule {
+  width: 1px;
+  align-self: stretch;
+  min-height: 1.125rem;
+  margin: 0 0.2rem 0 0.35rem;
+  background-color: var(--xf-border-soft);
+  flex-shrink: 0;
+}
+
+.peek-panel-nav-pair {
+  gap: 0.05rem;
+}
+
+a.peek-panel-entity-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--xf-text-muted);
+  text-decoration: none;
+  padding: 0.35rem 0.7rem;
+  line-height: 1.2;
+  border-radius: var(--bs-border-radius-pill);
+  border: 1px solid var(--xf-border-soft);
+  background-color: var(--xf-surface);
+  transition:
+    color 0.12s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+a.peek-panel-entity-link:hover {
+  color: var(--xf-accent);
+  border-color: var(--xf-border-strong);
+  background-color: rgba(var(--bs-primary-rgb), 0.08);
+  box-shadow: 0 0 10px var(--xf-accent-glow-soft);
+}
+
+a.peek-panel-entity-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.38);
+}
+
+.peek-panel-toolbar-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.peek-panel-icon-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0.35rem !important;
+  line-height: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--xf-text-muted);
+  text-decoration: none;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+a.peek-panel-icon-btn:hover,
+button.peek-panel-icon-btn:hover {
+  background-color: var(--xf-surface-elevated);
+  color: var(--xf-text);
+}
+
+.peek-panel-icon-btn:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.38);
+}
+
+.peek-panel-icon-btn.disabled,
+.peek-panel-icon-btn[aria-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Muted back control — layout from Tailwind @apply, colours from Bootstrap tokens. */
+.app-back-link {
+  @apply inline-flex items-center;
+  text-decoration: none;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--xf-text-muted);
+  border-radius: var(--bs-border-radius);
+  padding: 0.25rem 0.35rem;
+  margin: -0.25rem -0.35rem;
+}
+
+.app-back-link:hover {
+  color: var(--xf-text);
+  text-decoration: none;
+}
+
+.app-back-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
+}
+
+.app-back-link__icon {
+  opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Peek drawer (resizable side panel — used on Feedback and Insights list pages)
+   --------------------------------------------------------------------------- */
+
+.peek-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1040;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.peek-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1045;
+  min-width: 280px;
+  max-width: min(100vw, 900px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  background-color: var(--xf-surface);
+  border-left: 1px solid var(--xf-border);
+  box-shadow:
+    -4px 0 32px rgba(0, 0, 0, 0.7),
+    -1px 0 0 rgba(57, 255, 136, 0.10) inset;
+  padding: 1.25rem 1.5rem 2rem calc(1.5rem + 6px);
+}
+
+.peek-drawer-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 1;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.peek-drawer-resize-handle:hover {
+  background-color: rgba(var(--bs-primary-rgb), 0.30);
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive app sidebar (drawer on small screens)
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1050;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    background-color: var(--xf-surface);
+    border-right: 1px solid var(--xf-border-soft);
+    box-shadow: 0 0 1.25rem rgba(0, 0, 0, 0.7);
+  }
+
+  .app-sidebar.app-sidebar--open {
+    transform: translateX(0);
+  }
+}
+
+@media (min-width: 992px) {
+  .app-sidebar {
+    position: relative !important;
+    transform: none !important;
+    height: auto !important;
+    box-shadow: none !important;
+    align-self: stretch;
+    max-height: 100dvh;
+    overflow-y: auto;
+    background-color: var(--xf-surface);
+    border-right: 1px solid var(--xf-border-soft);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Discovery — Assumption map "Print" mode.
+   --------------------------------------------------------------------------- */
+@media print {
+  html.assumption-map-print-mode body * {
+    visibility: hidden;
+  }
+
+  html.assumption-map-print-mode .assumption-map-print-area,
+  html.assumption-map-print-mode .assumption-map-print-area * {
+    visibility: visible;
+  }
+
+  html.assumption-map-print-mode .assumption-map-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0 0.5rem;
+  }
+
+  html.assumption-map-print-mode .assumption-map-no-print {
+    display: none !important;
+  }
+
+  html.assumption-map-print-mode body {
+    background: #fff !important;
+    background-image: none !important;
+    color: #000 !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Discovery — Opportunity solution tree map.
+   --------------------------------------------------------------------------- */
+.scroll-target-discover-map,
+.scroll-target-ost-map-embed {
+  scroll-margin-top: 4.5rem;
+}
+
+.ost-map-dot-grid {
+  background-color: var(--xf-bg);
+  background-image: radial-gradient(circle, rgba(57, 255, 136, 0.10) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+.ost-map-connector {
+  stroke: color-mix(in srgb, var(--xf-accent) 45%, transparent);
+}
+
+.ost-node-outcome {
+  background: color-mix(in srgb, var(--bs-warning) 18%, var(--xf-surface));
+  border: 2px solid color-mix(in srgb, var(--bs-warning) 50%, var(--xf-border));
+  padding: 1.1rem 1.35rem 1.2rem;
+}
+
+.ost-node-outcome .ost-map-outcome-actions {
+  margin-top: 0.9rem;
+  padding-top: 0.25rem;
+}
+
+.ost-node-opportunity {
+  background: color-mix(in srgb, var(--bs-primary) 14%, var(--xf-surface));
+  border: 2px solid color-mix(in srgb, var(--bs-primary) 48%, var(--xf-border));
+  padding: 1.1rem 1.2rem 1.15rem;
+}
+
+.ost-node-opportunity .ost-map-opp-title {
+  line-height: 1.45;
+  margin-bottom: 0.4rem;
+}
+
+.ost-node-opportunity .ost-map-opp-badge {
+  margin-top: 0.65rem;
+  display: inline-block;
+}
+
+.ost-node-solution {
+  background: var(--xf-surface-elevated);
+  border: 1px solid var(--xf-border-soft);
+  padding: 0.85rem 0.95rem 0.9rem;
+}
+
+.ost-node-solution .ost-map-solution-list li {
+  line-height: 1.5;
+  margin-bottom: 0.4rem;
+}
+
+.ost-node-solution .ost-map-solution-list li:last-child {
+  margin-bottom: 0.25rem;
+}
+
+.ost-map-solution-list--stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.accent-colour-picker__label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin: 0;
-  color: inherit;
-}
-
-.accent-colour-picker__swatches {
+.ost-map-solution-item {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.5rem 0.65rem;
+  padding: 0.55rem 0.6rem 0.6rem 0.65rem;
+  border: 1px solid var(--xf-border-soft);
+  border-radius: var(--bs-border-radius);
+  background: var(--xf-surface);
 }
 
-.accent-colour-picker__swatch {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  background-color: var(--swatch-colour);
-  border: 2px solid transparent;
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.1s ease, border-color 0.1s ease;
-  position: relative;
+.ost-map-solution-idx {
+  font-variant-numeric: tabular-nums;
+  min-width: 1.4rem;
+  font-weight: 600;
+  color: var(--xf-text-muted);
+  padding-top: 0.1rem;
 }
 
-.accent-colour-picker__swatch:hover {
-  transform: scale(1.15);
+.ost-map-solution-line {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+  font-size: 0.9rem;
 }
 
-.accent-colour-picker__swatch:focus-visible {
-  outline: 2px solid var(--accent-colour);
-  outline-offset: 3px;
+.ost-map-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
 }
 
-.accent-colour-picker__swatch--active {
-  border-color: #111 !important;
-  transform: scale(1.1);
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--swatch-colour);
+.ost-node-test {
+  background: var(--xf-surface);
+  border: 1px solid var(--xf-border-soft);
+  padding: 0.6rem 0.75rem 0.7rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .accent-colour-picker__swatch--active {
-    border-color: #fff !important;
-  }
+.ost-node-test .ost-map-test-line {
+  line-height: 1.5;
+  margin-top: 0.35rem;
+}
+
+.ost-node-test .ost-map-test-line:first-of-type {
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+}
+
+.ost-map-opp-column {
+  gap: 0.9rem;
+  align-self: flex-start;
+}
+
+.ost-map-assumption-block {
+  gap: 0.65rem;
 }
