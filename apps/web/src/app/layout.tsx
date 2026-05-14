@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
-import { getAccentInitScript } from "./accent-init";
+import { getAccentInitScript } from "./accent-init-script";
 
 export const metadata: Metadata = {
   title: "xenoform.ai",
