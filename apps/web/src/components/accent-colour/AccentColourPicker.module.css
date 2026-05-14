@@ -1,0 +1,58 @@
+.wrapper {
+  padding: 1.25rem 0;
+}
+
+.title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+  color: var(--bs-body-color, #212529);
+}
+
+.description {
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color, #6c757d);
+  margin: 0 0 0.875rem;
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.swatch {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  outline: none;
+  position: relative;
+}
+
+.swatch:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+}
+
+.swatch:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-colour-light, #a5b4fc);
+}
+
+.swatch.selected {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px var(--accent-colour, #4f46e5);
+  transform: scale(1.05);
+}
+
+.checkIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+  pointer-events: none;
+}
