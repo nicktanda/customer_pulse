@@ -1,0 +1,85 @@
+/*
+ * Accent colour CSS custom properties.
+ * Default values match the "indigo" swatch; overridden at runtime via JS on <html>.
+ * These cascade so any component using var(--accent-colour) automatically
+ * picks up the user's chosen accent.
+ */
+:root {
+  --accent-colour: #4f46e5;
+  --accent-colour-hover: #4338ca;
+  --accent-colour-subtle: #eef2ff;
+  --accent-colour-foreground: #ffffff;
+}
+
+/*
+ * Override Bootstrap's primary colour with the accent variable so .btn-primary,
+ * .form-check-input:checked, links, etc. all follow the user's preference.
+ */
+.btn-primary {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour-hover) !important;
+  color: var(--accent-colour-foreground) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--accent-colour-hover) !important;
+  border-color: var(--accent-colour-hover) !important;
+  color: var(--accent-colour-foreground) !important;
+}
+
+.btn-outline-primary {
+  color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+  color: var(--accent-colour-foreground) !important;
+}
+
+a {
+  color: var(--accent-colour);
+}
+
+a:hover {
+  color: var(--accent-colour-hover);
+}
+
+.form-check-input:checked {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+}
+
+.nav-link.active,
+.nav-pills .nav-link.active {
+  background-color: var(--accent-colour) !important;
+  color: var(--accent-colour-foreground) !important;
+}
+
+.badge.bg-primary,
+.badge.text-bg-primary {
+  background-color: var(--accent-colour) !important;
+  color: var(--accent-colour-foreground) !important;
+}
+
+.text-primary {
+  color: var(--accent-colour) !important;
+}
+
+.border-primary {
+  border-color: var(--accent-colour) !important;
+}
+
+.bg-primary {
+  background-color: var(--accent-colour) !important;
+}
+
+/* Subtle highlight used in cards/badges */
+.accent-subtle {
+  background-color: var(--accent-colour-subtle);
+  color: var(--accent-colour);
+}

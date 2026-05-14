@@ -1,5 +1,6 @@
 /* Bootstrap 5 provides base typography, reboot, and theme tokens (`data-bs-theme` on `<html>`). */
 @import "bootstrap/dist/css/bootstrap.min.css";
+@import "./accent.css";
 
 /* Keep Tailwind utilities for any remaining helpers; disable preflight so it does not fight Bootstrap. */
 @tailwind components;
