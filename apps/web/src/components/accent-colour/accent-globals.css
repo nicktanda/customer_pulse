@@ -1,0 +1,106 @@
+/*
+ * Accent colour global overrides.
+ * These selectors read the CSS custom properties set by applyAccentColour()
+ * and applied via data-accent on <html>. They wire the accent into shared
+ * Bootstrap + app-wide interactive elements so every button, link, focus
+ * ring, and highlight responds to the user's chosen colour.
+ */
+
+/* Primary buttons */
+[data-accent] .btn-primary,
+[data-accent] .btn.btn-primary {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+[data-accent] .btn-primary:hover,
+[data-accent] .btn-primary:focus,
+[data-accent] .btn.btn-primary:hover,
+[data-accent] .btn.btn-primary:focus {
+  background-color: var(--accent-dark) !important;
+  border-color: var(--accent-dark) !important;
+}
+
+/* Outline primary buttons */
+[data-accent] .btn-outline-primary {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+[data-accent] .btn-outline-primary:hover,
+[data-accent] .btn-outline-primary:focus {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+/* Links */
+[data-accent] a {
+  color: var(--accent);
+}
+
+[data-accent] a:hover {
+  color: var(--accent-dark);
+}
+
+/* Focus rings */
+[data-accent] *:focus-visible {
+  outline-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--bs-focus-ring-color, color-mix(in srgb, var(--accent) 25%, transparent));
+}
+
+/* Checkboxes and radio buttons */
+[data-accent] .form-check-input:checked {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Range inputs */
+[data-accent] .form-range::-webkit-slider-thumb {
+  background-color: var(--accent);
+}
+
+[data-accent] .form-range::-moz-range-thumb {
+  background-color: var(--accent);
+}
+
+/* Badges */
+[data-accent] .badge.bg-primary {
+  background-color: var(--accent) !important;
+}
+
+/* Nav active indicators */
+[data-accent] .nav-link.active,
+[data-accent] .nav-pills .nav-link.active {
+  background-color: var(--accent) !important;
+}
+
+[data-accent] .nav-link {
+  color: var(--accent);
+}
+
+/* Progress bars */
+[data-accent] .progress-bar {
+  background-color: var(--accent);
+}
+
+/* Alerts */
+[data-accent] .alert-primary {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+/* Text utilities */
+[data-accent] .text-primary {
+  color: var(--accent) !important;
+}
+
+/* Border utilities */
+[data-accent] .border-primary {
+  border-color: var(--accent) !important;
+}
+
+/* Background utilities */
+[data-accent] .bg-primary {
+  background-color: var(--accent) !important;
+}
