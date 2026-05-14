@@ -52,7 +52,7 @@ function applyAccent(id: AccentColourId) {
   root.style.setProperty("--bs-primary", resolved);
   root.style.setProperty("--bs-primary-rgb", hexToRgbComponents(resolved));
   root.style.setProperty("--bs-link-color", resolved);
-  root.style.setProperty("--bs-link-hover-color", shiftLightness(resolved, -12));
+  root.style.setProperty("--bs-link-hover-color", shiftBrightness(resolved, -12));
   root.style.setProperty("--bs-focus-ring-color", `${resolved}40`);
 }
 
@@ -64,8 +64,13 @@ function hexToRgbComponents(hex: string): string {
   return `${r}, ${g}, ${b}`;
 }
 
-/** Naive lightness shift by adjusting hex brightness */
-function shiftLightness(hex: string, delta: number): string {
+/**
+ * Shifts each RGB channel by `delta` to produce a brighter/darker variant.
+ * Note: this is a simple per-channel brightness shift, not a true HSL lightness
+ * adjustment — it works well for hover/focus states but may shift hue slightly
+ * for non-neutral colours.
+ */
+function shiftBrightness(hex: string, delta: number): string {
   const clean = hex.replace("#", "");
   const clamp = (v: number) => Math.max(0, Math.min(255, v));
   const r = clamp(parseInt(clean.slice(0, 2), 16) + delta);
@@ -96,7 +101,9 @@ export function AccentColourProvider({
     applyAccent(DEFAULT_ACCENT);
   }, []);
 
-  // Re-apply when theme changes (dark/light)
+  // Re-apply when theme changes (data-bs-theme attribute).
+  // Note: system-level prefers-color-scheme changes won't trigger this observer;
+  // apps that support OS-level dark mode should also listen to the matchMedia event.
   useEffect(() => {
     const observer = new MutationObserver(() => applyAccent(accentId));
     observer.observe(document.documentElement, {
