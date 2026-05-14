@@ -12,6 +12,7 @@ import { userCanEditProject, userHasProjectAccess } from "@/lib/project-access";
 import { projectHasDemoSeedData } from "@/lib/demo-project-seed";
 import { saveGeneralSettingsAction } from "./actions";
 import { DemoModeSwitch } from "./DemoModeSwitch";
+import { AccentColourPicker } from "@/components/ui/AccentColourPicker";
 import {
   FormActions,
   InlineAlert,
@@ -207,6 +208,17 @@ export default async function SettingsPage({
               <div className="col-sm-6"><dt className="text-body-secondary">Auto-archive days</dt><dd className="fw-medium mb-0">{currentSettings.autoArchiveDays}</dd></div>
             </dl>
           )}
+        </div>
+      </section>
+
+      <section className="card shadow-sm border-secondary-subtle">
+        <div className="card-body">
+          <h2 className="h5 text-body-emphasis">Appearance</h2>
+          <p className="small text-body-secondary mt-1 mb-3">
+            Choose an accent colour that will be applied to buttons and interactive highlights across the app.
+            Your preference is stored locally in this browser.
+          </p>
+          <AccentColourPicker />
         </div>
       </section>
 
