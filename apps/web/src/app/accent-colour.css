@@ -1,0 +1,106 @@
+/*
+  Accent Colour — global token wiring
+  ------------------------------------
+  --accent-colour is set at runtime by AccentColourProvider (localStorage → CSS custom prop).
+  Here we alias it to Bootstrap's semantic tokens so every component that
+  already uses var(--bs-primary) or btn-primary picks up the user's choice.
+*/
+
+:root,
+[data-bs-theme="light"],
+[data-bs-theme="dark"] {
+  /* Default accent (indigo) — overridden at runtime via inline style on <html> */
+  --accent-colour: #4f46e5;
+
+  /* Wire accent colour into Bootstrap primary tokens */
+  --bs-primary: var(--accent-colour);
+  --bs-primary-rgb: /* fallback — real value set by JS */ 79, 70, 229;
+  --bs-link-color: var(--accent-colour);
+  --bs-link-hover-color: color-mix(in srgb, var(--accent-colour) 80%, black);
+
+  /* Bootstrap button overrides */
+  --bs-btn-bg: var(--accent-colour);
+  --bs-btn-border-color: var(--accent-colour);
+  --bs-btn-hover-bg: color-mix(in srgb, var(--accent-colour) 85%, black);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--accent-colour) 85%, black);
+  --bs-btn-active-bg: color-mix(in srgb, var(--accent-colour) 75%, black);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--accent-colour) 75%, black);
+
+  /* Focus ring */
+  --bs-focus-ring-color: color-mix(in srgb, var(--accent-colour) 40%, transparent);
+}
+
+/* Primary buttons */
+.btn-primary {
+  background-color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: color-mix(in srgb, var(--accent-colour) 85%, black) !important;
+  border-color: color-mix(in srgb, var(--accent-colour) 85%, black) !important;
+}
+
+.btn-primary:active {
+  background-color: color-mix(in srgb, var(--accent-colour) 75%, black) !important;
+  border-color: color-mix(in srgb, var(--accent-colour) 75%, black) !important;
+}
+
+/* Outline-primary buttons */
+.btn-outline-primary {
+  color: var(--accent-colour) !important;
+  border-color: var(--accent-colour) !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background-color: var(--accent-colour) !important;
+  color: #fff !important;
+}
+
+/* Links */
+a {
+  color: var(--accent-colour);
+}
+
+a:hover {
+  color: color-mix(in srgb, var(--accent-colour) 80%, black);
+}
+
+/* Badge / pill primary */
+.badge.bg-primary,
+.badge.text-bg-primary {
+  background-color: var(--accent-colour) !important;
+}
+
+/* Form controls — focus ring */
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: color-mix(in srgb, var(--accent-colour) 60%, transparent);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--accent-colour) 25%, transparent);
+}
+
+/* Checked checkbox / radio */
+.form-check-input:checked {
+  background-color: var(--accent-colour);
+  border-color: var(--accent-colour);
+}
+
+/* Nav active links */
+.nav-link.active,
+.navbar-nav .nav-link.active {
+  color: var(--accent-colour) !important;
+}
+
+/* Progress bar */
+.progress-bar {
+  background-color: var(--accent-colour);
+}
+
+/* Spinner */
+.spinner-border.text-primary,
+.spinner-grow.text-primary {
+  color: var(--accent-colour) !important;
+}
