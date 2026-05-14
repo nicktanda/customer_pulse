@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { ACCENT_COLOUR_STORAGE_KEY } from "@/components/accent-colour/accent-colours";
 import { AppearanceSettingsClient } from "./AppearanceSettingsClient";
 
 export const metadata = {
@@ -7,7 +8,7 @@ export const metadata = {
 
 export default async function AppearancePage() {
   const cookieStore = await cookies();
-  const storedColour = cookieStore.get("accent-colour")?.value ?? "blue";
+  const storedColour = cookieStore.get(ACCENT_COLOUR_STORAGE_KEY)?.value ?? "blue";
 
   return (
     <div className="container py-4" style={{ maxWidth: 640 }}>
