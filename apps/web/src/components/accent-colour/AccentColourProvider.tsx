@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
+  ACCENT_COLOURS,
   ACCENT_STORAGE_KEY,
   AccentColourId,
   DEFAULT_ACCENT,
@@ -18,12 +19,16 @@ const AccentColourContext = createContext<AccentColourContextValue>({
   setAccent: () => {},
 });
 
+function isValidAccentId(value: string | null): value is AccentColourId {
+  return value !== null && ACCENT_COLOURS.some((c) => c.id === value);
+}
+
 export function AccentColourProvider({ children }: { children: React.ReactNode }) {
   const [accent, setAccentState] = useState<AccentColourId>(DEFAULT_ACCENT);
 
   useEffect(() => {
-    const stored = localStorage.getItem(ACCENT_STORAGE_KEY) as AccentColourId | null;
-    const initial = stored ?? DEFAULT_ACCENT;
+    const stored = localStorage.getItem(ACCENT_STORAGE_KEY);
+    const initial = isValidAccentId(stored) ? stored : DEFAULT_ACCENT;
     setAccentState(initial);
     applyAccentColour(initial);
   }, []);
