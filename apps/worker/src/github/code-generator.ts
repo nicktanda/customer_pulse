@@ -53,6 +53,19 @@ PATH RULES (hard requirements):
 - If a similar component already lives at \`apps/web/src/components/...\`, NEW components belong at \`apps/web/src/components/...\` — never at \`apps/web/components/...\`. The same rule applies to \`lib/\`, \`hooks/\`, \`app/\`, \`styles/\`, etc.
 - Do NOT invent new top-level directories. If you think a new subtree is genuinely needed, place it under an existing prefix instead.
 
+WIRE THE FEATURE END-TO-END (hard requirement):
+A feature is not done when its UI renders. It is done when changing the UI's value visibly changes the product. Every value the user can set must have a real consumer downstream of where it's written. Before returning, mentally trace the data flow: user picks/clicks/types → value is stored (state/context/localStorage/DB) → SOMETHING ELSE in the app reads that value and behaves differently. If you can't name the consumer, the feature is incomplete.
+
+Concrete patterns to AVOID — every one of these has shipped to this repo and produced a "feature exists but does nothing" merge:
+
+- **CSS custom property with no readers.** If your code calls \`document.documentElement.style.setProperty('--accent-colour', ...)\` (or similar), at least one selector outside the new component's own CSS MUST read \`var(--accent-colour)\`. For colour/theme features in this repo, that means aliasing the relevant Bootstrap variables (\`--bs-primary\`, \`--bs-link-color\`, etc.) and/or updating shared button/link/focus styles in \`globals.css\`. A picker that only restyles its own swatches is a no-op.
+- **React Context provider with no consumer.** If you add \`<XProvider>\` wrapping the app, at least one rendered component must call \`useX()\` and use the value to change its output. Otherwise the provider is dead weight.
+- **Server action / API route with no UI trigger.** If you define a server action or route handler, the diff must also include the form/button/effect that calls it. An exported action with no caller never runs.
+- **DB column / preference / setting with no read site.** If you add a new column to a DB row or a new field to a preferences blob, find the place(s) that should branch on it and update them. Storing a value that nothing checks is the same as not storing it.
+- **Toggle/picker/setting whose only effect is on the toggle/picker/setting itself.** The "selected" indicator changing colour is not "user impact". Real user impact = something OUTSIDE the configuration surface changes when the value changes.
+
+When the feature is a configuration/personalisation surface (theme, accent, density, layout choices, notification prefs, etc.), explicitly include the wire-up: the styles, components, or behaviour that depend on the configured value. If the idea is "let users pick an accent colour", the PR must include both the picker AND the styles that respond to it. Ship the entire vertical slice.
+
 NO FEATURE FLAGS (hard requirement):
 - DO NOT wrap the new feature in a \`process.env.NEXT_PUBLIC_*\`, \`process.env.FEATURE_*\`, or any similar environment-variable gate.
 - DO NOT introduce a constant like \`ACCENT_COLOUR_ENABLED\`, \`FEATURE_ENABLED\`, \`isXEnabled\`, etc. that defaults to \`false\` and short-circuits rendering.
@@ -90,6 +103,65 @@ function isDocOnly(files: FileChange[]): boolean {
     const ext = f.path.split(".").pop()?.toLowerCase() ?? "";
     return DOC_ONLY_EXTENSIONS.has(ext);
   });
+}
+
+/**
+ * Deterministically rewrites files whose paths land outside any existing
+ * repo prefix. For each bad path, finds a sibling directory under the
+ * deepest valid parent that already contains files of the same extension
+ * and moves the file there. Returns the rewritten file list plus a count
+ * of how many were changed.
+ *
+ * Triggered as a last resort when the model emits the same path-mismatch
+ * across all validation retries — the model is clearly not going to fix it
+ * itself, and landing the bad path will only stall the review loop.
+ */
+function relocateMismatchedPaths(
+  files: FileChange[],
+  repoContext: RepoContext,
+): { files: FileChange[]; changed: number } {
+  const structure = repoContext.structure as { existingDirs?: string[]; dirsByExtension?: Record<string, string[]> };
+  const existing = new Set(structure.existingDirs ?? []);
+  const dirsByExt = structure.dirsByExtension ?? {};
+  if (existing.size === 0) return { files, changed: 0 };
+
+  let changed = 0;
+  const rewritten = files.map((f) => {
+    if (f.action !== "create") return f;
+    const parts = f.path.split("/");
+    if (parts.length < 3) return f;
+
+    // Find the deepest existing parent prefix.
+    let lastValidDepth = 0;
+    for (let depth = parts.length - 1; depth >= 1; depth--) {
+      const prefix = parts.slice(0, depth).join("/");
+      if (existing.has(prefix)) {
+        lastValidDepth = depth;
+        break;
+      }
+    }
+    if (lastValidDepth === parts.length - 1) return f; // parent prefix is already valid
+
+    const validParent = parts.slice(0, lastValidDepth).join("/");
+    const filename = parts[parts.length - 1] ?? "";
+    const ext = filename.split(".").pop()?.toLowerCase();
+    if (!ext || ext === filename) return f;
+
+    // Pick a sibling directory under validParent that already contains
+    // files of the same extension. Prefer the shortest match (closest to
+    // the root, most idiomatic).
+    const candidates = (dirsByExt[ext] ?? [])
+      .filter((d) => d.startsWith(validParent + "/") || d === validParent)
+      .sort((a, b) => a.length - b.length);
+    const target = candidates[0];
+    if (!target) return f;
+
+    const newPath = `${target}/${filename}`;
+    if (newPath === f.path) return f;
+    changed++;
+    return { ...f, path: newPath };
+  });
+  return { files: rewritten, changed };
 }
 
 export async function generateCode(
@@ -144,6 +216,23 @@ export async function generateCode(
     }
 
     if (attempt === MAX_VALIDATION_RETRIES) {
+      // Last attempt still failed. Before giving up, try to deterministically
+      // relocate any path-mismatched files to a known-good sibling prefix.
+      // The model has repeatedly emitted the same bad path after being told
+      // it's wrong — fall back to a code-level rewrite rather than landing
+      // the bad path in the PR for QA to keep flagging forever.
+      if (mismatches.length > 0) {
+        const relocated = relocateMismatchedPaths(result.files, repoContext);
+        if (relocated.changed > 0) {
+          const remaining = findPathMismatches(relocated.files, repoContext);
+          if (remaining.length === 0) {
+            console.warn(`[code-gen] deterministically relocated ${relocated.changed} mismatched path(s) after retries exhausted`);
+            return { ...result, files: relocated.files };
+          }
+          console.warn(`[code-gen] partially relocated ${relocated.changed} path(s) but ${remaining.length} mismatch(es) still present — returning anyway`);
+          return { ...result, files: relocated.files };
+        }
+      }
       console.warn(`[code-gen] validation still failed after ${MAX_VALIDATION_RETRIES} retries (docOnly=${docOnly}, mismatches=${mismatches.length}) — returning result for QA to flag`);
       return result;
     }

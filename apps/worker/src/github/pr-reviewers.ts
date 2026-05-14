@@ -100,12 +100,17 @@ Evaluate whether the changes actually solve the customer problem. Consider:
    - For new server-side functions, the diff must also include a UI handler (form, button, etc.) or schedule that triggers them.
    - **Where the page lives matters as much as whether it exists.** If the codebase's logged-in product lives under a nested route prefix (e.g. \`apps/web/src/app/app/...\` rather than \`apps/web/src/app/...\`), a new top-level page at \`apps/web/src/app/<seg>/page.tsx\` is invisible to users browsing the actual product. URL-reachable ≠ reachable-by-a-real-user. New user-facing pages must live under the SAME prefix as existing user-facing pages in the repo. Compare the new \`page.tsx\` path against the most common existing \`page.tsx\` paths — if it doesn't share a prefix, that's a genuine gap.
    If new components/providers exist but nothing in the diff renders or imports them, OR if they're wired to a top-level route outside the authenticated/product tree, that is a hard "needs_changes" — the user impact is zero until reachability is wired up correctly. Do not approve PRs that ship orphaned code or code at the wrong route prefix claiming to address a customer-facing idea.
+5. **End-to-end wiring** — does changing the new control/value visibly change anything OUTSIDE the control itself? This is the most common failure mode for personalisation/configuration features: the picker renders, the value persists, but nothing else in the app reads the value, so the user sees no effect when they use it. Specifically check:
+   - If the PR adds a control that writes a CSS custom property (e.g. \`document.documentElement.style.setProperty('--accent-colour', ...)\`), grep the diff for \`var(--accent-colour)\` (or whatever variable is written). If the only file that reads it is the new component's OWN CSS — i.e. only the picker's own swatches respond — that is NOT end-to-end. Real surfaces (buttons, links, focus rings, navigation, headers) must reference the variable too, typically via aliasing the relevant Bootstrap/theme variables in \`globals.css\`. Without this, the user picks a colour and nothing visible in the product changes. Verdict: "needs_changes".
+   - If the PR adds a React Context or provider, look for \`useX()\` calls in components that render visible UI. If the provider is wired but no rendered component reads from it, the feature has no effect.
+   - If the PR adds a server action / API route / DB column, look for the UI element that triggers it OR the read site that branches on the value. Without those, the data path is dead.
+   - The "selected" / "active" / "highlighted" state on the new control itself does NOT count as user impact. The change has to manifest somewhere ELSE.
 
 Return a JSON object with exactly two fields:
-- "verdict": "approved" if the PR addresses the insight, or "needs_changes" if it misses the core problem
+- "verdict": "approved" if the PR addresses the insight AND is wired end-to-end, or "needs_changes" if it misses the core problem OR if the new control's value isn't consumed anywhere meaningful outside the control itself.
 - "review": your review as a markdown string. Start with a one-line verdict (✅ Addresses the insight / ⚠️ Partially addresses / ❌ Does not address), then 2-4 bullet points explaining your reasoning.
 
-Only use "needs_changes" for genuine gaps — minor scope limitations should still be "approved" with notes. Orphaned/unreachable code IS a genuine gap.
+Only use "needs_changes" for genuine gaps — minor scope limitations should still be "approved" with notes. Orphaned/unreachable code IS a genuine gap. A picker / toggle / setting with no consumers is a genuine gap, not a minor scope limitation.
 
 Respond with ONLY the JSON object.`;
 
@@ -183,6 +188,17 @@ When a test legitimately needs DOM globals (\`document\`, \`window\`):
 ### Dependency changes
 
 If a fix genuinely requires adding/removing/upgrading an npm package, emit ONLY a \`modify\` on the relevant \`package.json\` (root or workspace, e.g. \`apps/web/package.json\`). Do NOT emit changes to \`yarn.lock\` — the model cannot produce a valid lockfile by hand, and CI runs with \`--frozen-lockfile\` which will reject any package.json change whose dependency tree isn't reflected in the lockfile. The harness will automatically run \`yarn install\` after your commit lands and push the regenerated \`yarn.lock\` in a follow-up commit. Trust this; do not try to handcraft a lockfile.
+
+### WIRE THE FEATURE END-TO-END (hard requirement)
+
+A feature is not done when its UI renders. It is done when changing the UI's value visibly changes the product. Trace the data flow: user picks/clicks/types → value is stored → SOMETHING ELSE in the app reads that value and behaves differently. If a reviewer flags the feature as "renders but has no effect" / "no-op picker" / "writes a value nothing reads", your fix MUST add the missing consumer(s):
+
+- **Picker/toggle writes a CSS custom property nothing else reads** → modify shared styles (e.g. \`apps/web/src/app/globals.css\`) to alias the relevant Bootstrap/theme variables (\`--bs-primary\`, \`--bs-link-color\`, \`--bs-link-hover-color\`, focus-ring colours, etc.) to the new variable. Updating the picker's own CSS is NOT enough.
+- **Context provider added but no \`useX()\` calls exist anywhere meaningful** → modify the consumer components (buttons, headers, sidebar links, etc.) to read the context and update their output.
+- **Server action / API route defined but no UI calls it** → modify the relevant form or button to call the action.
+- **DB column / preference added but no read site updates behaviour** → modify the place(s) that should branch on the value.
+
+When the original idea is a configuration/personalisation surface (theme, accent, density, notification prefs, etc.) and the current PR only ships the configuration surface itself, that is incomplete — the fix must include the styles, components, or behaviour that respond to the configured value. Ship the whole vertical slice.
 
 ### NO FEATURE FLAGS (hard requirement)
 
@@ -670,10 +686,33 @@ async function generateFixes(
   pmReview: ReviewResult,
   qaReview: ReviewResult,
   ciFailures: CiFailure[],
+  /**
+   * Optional pre-PR file contents for files that were catastrophically
+   * deleted in the diff. Injected as a separate "Original file content"
+   * block so the fixer has something to restore from — the truncated diff
+   * doesn't include the deleted lines, so without this the fixer literally
+   * cannot reconstruct what was removed.
+   */
+  restorationContext?: { path: string; originalContent: string }[],
 ): Promise<FixResult | null> {
   const ciSection = ciFailures.length > 0
     ? ciFailures.map((f) => `### ❌ ${f.name}\n\n${f.summary}`).join("\n\n")
     : "_(CI green or hasn't run yet — no CI failures to address)_";
+  const restorationSection = (restorationContext ?? []).length > 0
+    ? [
+        "## Original File Content (for restoration reference)",
+        "",
+        "**The following files had a large portion of their content deleted in this PR's diff. The truncated diff does NOT show all the deleted lines — use the original content below to restore what was destructively removed. Do NOT preserve the destructive stub; emit a `modify` action whose content is the original (with any actually-needed surgical edits) rather than a stub that drops most of the file.**",
+        "",
+        ...(restorationContext ?? []).flatMap((r) => [
+          `### \`${r.path}\``,
+          "```",
+          r.originalContent,
+          "```",
+          "",
+        ]),
+      ].join("\n")
+    : "";
   return callClaudeJson<FixResult>({
     system: FIX_SYSTEM,
     user: [
@@ -693,9 +732,60 @@ async function generateFixes(
       "",
       "## CI Failures",
       ciSection,
+      restorationSection ? "\n" + restorationSection : "",
     ].join("\n"),
     maxTokens: 64000,
   });
+}
+
+/**
+ * Scans the diff for files with a catastrophic deletion (>300 lines net-
+ * removed) and returns their pre-PR (base-branch) contents so generateFixes
+ * can include them as restoration context. Skips silently when nothing
+ * qualifies. Capped at 3 files and 60KB total to keep prompt size bounded.
+ */
+async function buildRestorationContext(
+  fullDiff: string,
+  headers: Record<string, string>,
+  owner: string,
+  repo: string,
+  baseBranch: string,
+): Promise<{ path: string; originalContent: string }[]> {
+  const candidates: { path: string; deleted: number }[] = [];
+  const sections = fullDiff.split(/^diff --git /m);
+  for (const section of sections) {
+    if (!section) continue;
+    const pathMatch = section.match(/^\+\+\+ b\/(.+)$/m);
+    if (!pathMatch) continue;
+    let deleted = 0;
+    for (const line of section.split("\n")) {
+      if (line.startsWith("-") && !line.startsWith("---")) deleted++;
+    }
+    if (deleted >= 300) candidates.push({ path: pathMatch[1]!, deleted });
+  }
+  candidates.sort((a, b) => b.deleted - a.deleted);
+
+  const out: { path: string; originalContent: string }[] = [];
+  let bytesUsed = 0;
+  const BYTES_CAP = 60_000;
+  for (const c of candidates.slice(0, 3)) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${c.path}?ref=${baseBranch}`,
+        { headers },
+      );
+      if (!res.ok) continue;
+      const json = (await res.json()) as { content?: string; encoding?: string };
+      if (json.content && json.encoding === "base64") {
+        const original = Buffer.from(json.content, "base64").toString("utf8");
+        const capped = original.length > 30_000 ? original.slice(0, 30_000) + "\n... (truncated)" : original;
+        if (bytesUsed + capped.length > BYTES_CAP) break;
+        bytesUsed += capped.length;
+        out.push({ path: c.path, originalContent: capped });
+      }
+    } catch { /* skip */ }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -730,10 +820,6 @@ export async function reviewPullRequest(
     .where(eq(ideaInsights.ideaId, idea.id))
     .limit(3);
 
-  const filesChangedStr = Array.isArray(pr.filesChanged)
-    ? (pr.filesChanged as { path: string; action: string }[]).map((f) => `- \`${f.path}\` (${f.action})`).join("\n")
-    : "";
-
   // Cached on commit SHA — already populated by createPullRequest's analyze step,
   // so this is normally a single DB read. Used by QA to verify infrastructure
   // sanity (paths follow project layout, no duplicate top-level dirs, etc.).
@@ -744,23 +830,27 @@ export async function reviewPullRequest(
     console.warn(`[pr-review] PR #${pr.prNumber} — repo analysis unavailable:`, err instanceof Error ? err.message : err);
   }
 
-  // Deterministic check against the actual repo tree — catches the
-  // wrong-directory bug (e.g. files at `apps/web/components/...` when the
-  // repo uses `apps/web/src/components/...`) without relying on the QA
-  // model to do literal path comparison correctly.
-  const filesChangedArr = Array.isArray(pr.filesChanged)
-    ? (pr.filesChanged as { path: string; action: string }[])
-    : [];
-  const pathMismatches = findPathMismatches(filesChangedArr, repoContext);
-  if (pathMismatches.length > 0) {
-    console.warn(`[pr-review] PR #${pr.prNumber} — path mismatches detected: ${pathMismatches.length}`);
-  }
-  // Reachability findings depend on the diff, which changes per iteration
-  // (a fix-loop pass might add the missing page that wires up the
-  // component). Recomputed inside the loop alongside the diff fetch.
-
   for (let iteration = 1; ; iteration++) {
     const tag = `[pr-review] PR #${pr.prNumber} round ${iteration}`;
+
+    // Re-read `pr.filesChanged` at the top of EACH iteration. The auto-fix
+    // loop below persists updated filesChanged to the DB after every fix
+    // commit; if we used the snapshot loaded at the top of this function,
+    // the deterministic checks would see stale data and keep flagging
+    // paths the previous round already deleted. That produced an infinite
+    // loop on PR #92 where QA repeatedly complained about a top-level
+    // /settings/appearance/page.tsx that the fixer had already deleted from
+    // GitHub but whose `create` entry was still pinned in our in-memory
+    // snapshot.
+    const [freshPr] = await db.select().from(ideaPullRequests).where(eq(ideaPullRequests.id, pullRequestId)).limit(1);
+    const filesChangedArr = Array.isArray(freshPr?.filesChanged)
+      ? (freshPr.filesChanged as { path: string; action: string }[])
+      : [];
+    const filesChangedStr = filesChangedArr.map((f) => `- \`${f.path}\` (${f.action})`).join("\n");
+    const pathMismatches = findPathMismatches(filesChangedArr, repoContext);
+    if (pathMismatches.length > 0) {
+      console.warn(`${tag} — path mismatches detected: ${pathMismatches.length}`);
+    }
 
     // Fetch fresh diff + head SHA (both reflect any fix commits from previous iterations)
     const fullDiff = await getPrDiff(headers, creds.owner, creds.repo, pr.prNumber);
@@ -893,9 +983,22 @@ export async function reviewPullRequest(
       return;
     }
 
-    // Generate fix commit addressing the union of reviewer feedback + CI failures
+    // Generate fix commit addressing the union of reviewer feedback + CI failures.
+    // For files that were catastrophically deleted in the PR (>300 lines gone),
+    // fetch the original from main and include it so the fixer can restore —
+    // the truncated diff alone wouldn't show the deleted content.
     console.log(`${tag} — generating fixes...`);
-    const fixes = await generateFixes(diff, codeReview, pmReview, qaReview, ci.failures);
+    const restorationContext = await buildRestorationContext(
+      fullDiff,
+      headers,
+      creds.owner,
+      creds.repo,
+      creds.default_branch || "main",
+    );
+    if (restorationContext.length > 0) {
+      console.log(`${tag} — including restoration context for ${restorationContext.length} catastrophically-deleted file(s)`);
+    }
+    const fixes = await generateFixes(diff, codeReview, pmReview, qaReview, ci.failures, restorationContext);
     if (!fixes?.files?.length) {
       await postPrComment(
         headers, creds.owner, creds.repo, pr.prNumber,

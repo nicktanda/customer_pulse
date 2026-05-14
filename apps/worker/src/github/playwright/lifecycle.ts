@@ -8,6 +8,7 @@
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtemp, rm, lstat, readFile, symlink, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { createServer } from "node:net";
@@ -147,6 +148,14 @@ export async function snapshotDatabase(sourceUrl: string): Promise<DbSnapshot> {
   const adminUrl = new URL(sourceUrl);
   adminUrl.pathname = "/postgres";
 
+  // Detect Postgres server major version so we can pick a matching pg_dump.
+  // Mismatched pg_dump versions abort with "server version X; pg_dump version Y"
+  // and break the whole playwright snapshot — auto-resolving fixes it without
+  // forcing the user to manage PATH manually.
+  const serverMajor = await detectPostgresServerMajor(adminUrl.toString());
+  const pgDumpPath = resolvePgBinary("pg_dump", serverMajor);
+  const psqlPath = resolvePgBinary("psql", serverMajor);
+
   const adminCreate = postgres(adminUrl.toString(), { max: 1, onnotice: () => {} });
   try {
     await adminCreate.unsafe(`CREATE DATABASE "${tempDb}"`);
@@ -165,12 +174,12 @@ export async function snapshotDatabase(sourceUrl: string): Promise<DbSnapshot> {
   await new Promise<void>((resolveP, reject) => {
     let stderr = "";
     const dump = spawn(
-      "pg_dump",
+      pgDumpPath,
       [...connArgs, "-d", sourceDb, "--no-owner", "--no-privileges"],
       { env: { ...process.env, ...pgEnv } },
     );
     const load = spawn(
-      "psql",
+      psqlPath,
       [...connArgs, "-d", tempDb, "-v", "ON_ERROR_STOP=1", "-q"],
       { env: { ...process.env, ...pgEnv } },
     );
@@ -346,4 +355,49 @@ export async function mintAuthCookie(dbUrl: string, authSecret: string): Promise
     maxAge: 30 * 24 * 60 * 60,
   });
   return { name: cookieName, value: token };
+}
+
+// ===========================================================================
+// Postgres binary resolution — pick a pg_dump/psql matching the server's
+// major version. Without this, a system pg_dump@14 trying to dump a
+// PG15 server aborts with "server version mismatch" and breaks the snapshot.
+// ===========================================================================
+
+async function detectPostgresServerMajor(adminUrl: string): Promise<number | null> {
+  try {
+    const sql = postgres(adminUrl, { max: 1, onnotice: () => {} });
+    try {
+      const rows = await sql<{ server_version_num: string }[]>`SHOW server_version_num`;
+      const num = parseInt(rows[0]?.server_version_num ?? "", 10);
+      if (Number.isFinite(num)) return Math.floor(num / 10000); // 150010 → 15
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+/**
+ * Resolves a Postgres client binary (pg_dump / psql) for the given server
+ * major version. Resolution order:
+ *   1. `PG_DUMP_PATH` / `PSQL_PATH` env var (caller-controlled escape hatch)
+ *   2. Homebrew per-version layout: `/opt/homebrew/opt/postgresql@<N>/bin/<bin>`
+ *      and `/usr/local/opt/postgresql@<N>/bin/<bin>` (Intel mac Homebrew)
+ *   3. Fall back to bare command name (relies on PATH)
+ */
+function resolvePgBinary(name: "pg_dump" | "psql", serverMajor: number | null): string {
+  const envKey = name === "pg_dump" ? "PG_DUMP_PATH" : "PSQL_PATH";
+  const fromEnv = process.env[envKey]?.trim();
+  if (fromEnv) return fromEnv;
+
+  if (serverMajor !== null) {
+    const candidates = [
+      `/opt/homebrew/opt/postgresql@${serverMajor}/bin/${name}`,
+      `/usr/local/opt/postgresql@${serverMajor}/bin/${name}`,
+    ];
+    for (const path of candidates) {
+      if (existsSync(path)) return path;
+    }
+  }
+  return name;
 }
