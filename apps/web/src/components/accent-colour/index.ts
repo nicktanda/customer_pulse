@@ -1,3 +1,4 @@
+export { AccentColourAppWrapper } from "./AccentColourAppWrapper";
 export { AccentColourInit } from "./AccentColourInit";
 export { AccentColourPicker } from "./AccentColourPicker";
 export { AppearanceSettings } from "./AppearanceSettings";
