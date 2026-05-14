@@ -1,0 +1,62 @@
+.section {
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--bs-border-color, #e5e7eb);
+}
+
+.heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+  color: var(--bs-body-color, #111827);
+}
+
+.description {
+  font-size: 0.875rem;
+  color: var(--bs-secondary-color, #6b7280);
+  margin-bottom: 1rem;
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: var(--swatch-colour);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  padding: 0;
+  outline: none;
+}
+
+.swatch:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+}
+
+.swatch:focus-visible {
+  box-shadow: 0 0 0 3px var(--swatch-colour), 0 0 0 5px rgba(0, 0, 0, 0.15);
+}
+
+.swatch.selected {
+  border-color: white;
+  box-shadow: 0 0 0 3px var(--swatch-colour);
+  transform: scale(1.1);
+}
+
+.swatch.selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3E%3Cpath d='M13.854 4.146a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.793l6.646-6.647a.5.5 0 0 1 .708 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 60%;
+}
