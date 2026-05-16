@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "devDependencies": {
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "concurrently": "^9.1.2",
     "postgres": "^3.4.5",
     "yaml": "^2.7.0"
