@@ -16,6 +16,7 @@ import {
 import {
   compactSortQueryFields,
   feedbackListHref,
+  parseFeedbackListViewFromParam,
   parseFeedbackListSortFromParams,
   type FeedbackListQuery,
   type FeedbackSortColumn,
@@ -46,6 +47,7 @@ export default async function FeedbackPage({
   const projectSummary = await getCurrentProjectSummaryForUser(userId);
   const spRaw = await searchParams;
   const sp = {
+    view: parseFeedbackListViewFromParam(typeof spRaw.view === "string" ? spRaw.view : undefined),
     source: typeof spRaw.source === "string" ? spRaw.source : undefined,
     category: typeof spRaw.category === "string" ? spRaw.category : undefined,
     priority: typeof spRaw.priority === "string" ? spRaw.priority : undefined,
@@ -67,7 +69,7 @@ export default async function FeedbackPage({
     return (
       <PageShell width="full">
         <PageHeader
-          title="Feedback"
+          title="Inbox"
           description="Join or create a project first — then set your active project under Settings."
         />
       </PageShell>
@@ -111,6 +113,7 @@ export default async function FeedbackPage({
 
   /** Everything except `page` — used for filter chips, pagination base, and `?detail=` panel. */
   const filterOnly: FeedbackListQuery = {
+    view: sp.view,
     source: sp.source,
     category: sp.category,
     priority: sp.priority,
@@ -178,6 +181,17 @@ export default async function FeedbackPage({
       : null;
 
   const activeChips = buildActiveFilterChips(filterOnly);
+  const isAllFeedbackView = sp.view === "all";
+  const viewToggleBase: FeedbackListQuery = {
+    view: sp.view,
+    source: sp.source,
+    category: sp.category,
+    priority: sp.priority,
+    status: sp.status,
+    q: sp.q,
+    ai: sp.ai === "pending" || sp.ai === "processed" ? sp.ai : undefined,
+    ...sortQueryFields,
+  };
 
   /** Per-row URLs for the client list (Server → Client cannot pass functions, only serializable data). */
   const rowsWithDetailHref = rows.map((r) => ({
@@ -187,16 +201,23 @@ export default async function FeedbackPage({
 
   const pageHeader = (
     <PageHeader
-      title="Feedback"
+      title={isAllFeedbackView ? "All feedback" : "Inbox"}
       description={
         <>
           <span className="fw-medium">{projectSummary?.name ?? `Project #${projectId}`}</span>
           <span className="text-body-secondary">
             {" "}
-            — {total} items (page {page} of {totalPages})
+            — {total} {isAllFeedbackView ? "feedback item" : "inbox item"}
+            {total === 1 ? "" : "s"} (page {page} of {totalPages})
+          </span>
+          <span className="d-block mt-1">
+            {isAllFeedbackView
+              ? "Searchable archive of raw customer feedback and evidence."
+              : "Items that automation has not fully processed or attached to insights yet."}
           </span>
         </>
       }
+      actions={<FeedbackViewToggle currentView={sp.view} baseQuery={viewToggleBase} />}
     />
   );
 
@@ -224,6 +245,7 @@ export default async function FeedbackPage({
         sp={sp}
         activeChips={activeChips}
         sortPreserve={sortQueryFields}
+        isAllFeedbackView={isAllFeedbackView}
       />
 
       {/* Bulk form only wraps the list — triage/reprocess forms live in the drawer (no nested forms). */}
@@ -233,24 +255,26 @@ export default async function FeedbackPage({
             <FeedbackBulkAndResults
               rows={rows}
               rowsWithDetailHref={rowsWithDetailHref}
-              total={total}
               canEdit
               detailRowId={detailRow?.id ?? null}
               listQuery={filterOnly}
               sortKey={sortKey}
               sortDir={sortDir}
+              isAllFeedbackView={isAllFeedbackView}
+              hasActiveFilters={activeChips.length > 0}
             />
           </form>
         ) : (
           <FeedbackBulkAndResults
             rows={rows}
             rowsWithDetailHref={rowsWithDetailHref}
-            total={total}
             canEdit={false}
             detailRowId={detailRow?.id ?? null}
             listQuery={filterOnly}
             sortKey={sortKey}
             sortDir={sortDir}
+            isAllFeedbackView={isAllFeedbackView}
+            hasActiveFilters={activeChips.length > 0}
           />
         )}
 
@@ -316,6 +340,7 @@ export default async function FeedbackPage({
 }
 
 type FeedbackPageFilterSp = {
+  view?: "all";
   source?: string;
   category?: string;
   priority?: string;
@@ -324,18 +349,51 @@ type FeedbackPageFilterSp = {
   ai?: string;
 };
 
+function FeedbackViewToggle({
+  currentView,
+  baseQuery,
+}: {
+  currentView?: "all";
+  baseQuery: FeedbackListQuery;
+}) {
+  const isAll = currentView === "all";
+  const inboxHref = feedbackListHref({ ...baseQuery, view: undefined, page: undefined, detail: undefined });
+  const allHref = feedbackListHref({ ...baseQuery, view: "all", page: undefined, detail: undefined });
+
+  return (
+    <div className="btn-group btn-group-sm" role="group" aria-label="Feedback view">
+      <Link
+        href={inboxHref}
+        className={`btn ${isAll ? "btn-outline-secondary" : "btn-primary"}`}
+        aria-current={isAll ? undefined : "page"}
+      >
+        Inbox
+      </Link>
+      <Link
+        href={allHref}
+        className={`btn ${isAll ? "btn-primary" : "btn-outline-secondary"}`}
+        aria-current={isAll ? "page" : undefined}
+      >
+        All feedback
+      </Link>
+    </div>
+  );
+}
+
 /** Filter card + active chips (shared layout for list-only vs master–detail). */
 function FeedbackFiltersSection({
   detailId,
   sp,
   activeChips,
   sortPreserve,
+  isAllFeedbackView,
 }: {
   detailId: number | null;
   sp: FeedbackPageFilterSp;
   activeChips: { key: string; label: string; clearHref: string }[];
   /** Carry `sort` / `dir` through “Filter” submits without showing extra fields. */
   sortPreserve: Pick<FeedbackListQuery, "sort" | "dir">;
+  isAllFeedbackView: boolean;
 }) {
   // When the URL already has filters, open the panel on load so users see the fields that produced this view.
   const filtersOpenInitially = activeChips.length > 0;
@@ -355,7 +413,7 @@ function FeedbackFiltersSection({
             className="card-header py-2 px-3 bg-body-secondary border-secondary-subtle small fw-semibold text-body-secondary"
             style={{ cursor: "pointer" }}
           >
-            Find feedback
+            {isAllFeedbackView ? "Find feedback" : "Find inbox items"}
             {activeChips.length > 0 ? (
               <span className="badge text-bg-secondary ms-2 align-middle">
                 {activeChips.length} filter{activeChips.length === 1 ? "" : "s"}
@@ -364,10 +422,12 @@ function FeedbackFiltersSection({
           </summary>
           <div className="card-body py-2 px-3">
             <p className="small text-body-secondary mb-2 mb-md-3">
-              Narrow the list, then use Filter. Bookmark the URL to save a view. Click a row to open details on
-              the right.
+              {isAllFeedbackView
+                ? "Narrow the archive, then use Filter. Bookmark the URL to save a view. Click a row to open details on the right."
+                : "Narrow the exception queue, then use Filter. Clear items by running AI processing or attaching them to insights."}
             </p>
             <form method="get" className="d-flex flex-wrap align-items-end gap-2">
+              {sp.view === "all" ? <input type="hidden" name="view" value="all" /> : null}
               {detailId != null ? <input type="hidden" name="detail" value={String(detailId)} /> : null}
               {sortPreserve.sort != null ? (
                 <input type="hidden" name="sort" value={sortPreserve.sort} />
@@ -396,7 +456,7 @@ function FeedbackFiltersSection({
               <button type="submit" className="btn btn-primary btn-sm">
                 Filter
               </button>
-              <Link href="/app/learn/feedback" className="small link-secondary">
+              <Link href={feedbackListHref({ view: sp.view })} className="small link-secondary">
                 Clear all
               </Link>
             </form>
@@ -433,21 +493,23 @@ function FeedbackFiltersSection({
 function FeedbackBulkAndResults({
   rows,
   rowsWithDetailHref,
-  total,
   canEdit,
   detailRowId,
   listQuery,
   sortKey,
   sortDir,
+  isAllFeedbackView,
+  hasActiveFilters,
 }: {
   rows: Omit<FeedbackListRowModel, "detailHref">[];
   rowsWithDetailHref: FeedbackListRowModel[];
-  total: number;
   canEdit: boolean;
   detailRowId: number | null;
   listQuery: FeedbackListQuery;
   sortKey: FeedbackSortColumn;
   sortDir: "asc" | "desc";
+  isAllFeedbackView: boolean;
+  hasActiveFilters: boolean;
 }) {
   return (
     <>
@@ -480,11 +542,13 @@ function FeedbackBulkAndResults({
 
       <section aria-labelledby="feedback-results-heading">
         <h2 id="feedback-results-heading" className="h6 text-body-emphasis mb-2">
-          Results
+          {isAllFeedbackView ? "Feedback results" : "Inbox results"}
         </h2>
         {rows.length === 0 ? (
           <p className="text-body-secondary small mb-0">
-            {total === 0 ? (
+            {hasActiveFilters ? (
+              "No feedback matches these filters."
+            ) : isAllFeedbackView ? (
               <>
                 No feedback yet.{" "}
                 <Link href="/app/integrations" className="link-primary">
@@ -493,7 +557,7 @@ function FeedbackBulkAndResults({
                 to ingest items.
               </>
             ) : (
-              "No feedback matches these filters."
+              "Inbox is clear. New feedback is being processed in the background and attached to insights when the system is confident."
             )}
           </p>
         ) : (

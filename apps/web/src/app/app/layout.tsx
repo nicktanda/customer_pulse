@@ -38,8 +38,8 @@ function sidebarNavGroups(onboardingComplete: boolean): SidebarNavGroup[] {
       label: "Learn",
       items: [
         { href: "/app", label: "Dashboard" },
-        { href: "/app/learn/feedback", label: "Feedback" },
         { href: "/app/learn/insights", label: "Insights" },
+        { href: "/app/learn/feedback", label: "Inbox" },
         { href: "/app/reporting", label: "Reporting" },
         { href: "/app/strategy", label: "Strategy" },
         { href: "/app/pulse-reports", label: "Pulse reports" },

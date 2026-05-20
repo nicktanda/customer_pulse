@@ -7,6 +7,8 @@
 export type FeedbackSortColumn = "received" | "title" | "id";
 
 export type FeedbackListQuery = {
+  /** Omitted means Inbox; `all` means the full searchable feedback archive. */
+  view?: "all";
   source?: string;
   category?: string;
   priority?: string;
@@ -19,6 +21,10 @@ export type FeedbackListQuery = {
   sort?: FeedbackSortColumn;
   dir?: "asc" | "desc";
 };
+
+export function parseFeedbackListViewFromParam(view?: string): FeedbackListQuery["view"] {
+  return view === "all" ? "all" : undefined;
+}
 
 /** Default direction per column when you first switch to that column (click header). */
 export function defaultSortDir(sort: FeedbackSortColumn): "asc" | "desc" {
@@ -87,6 +93,9 @@ export function feedbackSortToggleHref(base: FeedbackListQuery, column: Feedback
 
 export function serializeFeedbackListQuery(sp: FeedbackListQuery): string {
   const qs = new URLSearchParams();
+  if (sp.view === "all") {
+    qs.set("view", "all");
+  }
   if (sp.source) {
     qs.set("source", sp.source);
   }
