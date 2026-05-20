@@ -1,7 +1,9 @@
-import { and, eq, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { feedbacks } from "@customer-pulse/db/client";
 
 export type FeedbackSearchParams = {
+  /** Omitted means Inbox; `all` means the full searchable feedback archive. */
+  view?: "all";
   source?: string;
   category?: string;
   priority?: string;
@@ -16,6 +18,10 @@ export type FeedbackSearchParams = {
  */
 export function buildFeedbackConditions(projectId: number, sp: FeedbackSearchParams): SQL {
   const parts: SQL[] = [eq(feedbacks.projectId, projectId)];
+
+  if (sp.view !== "all") {
+    parts.push(or(isNull(feedbacks.aiProcessedAt), isNull(feedbacks.insightProcessedAt))!);
+  }
 
   if (sp.source != null && sp.source !== "") {
     const n = Number(sp.source);

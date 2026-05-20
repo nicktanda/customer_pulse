@@ -1,8 +1,9 @@
-import { desc, eq, and, or, inArray, isNull, isNotNull, gte, sql } from "drizzle-orm";
+import { desc, eq, and, or, inArray, isNotNull, gte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getRequestDb } from "@/lib/db";
 import {
   feedbacks,
+  insights,
   pulseReports,
   FeedbackPriority,
   FeedbackStatus,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/feedback-enums-display";
 import Link from "next/link";
 import { InlineAlert, MetricTile, PageHeader, PageShell } from "@/components/ui";
+import { buildFeedbackConditions } from "@/lib/feedback-filters";
 import { feedbackListHref } from "@/lib/feedback-list-query";
 import { pulseReportsListHref } from "@/lib/pulse-reports-list-query";
 
@@ -43,7 +45,6 @@ export default async function DashboardPage() {
   }
 
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const [totalRow] = await db
@@ -51,20 +52,20 @@ export default async function DashboardPage() {
     .from(feedbacks)
     .where(eq(feedbacks.projectId, projectId));
 
-  const [todayRow] = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(feedbacks)
-    .where(and(eq(feedbacks.projectId, projectId), gte(feedbacks.createdAt, startOfDay)));
-
   const [weekRow] = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(feedbacks)
     .where(and(eq(feedbacks.projectId, projectId), gte(feedbacks.createdAt, weekAgo)));
 
-  const [unprocessedRow] = await db
+  const [inboxRow] = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(feedbacks)
-    .where(and(eq(feedbacks.projectId, projectId), isNull(feedbacks.aiProcessedAt)));
+    .where(buildFeedbackConditions(projectId, {}));
+
+  const [insightsRow] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(insights)
+    .where(eq(insights.projectId, projectId));
 
   const categoryRows = await db
     .select({
@@ -123,7 +124,7 @@ export default async function DashboardPage() {
     .from(feedbacks)
     .where(
       and(
-        eq(feedbacks.projectId, projectId),
+        buildFeedbackConditions(projectId, {}),
         inArray(feedbacks.priority, [FeedbackPriority.p1, FeedbackPriority.p2]),
         or(
           eq(feedbacks.status, FeedbackStatus.new_feedback),
@@ -178,18 +179,28 @@ export default async function DashboardPage() {
           At a glance
         </h2>
         <p className="small text-body-secondary mt-1 mb-3">
-          Key counts for the current project. Click &quot;Unprocessed (AI)&quot; to open the matching queue in
-          Feedback.
+          Workflow health for the current project. Start with insights and the Inbox; raw volume is supporting
+          context.
         </p>
         <div className="row g-3">
-          <MetricTile label="Total feedback" value={totalCount} />
-          <MetricTile label="Today" value={todayRow?.c ?? 0} />
+          <MetricTile
+            label="Insights"
+            value={insightsRow?.c ?? 0}
+            href="/app/learn/insights"
+            linkHint="Open insights"
+          />
+          <MetricTile
+            label="Inbox items"
+            value={inboxRow?.c ?? 0}
+            href={feedbackListHref({})}
+            linkHint="Open Inbox"
+          />
           <MetricTile label="Last 7 days" value={weekRow?.c ?? 0} />
           <MetricTile
-            label="Unprocessed (AI)"
-            value={unprocessedRow?.c ?? 0}
-            href="/app/learn/feedback?ai=pending"
-            linkHint="Open in Feedback"
+            label="Total feedback"
+            value={totalCount}
+            href={feedbackListHref({ view: "all" })}
+            linkHint="Open archive"
           />
         </div>
       </section>
@@ -199,7 +210,7 @@ export default async function DashboardPage() {
           Needs attention
         </h2>
         <p className="small text-body-secondary mt-1 mb-3">
-          P1 / P2 items still in New or Triaged — jump in and triage or re-prioritize.
+          P1 / P2 Inbox items still in New or Triaged — jump in to review exceptions before they become insights.
         </p>
         <div className="row g-4">
         <div className="col-lg-7">
@@ -208,7 +219,7 @@ export default async function DashboardPage() {
               <li className="list-group-item text-body-secondary small">None right now.</li>
             ) : (
               highPriorityFeedback.map((f) => (
-                // Whole row is one link so users don’t have to hit the title only (opens Feedback with the right panel).
+                // Whole row is one link so users don’t have to hit the title only (opens Inbox with the right panel).
                 <li key={f.id} className="list-group-item p-0">
                   <Link
                     href={feedbackListHref({ detail: f.id })}
@@ -228,13 +239,13 @@ export default async function DashboardPage() {
         <div className="col-lg-5">
           <div className="card h-100 shadow-sm border-secondary-subtle">
             <div className="card-body">
-              <h3 className="h6 text-body-emphasis">AI processing queue</h3>
+              <h3 className="h6 text-body-emphasis">Inbox queue</h3>
               <p className="small text-body-secondary mb-2">
-                Items waiting for AI classification show up here. Open the full list to work through them.
+                Items appear here when AI processing or insight attachment is incomplete.
               </p>
-              <p className="h4 mb-2 text-body-emphasis">{unprocessedRow?.c ?? 0}</p>
-              <Link href="/app/learn/feedback?ai=pending" className="btn btn-sm btn-outline-primary">
-                View unprocessed
+              <p className="h4 mb-2 text-body-emphasis">{inboxRow?.c ?? 0}</p>
+              <Link href={feedbackListHref({})} className="btn btn-sm btn-outline-primary">
+                Open Inbox
               </Link>
             </div>
           </div>
@@ -247,7 +258,7 @@ export default async function DashboardPage() {
           Volume and mix
         </h2>
         <p className="small text-body-secondary mt-1 mb-3">
-          Each row links to Feedback with that filter applied. Bars show share of the slice total.
+          Raw feedback mix for audit and context. Each row opens the all-feedback archive with that filter applied.
         </p>
         <div className="row g-4">
           <div className="col-lg-6">
@@ -256,7 +267,7 @@ export default async function DashboardPage() {
               rows={categoryRows.map((r) => ({
                 label: FEEDBACK_CATEGORY_LABELS[r.category] ?? `Category ${r.category}`,
                 count: r.c,
-                href: feedbackListHref({ category: String(r.category) }),
+                href: feedbackListHref({ view: "all", category: String(r.category) }),
               }))}
             />
           </div>
@@ -266,7 +277,7 @@ export default async function DashboardPage() {
               rows={priorityRows.map((r) => ({
                 label: FEEDBACK_PRIORITY_LABELS[r.priority] ?? `Priority ${r.priority}`,
                 count: r.c,
-                href: feedbackListHref({ priority: String(r.priority) }),
+                href: feedbackListHref({ view: "all", priority: String(r.priority) }),
               }))}
             />
           </div>
@@ -276,7 +287,7 @@ export default async function DashboardPage() {
               rows={statusRows.map((r) => ({
                 label: FEEDBACK_STATUS_LABELS[r.status] ?? `Status ${r.status}`,
                 count: r.c,
-                href: feedbackListHref({ status: String(r.status) }),
+                href: feedbackListHref({ view: "all", status: String(r.status) }),
               }))}
             />
           </div>
@@ -286,7 +297,7 @@ export default async function DashboardPage() {
               rows={sourceRows.map((r) => ({
                 label: FEEDBACK_SOURCE_LABELS[r.source] ?? `Source ${r.source}`,
                 count: r.c,
-                href: feedbackListHref({ source: String(r.source) }),
+                href: feedbackListHref({ view: "all", source: String(r.source) }),
               }))}
             />
           </div>
@@ -307,7 +318,7 @@ export default async function DashboardPage() {
               recentFeedback.map((f) => (
                 <li key={f.id} className="list-group-item p-0">
                   <Link
-                    href={feedbackListHref({ detail: f.id })}
+                    href={feedbackListHref({ view: "all", detail: f.id })}
                     className="d-block p-3 text-decoration-none text-reset"
                   >
                     <span className="fw-medium text-primary">{f.title || "(no title)"}</span>
@@ -381,7 +392,7 @@ function Breakdown({ title, rows }: { title: string; rows: BreakdownRow[] }) {
             sorted.map((r) => {
               const pct = Math.round((r.count / sliceTotal) * 100);
               return (
-                // `position-relative` + `stretched-link`: clicking the bar or label opens Feedback with that filter.
+                // `position-relative` + `stretched-link`: clicking the bar or label opens the archive with that filter.
                 <li key={`${r.label}-${r.href}`} className="mb-3 position-relative">
                   <div className="d-flex justify-content-between align-items-baseline gap-2">
                     <span className="text-truncate text-body">{r.label}</span>
@@ -406,7 +417,7 @@ function Breakdown({ title, rows }: { title: string; rows: BreakdownRow[] }) {
                   <Link
                     href={r.href}
                     className="stretched-link"
-                    aria-label={`${r.label}: open matching items in Feedback`}
+                    aria-label={`${r.label}: open matching items in the feedback archive`}
                   />
                 </li>
               );
