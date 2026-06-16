@@ -14,7 +14,7 @@
     "@bull-board/express": "^6.7.0",
     "@bull-board/ui": "^6.7.0",
     "@customer-pulse/db": "*",
-    "bullmq": "^5.34.5",
+    "bullmq": "^5.76.2",
     "express": "^4.21.2",
     "ioredis": "^5.4.2",
     "resend": "^4.1.2",
