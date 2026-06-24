@@ -219,3 +219,174 @@ export function findPathMismatches(
   }
   return findings;
 }
+
+/**
+ * Splits a unified diff into a map of `path → added-content` (i.e. the `+`
+ * lines for that file, with the leading `+` stripped). Used by the
+ * reachability check to look at what each file in the PR actually adds.
+ */
+function parseDiffByFile(diff: string): Map<string, string> {
+  const result = new Map<string, string>();
+  // First chunk before the initial `diff --git ` is empty; subsequent chunks
+  // each describe one file.
+  const sections = diff.split(/^diff --git /m);
+  for (const section of sections) {
+    if (!section) continue;
+    const pathMatch = section.match(/^\+\+\+ b\/(.+)$/m);
+    if (!pathMatch) continue;
+    const added: string[] = [];
+    for (const line of section.split("\n")) {
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        added.push(line.slice(1));
+      }
+    }
+    result.set(pathMatch[1], added.join("\n"));
+  }
+  return result;
+}
+
+const NEXTJS_AUTO_DISCOVERED = new Set([
+  "page.tsx", "page.ts", "page.jsx", "page.js",
+  "layout.tsx", "layout.ts", "layout.jsx", "layout.js",
+  "route.ts", "route.tsx", "route.js", "route.jsx",
+  "loading.tsx", "loading.ts",
+  "error.tsx", "error.ts",
+  "not-found.tsx", "not-found.ts",
+  "default.tsx", "default.ts",
+  "global-error.tsx", "global-error.ts",
+  "template.tsx", "template.ts",
+]);
+
+function isComponentLike(path: string): boolean {
+  if (!/\.(tsx|ts|jsx|js)$/.test(path)) return false;
+  const filename = path.split("/").pop() ?? "";
+  if (NEXTJS_AUTO_DISCOVERED.has(filename)) return false;
+  if (/\.(test|spec)\.[jt]sx?$/.test(filename)) return false;
+  if (filename === "index.ts" || filename === "index.tsx") return false;
+  return true;
+}
+
+/**
+ * Deterministic reachability check: flags newly-created component files
+ * that aren't imported, rendered, or referenced by any other file in the
+ * PR. Catches the failure mode where the model creates a component
+ * (e.g. AccentColorPicker.tsx) but never wires it into a page or layout
+ * — the feature exists in code but isn't reachable from any UI surface.
+ *
+ * Skips Next.js auto-discovered files (page.tsx, layout.tsx, route.ts,
+ * etc.) because the framework reaches them by file convention without
+ * an explicit import. Skips test files. Skips index.ts barrel files
+ * (they re-export rather than consume).
+ */
+export function findUnreachableComponents(
+  filesChanged: { path: string; action: string }[],
+  diff: string,
+): string[] {
+  if (!diff) return [];
+  const byPath = parseDiffByFile(diff);
+  const findings: string[] = [];
+
+  for (const f of filesChanged) {
+    if (f.action !== "create") continue;
+    if (!isComponentLike(f.path)) continue;
+
+    const baseName = (f.path.split("/").pop() ?? "").replace(/\.(tsx|ts|jsx|js)$/, "");
+    const dirName = f.path.split("/").slice(-2, -1)[0] ?? "";
+
+    let referenced = false;
+    for (const [otherPath, otherContent] of byPath) {
+      if (otherPath === f.path) continue;
+      // Heuristics — any of these signals consumption:
+      //   - import-style mention of the parent directory name
+      //   - JSX usage `<Name`
+      //   - named-import `{ Name`
+      //   - bare reference to the component identifier in a non-comment line
+      if (
+        otherContent.includes(`/${dirName}"`) ||
+        otherContent.includes(`/${dirName}'`) ||
+        otherContent.includes(`/${dirName}/`) ||
+        otherContent.includes(`<${baseName}`) ||
+        otherContent.includes(`{ ${baseName}`) ||
+        otherContent.includes(`, ${baseName}`) ||
+        otherContent.includes(`{${baseName}`) ||
+        new RegExp(`\\b${baseName}\\b`).test(otherContent)
+      ) {
+        referenced = true;
+        break;
+      }
+    }
+
+    if (!referenced) {
+      findings.push(`\`${f.path}\` — new component is never imported, rendered, or referenced by any other file in this PR. Add a Next.js \`page.tsx\` (or \`layout.tsx\`) under \`apps/web/src/app/...\` that renders it, or update an existing page/layout to use it. Otherwise users cannot reach the feature.`);
+    }
+  }
+  return findings;
+}
+
+/**
+ * Detects new `page.tsx` (or layout/route) files created outside the
+ * repo's established user-facing route tree.
+ *
+ * Catches the failure mode where the model wires up a feature at a
+ * top-level route (e.g. `apps/web/src/app/settings/page.tsx`) when this
+ * codebase actually serves logged-in users under a nested prefix (e.g.
+ * `apps/web/src/app/app/...`). The page renders fine at the URL, but
+ * real users never see it because they live behind auth at `/app/*`.
+ *
+ * The "correct" prefix is inferred from existing `page.tsx` files in
+ * the repo's sample paths — whichever first segment under
+ * `apps/web/src/app/` is most commonly used by existing pages is the
+ * one new user-facing pages should sit under. Falls back to silence
+ * if there's no clear convention to compare against.
+ */
+export function findMisplacedNewPages(
+  filesChanged: { path: string; action: string }[],
+  repoContext: RepoContext | null,
+): string[] {
+  if (!repoContext) return [];
+  const sampleFiles = (repoContext.structure as { sampleFiles?: string[] }).sampleFiles ?? [];
+  const APP_PREFIX = "apps/web/src/app/";
+  const PAGE_RE = /\/(page|layout|route)\.(tsx|ts|jsx|js)$/;
+
+  // Bucket every existing app-router file by its first segment under app/.
+  const segCounts = new Map<string, number>();
+  for (const p of sampleFiles) {
+    if (!p.startsWith(APP_PREFIX) || !PAGE_RE.test(p)) continue;
+    const rest = p.slice(APP_PREFIX.length);
+    const seg = rest.split("/")[0] ?? "";
+    // A page at `apps/web/src/app/page.tsx` has empty first segment — that's
+    // the root route, not a useful convention signal.
+    if (!seg || seg.endsWith(".tsx") || seg.endsWith(".ts") || seg.endsWith(".jsx") || seg.endsWith(".js")) continue;
+    segCounts.set(seg, (segCounts.get(seg) ?? 0) + 1);
+  }
+  if (segCounts.size === 0) return [];
+
+  const sorted = [...segCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const [topSeg, topCount] = sorted[0]!;
+  // Only treat the top segment as canonical when it clearly dominates —
+  // otherwise multiple segments are legitimate (e.g. an app with both
+  // `(marketing)` and `(app)` groups).
+  const totalPages = sorted.reduce((acc, [, c]) => acc + c, 0);
+  if (topCount / totalPages < 0.6) return [];
+
+  // The "established" segments are everything that already has pages.
+  const knownSegs = new Set(sorted.map(([s]) => s));
+
+  const findings: string[] = [];
+  for (const f of filesChanged) {
+    if (f.action !== "create") continue;
+    if (!f.path.startsWith(APP_PREFIX)) continue;
+    if (!PAGE_RE.test(f.path)) continue;
+    const rest = f.path.slice(APP_PREFIX.length);
+    const newSeg = rest.split("/")[0] ?? "";
+    if (!newSeg || knownSegs.has(newSeg)) continue;
+    findings.push(
+      `\`${f.path}\` — new route segment \`/${newSeg}\` is outside the repo's established user-facing tree. ` +
+      `Existing pages live under \`apps/web/src/app/${topSeg}/...\` (the authenticated/logged-in route prefix). ` +
+      `A new \`/${newSeg}\` route at the top level will not be reachable through the app's normal navigation — ` +
+      `real users live behind auth at \`/${topSeg}/...\`. Move this file to \`apps/web/src/app/${topSeg}/<segment>/page.tsx\` ` +
+      `(or modify an existing page under \`apps/web/src/app/${topSeg}/...\` to consume the new component).`,
+    );
+  }
+  return findings;
+}

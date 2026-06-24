@@ -57,7 +57,22 @@ export async function createPullRequest(
     // Step 2: Generate code
     await updateProgress(db, pullRequestId, 2, "Generating code changes...");
     const hints = Array.isArray(idea.implementationHints) ? idea.implementationHints.map(String) : [];
-    const codeResult = await generateCode(idea.title, idea.description, hints, repoContext);
+    const codeResult = await generateCode(
+      idea.title,
+      idea.description,
+      hints,
+      repoContext,
+      async (attempt, max) => {
+        await updateProgress(
+          db,
+          pullRequestId,
+          2,
+          attempt === 1
+            ? "Generating code changes..."
+            : `Generating code changes (attempt ${attempt} of ${max})...`,
+        );
+      },
+    );
     if (!codeResult || !codeResult.files?.length) {
       throw new Error("Code generation produced no files");
     }
@@ -183,13 +198,40 @@ export async function commitFile(
     return;
   }
 
-  // Get current file SHA if modifying
+  // Always probe for an existing blob SHA so create vs. modify becomes
+  // equivalent: if a file already exists at the path, we PUT with its sha
+  // (modify); if not, we PUT without (create). This makes commits robust
+  // to the auto-fix model emitting the wrong `action` for an existing
+  // path — without this, a "create" against an existing file 422s with
+  // `"sha" wasn't supplied` and kills the review loop.
   let sha: string | undefined;
-  if (file.action === "modify") {
-    const getRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${branch}`, { headers });
-    if (getRes.ok) {
-      const getJson = (await getRes.json()) as { sha?: string };
-      sha = getJson.sha;
+  const probeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${branch}`, { headers });
+  if (probeRes.ok) {
+    const probeJson = (await probeRes.json()) as { sha?: string; content?: string; encoding?: string };
+    sha = probeJson.sha;
+    // Destructive-modification guard. The model has shipped multiple PRs
+    // where it `modify`d a shared infra file (globals.css, layout.tsx,
+    // etc.) by replacing the whole content with a 100-line stub, silently
+    // deleting 1000+ lines of existing theme/wiring. Refuse the write
+    // when the new content removes a lot of the existing file. The
+    // calling code (createPullRequest step 3, or the review loop's
+    // commit-error handler) will surface the rejection as a failure
+    // rather than landing a destructive commit.
+    if (probeJson.content && probeJson.encoding === "base64") {
+      const existing = Buffer.from(probeJson.content, "base64").toString("utf8");
+      const existingLines = existing.split("\n").length;
+      const newLines = (file.content ?? "").split("\n").length;
+      const removed = existingLines - newLines;
+      const shrunkBy = existingLines > 0 ? removed / existingLines : 0;
+      // Tunable thresholds — generous enough to allow legitimate refactors
+      // but strict enough to catch wholesale rewrites of large files.
+      if (existingLines >= 100 && (removed >= 200 || shrunkBy >= 0.5)) {
+        throw new Error(
+          `Refusing destructive modify of ${file.path}: would remove ${removed} lines ` +
+          `(${existingLines} → ${newLines}, shrinks by ${Math.round(shrunkBy * 100)}%). ` +
+          `Emit a targeted patch instead of replacing the whole file.`,
+        );
+      }
     }
   }
 

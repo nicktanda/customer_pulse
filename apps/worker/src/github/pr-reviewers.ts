@@ -18,7 +18,10 @@ import {
 import { decryptCredentialsColumn } from "@customer-pulse/db/lockbox";
 import { callClaude, callClaudeJson } from "../ai/call-claude.js";
 import { commitFile } from "./pr-creator.js";
-import { analyzeRepo, findPathMismatches, type RepoContext } from "./repo-analyzer.js";
+import { analyzeRepo, findPathMismatches, findUnreachableComponents, findMisplacedNewPages, type RepoContext } from "./repo-analyzer.js";
+import { runPlaywrightReview, renderPlaywrightFindings } from "./playwright/runner.js";
+import { regenerateLockfile } from "./lockfile-regen.js";
+import { applyMechanicalCiFixes } from "./mechanical-ci-fixers.js";
 
 interface GithubCreds {
   access_token: string;
@@ -91,18 +94,29 @@ Evaluate whether the changes actually solve the customer problem. Consider:
 1. **Relevance** — do the code changes address the core issue?
 2. **Completeness** — does this fully solve the problem or only partially?
 3. **User impact** — will customers notice an improvement?
+4. **Reachability** — can users actually reach the new feature? Code that exists in the repo but isn't wired into any page, layout, or route is invisible to customers and does NOT deliver user impact. Specifically check:
+   - For new React components, the diff must also include a Next.js \`page.tsx\` / \`layout.tsx\` / \`route.ts\` (under \`apps/web/src/app/...\`) that imports them, OR a modification to an existing page/layout/component that imports them.
+   - For new providers (e.g. Context providers), the diff must also wrap them around the app via a \`layout.tsx\` modification.
+   - For new server-side functions, the diff must also include a UI handler (form, button, etc.) or schedule that triggers them.
+   - **Where the page lives matters as much as whether it exists.** If the codebase's logged-in product lives under a nested route prefix (e.g. \`apps/web/src/app/app/...\` rather than \`apps/web/src/app/...\`), a new top-level page at \`apps/web/src/app/<seg>/page.tsx\` is invisible to users browsing the actual product. URL-reachable ≠ reachable-by-a-real-user. New user-facing pages must live under the SAME prefix as existing user-facing pages in the repo. Compare the new \`page.tsx\` path against the most common existing \`page.tsx\` paths — if it doesn't share a prefix, that's a genuine gap.
+   If new components/providers exist but nothing in the diff renders or imports them, OR if they're wired to a top-level route outside the authenticated/product tree, that is a hard "needs_changes" — the user impact is zero until reachability is wired up correctly. Do not approve PRs that ship orphaned code or code at the wrong route prefix claiming to address a customer-facing idea.
+5. **End-to-end wiring** — does changing the new control/value visibly change anything OUTSIDE the control itself? This is the most common failure mode for personalisation/configuration features: the picker renders, the value persists, but nothing else in the app reads the value, so the user sees no effect when they use it. Specifically check:
+   - If the PR adds a control that writes a CSS custom property (e.g. \`document.documentElement.style.setProperty('--accent-colour', ...)\`), grep the diff for \`var(--accent-colour)\` (or whatever variable is written). If the only file that reads it is the new component's OWN CSS — i.e. only the picker's own swatches respond — that is NOT end-to-end. Real surfaces (buttons, links, focus rings, navigation, headers) must reference the variable too, typically via aliasing the relevant Bootstrap/theme variables in \`globals.css\`. Without this, the user picks a colour and nothing visible in the product changes. Verdict: "needs_changes".
+   - If the PR adds a React Context or provider, look for \`useX()\` calls in components that render visible UI. If the provider is wired but no rendered component reads from it, the feature has no effect.
+   - If the PR adds a server action / API route / DB column, look for the UI element that triggers it OR the read site that branches on the value. Without those, the data path is dead.
+   - The "selected" / "active" / "highlighted" state on the new control itself does NOT count as user impact. The change has to manifest somewhere ELSE.
 
 Return a JSON object with exactly two fields:
-- "verdict": "approved" if the PR addresses the insight, or "needs_changes" if it misses the core problem
+- "verdict": "approved" if the PR addresses the insight AND is wired end-to-end, or "needs_changes" if it misses the core problem OR if the new control's value isn't consumed anywhere meaningful outside the control itself.
 - "review": your review as a markdown string. Start with a one-line verdict (✅ Addresses the insight / ⚠️ Partially addresses / ❌ Does not address), then 2-4 bullet points explaining your reasoning.
 
-Only use "needs_changes" for genuine gaps — minor scope limitations should still be "approved" with notes.
+Only use "needs_changes" for genuine gaps — minor scope limitations should still be "approved" with notes. Orphaned/unreachable code IS a genuine gap. A picker / toggle / setting with no consumers is a genuine gap, not a minor scope limitation.
 
 Respond with ONLY the JSON object.`;
 
-const QA_REVIEW_SYSTEM = `You are a QA engineer verifying that a pull request (a) does what it claims AND (b) fits cleanly into the project's existing structure.
+const QA_REVIEW_SYSTEM = `You are a QA engineer verifying that a pull request (a) does what it claims AND (b) fits cleanly into the project's existing structure AND (c) is actually reachable to users.
 
-You will receive the original idea/insight, the diff, a repo context summary (top-level directories, sample file paths, tech stack), and a "Deterministic Path Findings" block that has been pre-computed against the repo's actual directory tree. Your job is to derive acceptance criteria from the idea AND apply standard infrastructure-sanity criteria, then check each against the diff.
+You will receive the original idea/insight, the diff, a repo context summary (top-level directories, sample file paths, tech stack), a "Deterministic Path Findings" block, a "Deterministic Reachability Findings" block, a "Deterministic Route-Prefix Findings" block, and a "Playwright QA Findings" block — all pre-computed against the actual repo, PR diff, and a live dev server running the PR's code. Your job is to derive acceptance criteria from the idea AND apply standard infrastructure + reachability criteria, then check each against the diff and the playwright findings.
 
 Process:
 1. Derive 3-5 **Functional** acceptance criteria from the idea + insights. Each is a single-line, testable statement (e.g. "Adds a 'Resend' button to the pulse report detail page").
@@ -110,16 +124,24 @@ Process:
    - "New/modified file paths follow the project's existing layout (e.g. matches the \`src/\` prefix used by other files in the same package, or whichever convention the sample paths show)."
    - "New imports reference modules that exist in the repo (or are added in the diff)."
    - "No duplicate top-level directories created at a level that conflicts with the existing layout (e.g. don't add \`apps/web/app/\` if \`apps/web/src/app/\` already exists)."
-3. For every criterion (functional + infrastructure), check the diff and assign:
+3. Add the following **Reachability** criteria:
+   - "Every newly-created React component, hook, or provider is imported (and rendered) by at least one other file in the diff — typically a Next.js \`page.tsx\` / \`layout.tsx\` under the repo's authenticated app route tree, or an existing page modified to consume the new code."
+   - "If the idea is a user-facing feature for logged-in users, the diff includes a route inside the repo's authenticated app tree — not a brand-new top-level route alongside existing top-level routes. Check the repo context's sample file paths: whichever first segment under \`apps/web/src/app/\` is used by existing pages (e.g. \`apps/web/src/app/app/...\` or \`apps/web/src/app/(authenticated)/...\`) is where new user-facing pages must live. A new \`apps/web/src/app/<seg>/page.tsx\` at the top level is invisible to logged-in users navigating the app."
+   - "Either a new \`page.tsx\` under the authenticated app tree exists, OR an existing page/sidebar/menu/settings nav is modified to surface the feature."
+4. For every criterion (functional + infrastructure + reachability), check the diff and assign:
    - "PASS" — clearly met; cite file path + key line/snippet as evidence.
    - "FAIL" — not met or implementation is broken.
    - "UNCERTAIN" — diff doesn't show enough to verify.
-4. Be strict on infrastructure: if any new file path conflicts with the conventions visible in the sample paths, that's a **FAIL** even when the feature itself is implemented.
-5. **HARD RULE**: if the "Deterministic Path Findings" block lists any items, they have already been verified by code against the actual repo tree. Each listed item is an automatic FAIL on the path-layout criterion — copy the finding into your Infrastructure section as a \`[❌]\`, do NOT explain them away as "fits Next.js conventions" or similar, and the overall verdict MUST be "needs_changes". Reword the criterion if needed but do not approve.
+5. Be strict on infrastructure: if any new file path conflicts with the conventions visible in the sample paths, that's a **FAIL** even when the feature itself is implemented.
+6. Be strict on reachability: a PR that ships components without wiring them into any page or layout is a **FAIL** regardless of how complete the components themselves are. The feature does not exist for users until it's reachable.
+7. **HARD RULE — paths**: if the "Deterministic Path Findings" block lists any items, they have already been verified by code against the actual repo tree. Each listed item is an automatic FAIL on the path-layout criterion — copy the finding into your Infrastructure section as a \`[❌]\`, do NOT explain them away as "fits Next.js conventions" or similar, and the overall verdict MUST be "needs_changes".
+8. **HARD RULE — reachability**: if the "Deterministic Reachability Findings" block lists any items, they have already been verified by code by scanning the diff for imports of each new component. Each listed item is an automatic FAIL on the reachability criterion — copy the finding into your Reachability section as a \`[❌]\`, do NOT explain them away as "the file structure makes it discoverable" or similar, and the verdict MUST be "needs_changes".
+9. **HARD RULE — playwright**: the "Playwright QA Findings" block reports the result of an automated browser session that clicked through the live UI to try to reach the feature. If it reports the feature is NOT visible or NOT reachable, that is an automatic FAIL on the Reachability section — record the finding as \`[❌]\` and the verdict MUST be "needs_changes". Code-exists-but-user-can't-see-it is the exact failure mode this check is designed to catch; do not rationalise it away. If the playwright harness could not run at all (runError without a verdict), treat reachability as UNCERTAIN and surface that — do not assume PASS.
+10. **HARD RULE — route prefix**: if the "Deterministic Route-Prefix Findings" block lists any items, they have already been verified by code by cross-referencing the diff's new \`page.tsx\` paths against where existing pages actually live in the repo. Each listed item is an automatic FAIL on the Reachability section — the page is technically URL-reachable but is outside the authenticated tree where real users navigate. Copy the finding into Reachability as \`[❌]\` and the verdict MUST be "needs_changes". Do not approve a "/settings" page when the rest of the app lives at "/app/settings" — that is the exact failure mode this check is designed to catch.
 
 Return a JSON object with exactly two fields:
-- "verdict": "approved" only if EVERY criterion (functional + infrastructure) is PASS. If any are FAIL or UNCERTAIN, "needs_changes".
-- "review": markdown. Start with a one-line verdict (✅ Verified / ⚠️ Some criteria unverified / ❌ Failed criteria). Then two sections, **Functional** and **Infrastructure**, each as a checklist:
+- "verdict": "approved" only if EVERY criterion (functional + infrastructure + reachability) is PASS. If any are FAIL or UNCERTAIN, "needs_changes".
+- "review": markdown. Start with a one-line verdict (✅ Verified / ⚠️ Some criteria unverified / ❌ Failed criteria). Then three sections, **Functional**, **Infrastructure**, and **Reachability**, each as a checklist:
   \`\`\`
   - [✅] <criterion> — <evidence: file path, snippet>
   - [❌] <criterion> — <what's missing/broken>
@@ -144,6 +166,47 @@ Generate code changes that address ALL feedback from every reviewer AND fix any 
   - "delete" — remove an existing file from the repo
 
 When fixing a wrong-path file, emit BOTH a "create" at the corrected path AND a "delete" at the old path. Do not just create the new copy and leave the original — that produces duplicates that will fail the next round of review. The same applies to renames or any reorganisation.
+
+When fixing a reachability/orphaned-component finding (e.g. "AccentColorPicker.tsx is never imported"), the fix is NOT to delete the component. Instead, "create" the missing wiring:
+- For a Next.js feature, add a \`page.tsx\` UNDER THE SAME ROUTE PREFIX AS THE REPO'S EXISTING USER-FACING PAGES. Inspect the diff, the file paths under "Repo Context", and (when present) the "Deterministic Route-Prefix Findings" block — whichever first segment under \`apps/web/src/app/\` is used by the majority of existing pages is the authenticated/product tree. If existing pages live under \`apps/web/src/app/app/...\`, your new page MUST live there too (e.g. \`apps/web/src/app/app/<segment>/page.tsx\`). Do NOT create a brand-new top-level route at \`apps/web/src/app/<segment>/page.tsx\` for a user-facing feature — those land outside the authenticated tree and are invisible to logged-in users.
+- For a context provider, "modify" the most-deeply-nested existing layout that still wraps the user-facing routes (typically the authenticated tree's layout, e.g. \`apps/web/src/app/app/layout.tsx\`). Only modify the root \`apps/web/src/app/layout.tsx\` when the provider truly needs to wrap unauthenticated pages too.
+- For an existing settings/dashboard area, "modify" the relevant existing page to consume the component — for example, modify the existing \`apps/web/src/app/app/settings/page.tsx\` rather than creating a new \`apps/web/src/app/settings/page.tsx\`.
+The goal is that, after the fix commit, at least one Next.js auto-discovered file (\`page.tsx\`/\`layout.tsx\`/\`route.ts\`) imports the orphaned component AND it lives at a route prefix the actual product uses.
+
+### Test / Vitest configuration fixes
+
+CI runs Vitest with NO globals (\`globals: false\` is the default). \`describe\`, \`it\`, \`expect\`, \`beforeEach\` etc. are **not** injected — every test file in this repo must explicitly import them, e.g. \`import { describe, it, expect } from "vitest";\`. The same applies to \`vi\` (\`import { vi } from "vitest";\`).
+
+When CI reports \`ReferenceError: describe is not defined\` (or similar for \`it\`/\`expect\`/\`vi\`):
+- The fix is to ADD the missing \`import { ... } from "vitest";\` line to the failing test file. Do NOT add a \`// @vitest-environment <env>\` docblock — that changes the test environment, which is a different problem and almost never the real cause.
+- Adding \`@vitest-environment jsdom\` (or any non-default env) requires the env package to be installed as a devDependency. If you cannot confirm it's already in the workspace's \`package.json\`, do not add the docblock — add the explicit imports instead.
+
+When a test legitimately needs DOM globals (\`document\`, \`window\`):
+- Check the workspace's \`package.json\` for \`jsdom\` or \`happy-dom\` in \`devDependencies\` before adding the docblock.
+- If neither is installed, prefer refactoring the test to not require DOM (e.g. extract the DOM-touching code into a pure function) over adding an environment + dependency.
+
+### Dependency changes
+
+If a fix genuinely requires adding/removing/upgrading an npm package, emit ONLY a \`modify\` on the relevant \`package.json\` (root or workspace, e.g. \`apps/web/package.json\`). Do NOT emit changes to \`yarn.lock\` — the model cannot produce a valid lockfile by hand, and CI runs with \`--frozen-lockfile\` which will reject any package.json change whose dependency tree isn't reflected in the lockfile. The harness will automatically run \`yarn install\` after your commit lands and push the regenerated \`yarn.lock\` in a follow-up commit. Trust this; do not try to handcraft a lockfile.
+
+### WIRE THE FEATURE END-TO-END (hard requirement)
+
+A feature is not done when its UI renders. It is done when changing the UI's value visibly changes the product. Trace the data flow: user picks/clicks/types → value is stored → SOMETHING ELSE in the app reads that value and behaves differently. If a reviewer flags the feature as "renders but has no effect" / "no-op picker" / "writes a value nothing reads", your fix MUST add the missing consumer(s):
+
+- **Picker/toggle writes a CSS custom property nothing else reads** → modify shared styles (e.g. \`apps/web/src/app/globals.css\`) to alias the relevant Bootstrap/theme variables (\`--bs-primary\`, \`--bs-link-color\`, \`--bs-link-hover-color\`, focus-ring colours, etc.) to the new variable. Updating the picker's own CSS is NOT enough.
+- **Context provider added but no \`useX()\` calls exist anywhere meaningful** → modify the consumer components (buttons, headers, sidebar links, etc.) to read the context and update their output.
+- **Server action / API route defined but no UI calls it** → modify the relevant form or button to call the action.
+- **DB column / preference added but no read site updates behaviour** → modify the place(s) that should branch on the value.
+
+When the original idea is a configuration/personalisation surface (theme, accent, density, notification prefs, etc.) and the current PR only ships the configuration surface itself, that is incomplete — the fix must include the styles, components, or behaviour that respond to the configured value. Ship the whole vertical slice.
+
+### NO FEATURE FLAGS (hard requirement)
+
+- DO NOT introduce a \`process.env.NEXT_PUBLIC_*\` or \`process.env.FEATURE_*\` env-var gate around the new feature.
+- DO NOT introduce a constant like \`ACCENT_COLOUR_ENABLED\`, \`FEATURE_ENABLED\`, \`isXEnabled\`, etc. that defaults to \`false\` and short-circuits rendering with \`return null\` / \`if (!enabled) return ...\`.
+- DO NOT add conditional JSX wrappers like \`{process.env.NEXT_PUBLIC_X === "true" ? <Component /> : null}\` around the user-facing surface.
+- If a previous round of this loop ADDED such a gate, your fix MUST REMOVE it. Strip the env check, strip the constant, and render the feature unconditionally. The accent-colour insight has now shipped four times in a row behind a default-off flag — the user clicks Generate-PR, the PR merges, and nothing is visible in the product. That is the failure mode this rule is designed to eliminate. STOP doing it.
+- The ONLY case where an env-var gate is acceptable is when the original idea EXPLICITLY asks for one (e.g. "add a kill switch for X"). In every other case, ship the feature unconditionally — risk-gating is the human reviewer's call, not yours.
 
 Return a JSON object with:
 - "files": array of file changes
@@ -255,10 +318,16 @@ async function getCiStatus(
 }
 
 /**
- * Fetches the tail of a failing GitHub Actions job's logs for a given commit
- * + check name. Falls back to null on any non-2xx, missing run/job, or
- * non-text response. Caps output at 4KB — the actual error is almost
- * always in the last few hundred lines.
+ * Fetches a failing GitHub Actions job's logs for a given commit + check
+ * name, then extracts the error-relevant context. Falls back to null on
+ * any non-2xx or missing run/job.
+ *
+ * Why this is not a plain `.slice(-N)`: GitHub Actions appends runtime
+ * notices (Node-version deprecation warnings etc.) after the failing step
+ * finishes, so the last few KB of a log are often unrelated chatter while
+ * the real Vitest/tsc error sits earlier in the file. We scan for error
+ * markers and pull ±40 lines around each, so the fixer sees the actual
+ * assertion or stack trace, not the trailing warning.
  */
 async function fetchJobLogTail(
   headers: Record<string, string>,
@@ -296,13 +365,56 @@ async function fetchJobLogTail(
       );
       if (!logRes.ok) continue;
       const text = await logRes.text();
-      const tail = text.split("\n").slice(-150).join("\n");
-      return tail.length > 4000 ? tail.slice(-4000) : tail;
+      return extractErrorContext(text);
     }
     return null;
   } catch {
     return null;
   }
+}
+
+const CI_ERROR_MARKERS: RegExp[] = [
+  /##\[error\]/i,
+  /\bFAIL\s/, // Vitest "FAIL src/..." line (often preceded by ANSI codes)
+  /\bAssertionError\b/,
+  /\berror TS\d+/, // tsc diagnostics
+  /\bSyntaxError\b/,
+  /\bTypeError\b/,
+  /\berror Command failed/i,
+  /^\s*at\s+\S+\s+\(/m, // stack frame
+  /\bexpected\b.+\bto\b/i,
+];
+
+/**
+ * Extracts error-relevant slices from a CI log. If markers are found,
+ * returns ±40 lines around each match (overlapping ranges merged).
+ * Otherwise falls back to the last `capBytes` of raw text.
+ */
+export function extractErrorContext(text: string, capBytes = 12_000): string {
+  const lines = text.split("\n");
+  const matchIdx: number[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (CI_ERROR_MARKERS.some((re) => re.test(line))) matchIdx.push(i);
+  }
+  if (matchIdx.length === 0) {
+    return text.length > capBytes ? text.slice(-capBytes) : text;
+  }
+  const ranges: Array<[number, number]> = [];
+  for (const i of matchIdx) {
+    const start = Math.max(0, i - 40);
+    const end = Math.min(lines.length - 1, i + 40);
+    const last = ranges[ranges.length - 1];
+    if (last && start <= last[1] + 1) {
+      last[1] = Math.max(last[1], end);
+    } else {
+      ranges.push([start, end]);
+    }
+  }
+  const joined = ranges
+    .map(([s, e]) => lines.slice(s, e + 1).join("\n"))
+    .join("\n... [snip] ...\n");
+  return joined.length > capBytes ? joined.slice(-capBytes) : joined;
 }
 
 async function getPrHead(
@@ -321,6 +433,23 @@ async function getPrHead(
   }
 }
 
+// Truncation cap for diffs that feed into AI prompts. Has to balance two
+// failure modes: too big and we blow the model's context; too small and
+// we cut off the very files that contain the wiring (which silently
+// breaks deterministic reachability/path checks when they run on the
+// truncated diff). Deterministic checks use the full diff regardless.
+const AI_DIFF_CAP_BYTES = 30_000;
+
+export function truncateDiffForAi(diff: string, cap = AI_DIFF_CAP_BYTES): string {
+  return diff.length > cap ? diff.slice(0, cap) + "\n\n... (diff truncated)" : diff;
+}
+
+/**
+ * Fetches the full unified diff for a PR. Returns null on any non-2xx or
+ * network error. Callers that pass the diff into an AI prompt should run
+ * `truncateDiffForAi` first; deterministic scanners must use the full
+ * value or they may miss late-in-the-diff wiring.
+ */
 async function getPrDiff(
   headers: Record<string, string>,
   owner: string,
@@ -333,8 +462,7 @@ async function getPrDiff(
       { headers: { ...headers, Accept: "application/vnd.github.v3.diff" } },
     );
     if (!res.ok) return null;
-    const diff = await res.text();
-    return diff.length > 30_000 ? diff.slice(0, 30_000) + "\n\n... (diff truncated)" : diff;
+    return await res.text();
   } catch {
     return null;
   }
@@ -483,6 +611,9 @@ async function runQaReview(
   filesChanged: string,
   repoContext: RepoContext | null,
   pathMismatches: string[],
+  unreachableComponents: string[],
+  misplacedPages: string[],
+  playwrightFindings: string,
 ): Promise<ReviewResult> {
   const mismatchSection = pathMismatches.length > 0
     ? [
@@ -491,6 +622,20 @@ async function runQaReview(
         ...pathMismatches.map((m) => `- ${m}`),
       ].join("\n")
     : "_(no path mismatches detected)_";
+  const reachabilitySection = unreachableComponents.length > 0
+    ? [
+        "**The following components are created by this PR but never imported, rendered, or referenced by any other file in the diff. The diff has been scanned by code; these findings are NOT subjective. Treat each as a hard FAIL in the Reachability section — the verdict MUST be `needs_changes`.**",
+        "",
+        ...unreachableComponents.map((m) => `- ${m}`),
+      ].join("\n")
+    : "_(no unreachable components detected)_";
+  const misplacedSection = misplacedPages.length > 0
+    ? [
+        "**The following new pages are created at top-level routes that are OUTSIDE this repo's established user-facing route tree. The check has cross-referenced the new file paths against where existing `page.tsx` files actually live in the repo — these findings are NOT subjective. Each one is a hard FAIL in the Reachability section: the page is technically URL-reachable but invisible to real users browsing the app's navigation. The verdict MUST be `needs_changes`.**",
+        "",
+        ...misplacedPages.map((m) => `- ${m}`),
+      ].join("\n")
+    : "_(no misplaced new pages detected)_";
   const result = await callClaudeJson<{ verdict: string; review: string }>({
     system: QA_REVIEW_SYSTEM,
     user: [
@@ -508,6 +653,15 @@ async function runQaReview(
       "",
       `## Deterministic Path Findings`,
       mismatchSection,
+      "",
+      `## Deterministic Reachability Findings`,
+      reachabilitySection,
+      "",
+      `## Deterministic Route-Prefix Findings`,
+      misplacedSection,
+      "",
+      `## Playwright QA Findings`,
+      playwrightFindings,
       "",
       `## Files Changed`,
       filesChanged,
@@ -532,10 +686,33 @@ async function generateFixes(
   pmReview: ReviewResult,
   qaReview: ReviewResult,
   ciFailures: CiFailure[],
+  /**
+   * Optional pre-PR file contents for files that were catastrophically
+   * deleted in the diff. Injected as a separate "Original file content"
+   * block so the fixer has something to restore from — the truncated diff
+   * doesn't include the deleted lines, so without this the fixer literally
+   * cannot reconstruct what was removed.
+   */
+  restorationContext?: { path: string; originalContent: string }[],
 ): Promise<FixResult | null> {
   const ciSection = ciFailures.length > 0
     ? ciFailures.map((f) => `### ❌ ${f.name}\n\n${f.summary}`).join("\n\n")
     : "_(CI green or hasn't run yet — no CI failures to address)_";
+  const restorationSection = (restorationContext ?? []).length > 0
+    ? [
+        "## Original File Content (for restoration reference)",
+        "",
+        "**The following files had a large portion of their content deleted in this PR's diff. The truncated diff does NOT show all the deleted lines — use the original content below to restore what was destructively removed. Do NOT preserve the destructive stub; emit a `modify` action whose content is the original (with any actually-needed surgical edits) rather than a stub that drops most of the file.**",
+        "",
+        ...(restorationContext ?? []).flatMap((r) => [
+          `### \`${r.path}\``,
+          "```",
+          r.originalContent,
+          "```",
+          "",
+        ]),
+      ].join("\n")
+    : "";
   return callClaudeJson<FixResult>({
     system: FIX_SYSTEM,
     user: [
@@ -555,9 +732,60 @@ async function generateFixes(
       "",
       "## CI Failures",
       ciSection,
+      restorationSection ? "\n" + restorationSection : "",
     ].join("\n"),
     maxTokens: 64000,
   });
+}
+
+/**
+ * Scans the diff for files with a catastrophic deletion (>300 lines net-
+ * removed) and returns their pre-PR (base-branch) contents so generateFixes
+ * can include them as restoration context. Skips silently when nothing
+ * qualifies. Capped at 3 files and 60KB total to keep prompt size bounded.
+ */
+async function buildRestorationContext(
+  fullDiff: string,
+  headers: Record<string, string>,
+  owner: string,
+  repo: string,
+  baseBranch: string,
+): Promise<{ path: string; originalContent: string }[]> {
+  const candidates: { path: string; deleted: number }[] = [];
+  const sections = fullDiff.split(/^diff --git /m);
+  for (const section of sections) {
+    if (!section) continue;
+    const pathMatch = section.match(/^\+\+\+ b\/(.+)$/m);
+    if (!pathMatch) continue;
+    let deleted = 0;
+    for (const line of section.split("\n")) {
+      if (line.startsWith("-") && !line.startsWith("---")) deleted++;
+    }
+    if (deleted >= 300) candidates.push({ path: pathMatch[1]!, deleted });
+  }
+  candidates.sort((a, b) => b.deleted - a.deleted);
+
+  const out: { path: string; originalContent: string }[] = [];
+  let bytesUsed = 0;
+  const BYTES_CAP = 60_000;
+  for (const c of candidates.slice(0, 3)) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${c.path}?ref=${baseBranch}`,
+        { headers },
+      );
+      if (!res.ok) continue;
+      const json = (await res.json()) as { content?: string; encoding?: string };
+      if (json.content && json.encoding === "base64") {
+        const original = Buffer.from(json.content, "base64").toString("utf8");
+        const capped = original.length > 30_000 ? original.slice(0, 30_000) + "\n... (truncated)" : original;
+        if (bytesUsed + capped.length > BYTES_CAP) break;
+        bytesUsed += capped.length;
+        out.push({ path: c.path, originalContent: capped });
+      }
+    } catch { /* skip */ }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -592,10 +820,6 @@ export async function reviewPullRequest(
     .where(eq(ideaInsights.ideaId, idea.id))
     .limit(3);
 
-  const filesChangedStr = Array.isArray(pr.filesChanged)
-    ? (pr.filesChanged as { path: string; action: string }[]).map((f) => `- \`${f.path}\` (${f.action})`).join("\n")
-    : "";
-
   // Cached on commit SHA — already populated by createPullRequest's analyze step,
   // so this is normally a single DB read. Used by QA to verify infrastructure
   // sanity (paths follow project layout, no duplicate top-level dirs, etc.).
@@ -606,39 +830,116 @@ export async function reviewPullRequest(
     console.warn(`[pr-review] PR #${pr.prNumber} — repo analysis unavailable:`, err instanceof Error ? err.message : err);
   }
 
-  // Deterministic check against the actual repo tree — catches the
-  // wrong-directory bug (e.g. files at `apps/web/components/...` when the
-  // repo uses `apps/web/src/components/...`) without relying on the QA
-  // model to do literal path comparison correctly.
-  const filesChangedArr = Array.isArray(pr.filesChanged)
-    ? (pr.filesChanged as { path: string; action: string }[])
-    : [];
-  const pathMismatches = findPathMismatches(filesChangedArr, repoContext);
-  if (pathMismatches.length > 0) {
-    console.warn(`[pr-review] PR #${pr.prNumber} — path mismatches detected: ${pathMismatches.length}`);
-  }
-
   for (let iteration = 1; ; iteration++) {
     const tag = `[pr-review] PR #${pr.prNumber} round ${iteration}`;
 
+    // Re-read `pr.filesChanged` at the top of EACH iteration. The auto-fix
+    // loop below persists updated filesChanged to the DB after every fix
+    // commit; if we used the snapshot loaded at the top of this function,
+    // the deterministic checks would see stale data and keep flagging
+    // paths the previous round already deleted. That produced an infinite
+    // loop on PR #92 where QA repeatedly complained about a top-level
+    // /settings/appearance/page.tsx that the fixer had already deleted from
+    // GitHub but whose `create` entry was still pinned in our in-memory
+    // snapshot.
+    const [freshPr] = await db.select().from(ideaPullRequests).where(eq(ideaPullRequests.id, pullRequestId)).limit(1);
+    const filesChangedArr = Array.isArray(freshPr?.filesChanged)
+      ? (freshPr.filesChanged as { path: string; action: string }[])
+      : [];
+    const filesChangedStr = filesChangedArr.map((f) => `- \`${f.path}\` (${f.action})`).join("\n");
+    const pathMismatches = findPathMismatches(filesChangedArr, repoContext);
+    if (pathMismatches.length > 0) {
+      console.warn(`${tag} — path mismatches detected: ${pathMismatches.length}`);
+    }
+
     // Fetch fresh diff + head SHA (both reflect any fix commits from previous iterations)
-    const diff = await getPrDiff(headers, creds.owner, creds.repo, pr.prNumber);
-    if (!diff) {
+    const fullDiff = await getPrDiff(headers, creds.owner, creds.repo, pr.prNumber);
+    if (!fullDiff) {
       console.warn(`${tag} — could not fetch diff, stopping`);
       return;
     }
+    // Deterministic scanners must run on the FULL diff — running them on a
+    // truncated version silently misses files past the cap (e.g. the
+    // page.tsx that wires up a component sitting after a huge globals.css
+    // section), which produces false "unreachable" findings that loop the
+    // fixer indefinitely. AI consumers get the truncated version so we
+    // stay under the model's context window.
+    const diff = truncateDiffForAi(fullDiff);
     const headSha = await getPrHead(headers, creds.owner, creds.repo, pr.prNumber);
     const ci = headSha
       ? await getCiStatus(headers, creds.owner, creds.repo, headSha)
       : { failures: [], pending: false, hasAnyChecks: false };
 
+    // Mechanical CI fixers — `docs_inventory`, future lint/format checks,
+    // etc. — produce their fix by running a script in a worktree, not by
+    // asking the AI to hand-edit code. Run BEFORE the AI fixer so the
+    // model never has to guess at a regenerated artifact. If a mechanical
+    // fix pushes a commit, restart the loop iteration so reviewers see
+    // the post-fix state and CI re-runs on the new HEAD.
+    if (ci.failures.length > 0 && pr.branchName) {
+      const mech = await applyMechanicalCiFixes(
+        ci.failures.map((f) => f.name),
+        { branchName: pr.branchName, headers, owner: creds.owner, repo: creds.repo },
+      );
+      if (mech.pushedChecks.length > 0) {
+        await postPrComment(
+          headers, creds.owner, creds.repo, pr.prNumber,
+          `## 🛠️ Mechanical CI fix (round ${iteration})\n\nApplied scripted fixes for the following failing checks instead of running the AI fixer on them:\n\n${mech.log.join("\n")}\n\n---\n_Automated by xenoform.ai_`,
+        );
+        console.log(`${tag} — mechanical CI fixers pushed ${mech.pushedChecks.length} commit(s) (${mech.pushedChecks.join(", ")}); restarting iteration`);
+        // Restart the loop iteration: re-fetch diff + CI on the new HEAD.
+        // `continue` skips the rest of this round; iteration++ on the next
+        // loop tick is fine — we don't bump the round counter manually.
+        continue;
+      }
+      if (mech.handledChecks.length > 0) {
+        console.log(`${tag} — mechanical CI fixers ran but produced no commits (${mech.handledChecks.join(", ")})`);
+      }
+    }
+
     // Run all three reviews in parallel. CI failures are folded into the
     // code reviewer's input so its verdict accounts for them directly,
     // rather than being treated as a separate signal.
+    const unreachableComponents = findUnreachableComponents(filesChangedArr, fullDiff);
+    if (unreachableComponents.length > 0) {
+      console.warn(`${tag} — unreachable components detected: ${unreachableComponents.length}`);
+    }
+    // Catches the "wrong route prefix" failure mode — e.g. shipping a
+    // settings page at `/settings/...` when this repo serves logged-in
+    // users under `/app/...`. URL-reachable but invisible to real users.
+    const misplacedPages = findMisplacedNewPages(filesChangedArr, repoContext);
+    if (misplacedPages.length > 0) {
+      console.warn(`${tag} — misplaced new pages detected: ${misplacedPages.length}`);
+    }
+
+    // Playwright QA: spin up the PR's code on a snapshot DB, click through
+    // the live UI, screenshot, ask the model whether the feature is visible.
+    // The helper returns a non-throwing result; we render it into a string
+    // the QA reviewer's prompt treats as another hard-rule signal. Skipped
+    // only when we don't yet have a branch name (which shouldn't happen at
+    // this point but the type forces a guard).
+    let playwrightFindings = "_(playwright QA skipped — PR branch name unavailable)_";
+    if (pr.branchName) {
+      console.log(`${tag} — running playwright QA...`);
+      try {
+        const pwResult = await runPlaywrightReview({
+          branchName: pr.branchName,
+          idea: { title: idea.title, description: idea.description },
+          diff,
+        });
+        playwrightFindings = renderPlaywrightFindings(pwResult);
+        console.log(`${tag} — playwright QA ran=${pwResult.ran} visible=${pwResult.verdict?.visible ?? "?"} (${(pwResult.durationMs / 1000).toFixed(1)}s)`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`${tag} — playwright QA threw (non-fatal): ${msg}`);
+        playwrightFindings = `**Playwright QA harness threw an exception** (treat as UNCERTAIN): ${msg}`;
+      }
+    }
+
     const [codeReview, pmReview, qaReview] = await Promise.all([
       runCodeReview(diff, idea.title, ci.failures),
       runPmReview(diff, idea, linkedInsights, filesChangedStr),
-      runQaReview(diff, idea, linkedInsights, filesChangedStr, repoContext, pathMismatches),
+      runQaReview(diff, idea, linkedInsights, filesChangedStr, repoContext, pathMismatches, unreachableComponents, misplacedPages, playwrightFindings),
     ]);
 
     // Post reviews as comments
@@ -657,7 +958,12 @@ export async function reviewPullRequest(
     );
 
     const allApproved = codeReview.verdict === "approved" && pmReview.verdict === "approved" && qaReview.verdict === "approved";
-    const ciClean = ci.failures.length === 0; // pending/no-CI counts as clean for this gate
+    // Pending CI no longer counts as clean: approving while a check is still
+    // running leads to premature auto-merge attempts that then bounce back
+    // into a rereview loop the moment the check finishes red. Only "all
+    // checks completed AND none failed" passes this gate. "No checks at
+    // all" still passes — projects without CI shouldn't be blocked here.
+    const ciClean = ci.failures.length === 0 && !ci.pending;
     console.log(`${tag} — code: ${codeReview.verdict}, pm: ${pmReview.verdict}, qa: ${qaReview.verdict}, ci_failures: ${ci.failures.length}${ci.pending ? " (some pending)" : ""}`);
 
     // All reviewers approved AND CI green → auto-merge or request human review
@@ -677,9 +983,22 @@ export async function reviewPullRequest(
       return;
     }
 
-    // Generate fix commit addressing the union of reviewer feedback + CI failures
+    // Generate fix commit addressing the union of reviewer feedback + CI failures.
+    // For files that were catastrophically deleted in the PR (>300 lines gone),
+    // fetch the original from main and include it so the fixer can restore —
+    // the truncated diff alone wouldn't show the deleted content.
     console.log(`${tag} — generating fixes...`);
-    const fixes = await generateFixes(diff, codeReview, pmReview, qaReview, ci.failures);
+    const restorationContext = await buildRestorationContext(
+      fullDiff,
+      headers,
+      creds.owner,
+      creds.repo,
+      creds.default_branch || "main",
+    );
+    if (restorationContext.length > 0) {
+      console.log(`${tag} — including restoration context for ${restorationContext.length} catastrophically-deleted file(s)`);
+    }
+    const fixes = await generateFixes(diff, codeReview, pmReview, qaReview, ci.failures, restorationContext);
     if (!fixes?.files?.length) {
       await postPrComment(
         headers, creds.owner, creds.repo, pr.prNumber,
@@ -689,9 +1008,23 @@ export async function reviewPullRequest(
       return;
     }
 
-    // Push fix commits to the PR branch
-    for (const file of fixes.files) {
-      await commitFile(headers, creds.owner, creds.repo, pr.branchName, file, fixes.commit_message);
+    // Push fix commits to the PR branch. If any individual commit fails
+    // (e.g. the model emitted a path that GitHub rejects), stop the loop
+    // gracefully with a comment instead of throwing — otherwise the
+    // outer non-fatal handler swallows the error and the PR is left in
+    // a half-fixed state with no signal to the user.
+    try {
+      for (const file of fixes.files) {
+        await commitFile(headers, creds.owner, creds.repo, pr.branchName, file, fixes.commit_message);
+      }
+    } catch (commitErr) {
+      const msg = commitErr instanceof Error ? commitErr.message : String(commitErr);
+      await postPrComment(
+        headers, creds.owner, creds.repo, pr.prNumber,
+        `⚠️ **Auto-fix partially applied but stopped.** A subsequent fix commit failed: \`${msg}\`. A human should address the remaining review feedback.`,
+      );
+      console.warn(`${tag} — commitFile threw, stopping: ${msg}`);
+      return;
     }
 
     // Update the tracked files on the PR record
@@ -709,6 +1042,36 @@ export async function reviewPullRequest(
       headers, creds.owner, creds.repo, pr.prNumber,
       `## 🔧 Auto-fix${iterLabel}\n\n${fixes.summary}\n\nFiles updated:\n${fixes.files.map((f) => `- \`${f.path}\` (${f.action})`).join("\n")}\n\n---\n_Automated fix by xenoform.ai_`,
     );
+
+    // If the fixer touched any package.json, regenerate yarn.lock in a
+    // worktree and push it as a follow-up commit. Without this, the
+    // package.json change would land on the branch with a stale lockfile
+    // and CI would fail at `yarn install --frozen-lockfile` next run.
+    const touchedPackageJson = fixes.files.some((f) => /(^|\/)package\.json$/.test(f.path));
+    if (touchedPackageJson) {
+      console.log(`${tag} — package.json changed, regenerating yarn.lock...`);
+      const regen = await regenerateLockfile({
+        branchName: pr.branchName,
+        headers,
+        owner: creds.owner,
+        repo: creds.repo,
+      });
+      if (regen.pushed) {
+        await postPrComment(
+          headers, creds.owner, creds.repo, pr.prNumber,
+          `## 📦 Lockfile regenerated${iterLabel}\n\nDependency changes in this round required regenerating \`yarn.lock\`. Pushed in ${(regen.durationMs / 1000).toFixed(1)}s.\n\n---\n_Automated by xenoform.ai_`,
+        );
+        console.log(`${tag} — yarn.lock pushed (${(regen.durationMs / 1000).toFixed(1)}s)`);
+      } else if (!regen.ran) {
+        await postPrComment(
+          headers, creds.owner, creds.repo, pr.prNumber,
+          `⚠️ **Lockfile regeneration failed**${iterLabel}: \`${regen.note ?? "unknown error"}\`. The next CI run may fail at \`yarn install --frozen-lockfile\` until \`yarn.lock\` is updated by hand.`,
+        );
+        console.warn(`${tag} — yarn.lock regen failed: ${regen.note}`);
+      } else {
+        console.log(`${tag} — yarn.lock unchanged (${regen.note})`);
+      }
+    }
 
     console.log(`${tag} — pushed ${fixes.files.length} fix file(s), re-reviewing...`);
   }
