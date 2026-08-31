@@ -1,9 +1,120 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TestConnectionButton } from "./TestConnectionButton";
 
+/**
+ * Item 6: per-integration structured field schema.
+ *
+ * Tokens never go to Claude — this is a plain Zod-ish schema that drives a structured form.
+ * Switching the wizard from JSON-paste to per-field inputs keeps secrets out of the prompt path.
+ */
+type FieldSpec = {
+  key: string;
+  label: string;
+  hint?: string;
+  type?: "text" | "password" | "url";
+  placeholder?: string;
+  required?: boolean;
+};
+
+const FIELD_SCHEMAS: Record<string, FieldSpec[]> = {
+  slack: [
+    { key: "bot_token", label: "Bot user OAuth token", type: "password", placeholder: "xoxb-…", required: true, hint: "From Slack app → OAuth & Permissions." },
+    { key: "signing_secret", label: "Signing secret", type: "password", placeholder: "abc123…", required: true, hint: "From Slack app → Basic Information." },
+    { key: "default_channel", label: "Default channel", type: "text", placeholder: "#feedback", hint: "Optional — channel feedback gets posted to." },
+  ],
+  linear: [
+    { key: "api_key", label: "Personal API key", type: "password", placeholder: "lin_api_…", required: true, hint: "linear.app → Settings → API." },
+    { key: "team_id", label: "Team ID", type: "text", placeholder: "ENG", hint: "Optional — restricts ingest to one team." },
+  ],
+  jira: [
+    { key: "site_url", label: "Jira site URL", type: "url", placeholder: "https://acme.atlassian.net", required: true },
+    { key: "email", label: "User email", type: "text", required: true },
+    { key: "api_token", label: "API token", type: "password", required: true, hint: "id.atlassian.com → Security → API tokens." },
+    { key: "project_key", label: "Project key", type: "text", placeholder: "FEED", hint: "Optional — limits ingest to one Jira project." },
+  ],
+  google_form: [
+    { key: "form_id", label: "Form ID", type: "text", required: true, hint: "From the form URL: /forms/d/<form_id>/edit." },
+    { key: "service_account_json", label: "Service account JSON", type: "password", required: true, hint: "Whole JSON contents — encrypted at rest, never sent to Claude." },
+  ],
+};
+
 export function IntegrationStepClient({
+  step,
+  example,
+  formActions,
+}: {
+  step: string;
+  example: string;
+  formActions: React.ReactNode;
+}) {
+  const fields = FIELD_SCHEMAS[step] ?? null;
+  const hiddenRef = useRef<HTMLInputElement>(null);
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  // Keep the hidden credentials_json in sync so the existing server action can parse it as before.
+  useEffect(() => {
+    if (!hiddenRef.current) return;
+    const cleaned = Object.fromEntries(
+      Object.entries(values).filter(([, v]) => v.trim().length > 0),
+    );
+    hiddenRef.current.value = Object.keys(cleaned).length > 0 ? JSON.stringify(cleaned) : "";
+  }, [values]);
+
+  function update(key: string, val: string) {
+    setValues((prev) => ({ ...prev, [key]: val }));
+  }
+
+  function getCredentials(): Record<string, unknown> | null {
+    const cleaned = Object.fromEntries(
+      Object.entries(values).filter(([, v]) => v.trim().length > 0),
+    );
+    if (Object.keys(cleaned).length === 0) return null;
+    return cleaned;
+  }
+
+  // Fallback to the legacy JSON paste path for any integration we don't have a structured schema for.
+  if (!fields) {
+    return <LegacyJsonStep step={step} example={example} formActions={formActions} />;
+  }
+
+  return (
+    <>
+      <input type="hidden" name="_onboarding_step" value={step} />
+      <input type="hidden" ref={hiddenRef} name="credentials_json" defaultValue="" />
+      <p className="small text-body-secondary mb-0">
+        Fill the fields below — credentials are encrypted at rest and never sent to Claude.
+      </p>
+      {fields.map((f) => (
+        <div key={f.key}>
+          <label htmlFor={`onb-${step}-${f.key}`} className="form-label small">
+            {f.label}
+            {f.required ? <span className="text-danger ms-1">*</span> : null}
+          </label>
+          <input
+            id={`onb-${step}-${f.key}`}
+            type={f.type === "password" ? "password" : f.type === "url" ? "url" : "text"}
+            autoComplete="off"
+            placeholder={f.placeholder}
+            className="form-control"
+            value={values[f.key] ?? ""}
+            onChange={(e) => update(f.key, e.target.value)}
+          />
+          {f.hint ? <div className="form-text">{f.hint}</div> : null}
+        </div>
+      ))}
+      <TestConnectionButton type={step} getCredentials={getCredentials} />
+      {formActions}
+    </>
+  );
+}
+
+/**
+ * Pre-Item-6 fallback for integrations we haven't migrated to structured inputs yet.
+ * Keeps the original JSON paste experience exactly as it was.
+ */
+function LegacyJsonStep({
   step,
   example,
   formActions,

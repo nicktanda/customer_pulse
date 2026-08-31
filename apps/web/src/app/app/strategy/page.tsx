@@ -13,10 +13,10 @@ import {
 } from "@/components/ui";
 import {
   createTeamAction,
-  updateBusinessStrategyAction,
   updateTeamAction,
 } from "./actions";
 import { DeleteTeamButton } from "./DeleteTeamButton";
+import { BusinessStrategyForm } from "./BusinessStrategyForm";
 
 /**
  * Strategy tab: one "business" narrative per project plus named teams (objectives + strategy text).
@@ -115,47 +115,10 @@ export default async function StrategyPage({
           </p>
 
           {canEdit ? (
-            /* ── Edit mode: full form ──────────────────────────────────────── */
-            <form action={updateBusinessStrategyAction} className="d-flex flex-column gap-3 mt-4">
-              <div>
-                <label htmlFor="business_objectives" className="form-label fw-semibold small mb-1">
-                  Objectives
-                </label>
-                <p className="small text-body-tertiary mb-2">
-                  What does success look like? e.g. grow enterprise adoption, reduce churn in Q2.
-                </p>
-                <textarea
-                  id="business_objectives"
-                  name="business_objectives"
-                  className="form-control"
-                  rows={5}
-                  defaultValue={projectRow?.businessObjectives ?? ""}
-                  placeholder="e.g. Grow enterprise adoption, reduce churn in Q2…"
-                />
-              </div>
-              <div>
-                <label htmlFor="business_strategy" className="form-label fw-semibold small mb-1">
-                  Strategy
-                </label>
-                <p className="small text-body-tertiary mb-2">
-                  How will you get there? Themes, bets, trade-offs, and things you are not doing.
-                </p>
-                <textarea
-                  id="business_strategy"
-                  name="business_strategy"
-                  className="form-control"
-                  rows={5}
-                  defaultValue={projectRow?.businessStrategy ?? ""}
-                  placeholder="How you plan to get there — themes, bets, non-goals…"
-                />
-              </div>
-              <div>
-                <button type="submit" className="btn btn-primary d-inline-flex align-items-center gap-2">
-                  <Save size={14} aria-hidden="true" />
-                  Save business strategy
-                </button>
-              </div>
-            </form>
+            <BusinessStrategyForm
+              initialObjectives={projectRow?.businessObjectives ?? ""}
+              initialStrategy={projectRow?.businessStrategy ?? ""}
+            />
           ) : hasBusinessContent ? (
             /* ── Read-only: labeled content blocks ────────────────────────── */
             <div className="d-flex flex-column gap-3 mt-4">

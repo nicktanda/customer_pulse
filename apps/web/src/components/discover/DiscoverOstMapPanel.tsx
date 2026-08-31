@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { DiscoveryOstMapData } from "@customer-pulse/db/queries/discovery";
 import { DiscoveryOstMapView } from "./DiscoveryOstMapView";
+import { OstSeedButton } from "./OstSeedButton";
 
 type Props = {
   data: DiscoveryOstMapData;
@@ -25,10 +26,11 @@ export function DiscoverOstMapPanel({ data, canEdit, projectName, mode }: Props)
           <Link href="/app/discover" className="btn btn-sm btn-link text-decoration-none text-body px-0">
             ← Discover
           </Link>
-          <h1 className="h6 mb-0 text-body text-truncate" title={projectName}>
+          <h1 className="h6 mb-0 text-body text-truncate flex-grow-1" title={projectName}>
             OST Map
             {projectName ? <span className="text-body-tertiary fw-normal"> · {projectName}</span> : null}
           </h1>
+          {canEdit ? <OstSeedButton /> : null}
         </div>
         <div className="flex-grow-1 p-2 p-md-3 overflow-auto min-h-0">
           <DiscoveryOstMapView data={data} canEdit={canEdit} />

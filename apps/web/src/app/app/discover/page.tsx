@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { DiscoverHubContent } from "@/components/discover/DiscoverHubContent";
+import { DiscoveryChatSidebar } from "@/components/discover/DiscoveryChatSidebar";
 import { PageHeader, PageShell, ProjectAccessDenied } from "@/components/ui";
 import { getRequestDb } from "@/lib/db";
 import { getCurrentProjectIdForUser, getCurrentProjectSummaryForUser } from "@/lib/current-project";
@@ -108,6 +109,7 @@ export default async function DiscoverHubPage({
           whosDoingWhat={whosDoingWhat}
         />
       </div>
+      <DiscoveryChatSidebar />
     </PageShell>
   );
 }

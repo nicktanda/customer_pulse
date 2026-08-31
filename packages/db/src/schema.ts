@@ -241,6 +241,16 @@ export const emailRecipients = pgTable(
     email: varchar("email", { length: 255 }).notNull(),
     name: varchar("name", { length: 255 }),
     active: boolean("active").notNull().default(true),
+    /**
+     * Per-recipient digest filter applied in worker SQL (NOT trusted to the LLM).
+     * Shape: `{ minPriority?: number, categories?: number[], teamIds?: number[] }`.
+     */
+    filters: jsonb("filters").$type<Record<string, unknown>>().notNull().default({}),
+    /**
+     * Tone / length preferences passed into the digest prompt.
+     * Shape: `{ tone?: "concise" | "detailed", focus?: string }`.
+     */
+    preferences: jsonb("preferences").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
     projectId: bigint("project_id", { mode: "number" }).notNull(),
@@ -668,6 +678,39 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   pinnedReportCharts: many(pinnedReportCharts),
 }));
 
+/**
+ * ai_suggestions — polymorphic audit log for every AI-drafted artifact across the app.
+ *
+ * Lets us A/B prompts, tune confidence thresholds, replay failures, and rate-limit per project.
+ * Payload is versioned (`payload.v`) so the shape can evolve without a migration.
+ *
+ * `target_table` + `target_id` is a polymorphic pointer — null when the suggestion is
+ * still draft-only (e.g. a "Draft from feedback themes" preview the user has not saved yet).
+ */
+export const aiSuggestions = pgTable(
+  "ai_suggestions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    /** Stable string key — e.g. "spec_draft", "insight_draft", "strategy_draft", "activity_draft", "tag_propose". */
+    kind: varchar("kind", { length: 64 }).notNull(),
+    /** Polymorphic pointer: e.g. "specs"/"insights"/"feedbacks". Null when not yet bound to a row. */
+    targetTable: varchar("target_table", { length: 64 }),
+    targetId: bigint("target_id", { mode: "number" }),
+    /** Versioned suggestion content: `{ v: 1, draft: {...}, sources: [...] }`. */
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    confidence: doublePrecision("confidence"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    acceptedBy: bigint("accepted_by", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index("index_ai_suggestions_on_project_id").on(t.projectId),
+    index("index_ai_suggestions_on_kind").on(t.kind),
+    index("index_ai_suggestions_on_target").on(t.targetTable, t.targetId),
+  ],
+);
+
 /** Pending invitations for users who don't have accounts yet. Converted to projectUsers on signup. */
 export const projectInvitations = pgTable(
   "project_invitations",
@@ -721,3 +764,40 @@ export const pinnedReportChartsRelations = relations(pinnedReportCharts, ({ one 
   project: one(projects, { fields: [pinnedReportCharts.projectId], references: [projects.id] }),
   createdByUser: one(users, { fields: [pinnedReportCharts.createdBy], references: [users.id] }),
 }));
+
+/**
+ * tags / feedback_tags — Cross-cut D auto-tagging.
+ * `feedback_tags.source` is "human" (manual) or "ai" (proposed by Claude — pending acceptance).
+ */
+export const tags = pgTable(
+  "tags",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    name: varchar("name", { length: 128 }).notNull(),
+    color: varchar("color", { length: 32 }),
+    createdBy: bigint("created_by", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("index_tags_on_project_id_and_name").on(t.projectId, t.name),
+    index("index_tags_on_project_id").on(t.projectId),
+  ],
+);
+
+export const feedbackTags = pgTable(
+  "feedback_tags",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    feedbackId: bigint("feedback_id", { mode: "number" }).notNull(),
+    tagId: bigint("tag_id", { mode: "number" }).notNull(),
+    source: varchar("source", { length: 16 }).notNull().default("human"),
+    confidence: doublePrecision("confidence"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("index_feedback_tags_on_feedback_id_and_tag_id").on(t.feedbackId, t.tagId),
+    index("index_feedback_tags_on_tag_id").on(t.tagId),
+  ],
+);

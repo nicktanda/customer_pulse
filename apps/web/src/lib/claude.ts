@@ -131,6 +131,83 @@ export async function callClaudeJsonWeb<T>(options: {
   return parseJsonFromText<T>(response.text);
 }
 
+/**
+ * Streams plain-text Claude output as SSE-style chunks for use in Next.js route handlers.
+ * Returns null when the API key is unavailable so callers can return a 503.
+ *
+ * Caller pipes the returned ReadableStream into `new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } })`.
+ */
+export async function callClaudeStreamWeb(options: {
+  system: string;
+  user: string;
+  maxTokens?: number;
+}): Promise<ReadableStream<Uint8Array> | null> {
+  const apiKey = await resolveApiKey();
+  if (!apiKey) return null;
+
+  const model = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: options.maxTokens ?? 2048,
+      system: options.system,
+      messages: [{ role: "user", content: options.user }],
+      stream: true,
+    }),
+  });
+
+  if (!res.ok || !res.body) {
+    console.error(`[web/claude] Stream open failed: ${res.status}`);
+    return null;
+  }
+
+  // The Anthropic stream is already SSE — re-emit only the text deltas as a simpler "data: <text>\n\n" stream.
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let buffer = "";
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+          for (const evt of events) {
+            const dataLine = evt.split("\n").find((l) => l.startsWith("data: "));
+            if (!dataLine) continue;
+            const data = dataLine.slice(6);
+            if (data === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(data) as {
+                type?: string;
+                delta?: { type?: string; text?: string };
+              };
+              if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta" && parsed.delta.text) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: parsed.delta.text })}\n\n`));
+              }
+            } catch { /* ignore non-JSON keepalives */ }
+          }
+        }
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      } catch (err) {
+        console.error(`[web/claude] Stream error: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        controller.close();
+      }
+    },
+  });
+}
+
 // ─── JSON parsing ─────────────────────────────────────────────────────────────
 
 /**
